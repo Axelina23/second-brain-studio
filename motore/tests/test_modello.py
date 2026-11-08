@@ -86,9 +86,12 @@ def test_collega_hook(tmp_path):
                              "statusLine": {"type": "command", "command": "mia.ps1"}}), encoding="utf-8")
     dest = tmp_path / "hooks"
     r = modello.collega_hook(src, dest, s)
-    assert r["cambiato"] and not r["riga_stato"] and (dest / "sync.ps1").is_file()
+    assert r["cambiato"] and r["riga_stato"] and r["ponte"] and (dest / "sync.ps1").is_file()
     d = json.loads(s.read_text(encoding="utf-8"))
-    assert len(d["hooks"]["SessionEnd"]) == 2 and d["statusLine"]["command"] == "mia.ps1"
+    # la riga di stato dell'utente non si perde: la fa girare il ponte, che salva l'uso del piano
+    assert len(d["hooks"]["SessionEnd"]) == 2 and d["statusLine"]["command"].endswith('riga-stato.ps1" -Ponte')
+    assert (dest / "riga-stato-utente.sh").read_text(encoding="utf-8") == "mia.ps1\n"
+    assert json.loads((dest / "riga-stato-utente.json").read_text(encoding="utf-8"))["command"] == "mia.ps1"
     assert "sync.ps1" in d["hooks"]["SessionStart"][0]["hooks"][0]["command"]
     assert not modello.collega_hook(src, dest, s)["cambiato"]  # idempotente
     assert len(json.loads(s.read_text(encoding="utf-8"))["hooks"]["SessionEnd"]) == 2

@@ -2,8 +2,14 @@
 
 Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 `app\build.ps1 -Stabile` uses the first section below as the release notes, so the newest version goes on top.
+"Next version" collects what is in `main` but not released yet: rename it when it ships.
 
-## First public release
+## Next version (not released yet)
+
+- Plan usage bars also for people who already had their own Claude Code status line: the app keeps it and runs it
+  after saving the usage numbers, so the line looks exactly as before.
+
+## 2026.11.8.1805 — First public release
 
 The first version for everyone. Everything below is new.
 

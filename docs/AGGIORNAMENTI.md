@@ -30,7 +30,16 @@ browser.
    che la cancella, avvisa e mostra "Ricollega GitHub". Non ingoiare mai l'errore.
 4. **Errori**: tutto finisce in `~/.claude/second-brain/app-errori.log`. È il primo posto da guardare.
 
-## Prima di pubblicare (`build.ps1 -Pubblica`)
+## Quando si pubblica una versione
+- **Mai una versione per una modifica piccola.** Le modifiche piccole vanno solo in `main` e in
+  cima a `CHANGELOG.md`, nella sezione "Next version"; escono con la prossima versione.
+- **Pre-release** (`build.ps1 -Pubblica`): quando si aggiunge una funzione nuova che funziona
+  davvero (provata dal vivo, non solo nei test).
+- **Release stabile** (`build.ps1 -Stabile`): dopo un bugfix importante e quando le funzioni
+  uscite nelle pre-release sono stabili e senza difetti noti. Prima rinomina "Next version" nel
+  `CHANGELOG.md` con la versione: diventa la nota della release.
+
+## Prima di pubblicare (`build.ps1 -Pubblica` o `-Stabile`)
 1. `python -m pytest -q` dalla radice del repo: tutti verdi.
 2. `powershell -ExecutionPolicy Bypass -File app\build.ps1`, senza pubblicare.
 3. Nell'app premi **"Aggiornamento pronto"** e controlla che si installi e si riapra da sola.

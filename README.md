@@ -98,7 +98,7 @@ Color by area or by freshness: stale notes fade like old tiles.
 | 🔄 **GitHub sync built in** | Device-code sign-in (the app never sees your password), private repo creation, one-click sync, conflicts handed to Claude. |
 | 💻 **Multi-PC chat status** | Each PC publishes a tiny summary of its chats (keywords, times, status, never the messages) to a branch of your repo. |
 | ⬆️ **Self-updating** | New releases are downloaded and checked (size + SHA-256) in the background; one click installs them and reopens your chats. |
-| 📊 **Plan usage** | Your 5-hour and weekly Claude usage in the status bar. |
+| 📊 **Plan usage** | Your 5-hour and weekly Claude usage in the status bar. Needs a Claude subscription (Pro or Max): with an API key Claude Code doesn't report it. If you already have your own Claude Code status line, the bars arrive with the next version (your line stays as it is). |
 | 🌍 **English and Italian** | Switch the interface language in Settings → General. |
 | 🌗 **Dark and light** | "Chiostro di Santa Chiara" majolica palette: cobalt, lemon, verdigris and terracotta. |
 

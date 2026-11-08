@@ -287,7 +287,7 @@ def collega_hook(sorgente: Path, destinazione: Path, settings: Path | None = Non
                  riga_stato: bool = True, solo_avvisi: bool = False) -> dict:
     # copia gli hook dell'app in una cartella stabile (non quella d'installazione, che
     # cambia) e li aggiunge a ~/.claude/settings.json senza toccare gli altri hook;
-    # la riga di stato solo se l'utente non ne ha gia' una
+    # la riga di stato nostra, o il ponte davanti a quella che l'utente ha gia'
     import json
     settings = Path(settings) if settings else Path.home() / ".claude" / "settings.json"
     destinazione = Path(destinazione)
@@ -320,14 +320,26 @@ def collega_hook(sorgente: Path, destinazione: Path, settings: Path | None = Non
         {"type": "command", "command": _comando(destinazione / "avviso.ps1", "-Evento", "fine"), "timeout": 10}]})
     aggiungi("Notification", {"hooks": [
         {"type": "command", "command": _comando(destinazione / "avviso.ps1", "-Evento", "attesa"), "timeout": 10}]})
-    stato = False
-    if riga_stato and not solo_avvisi and ("statusLine" not in d or segno in str(d["statusLine"].get("command", ""))):
-        d["statusLine"] = {"type": "command", "command": _comando(destinazione / "riga-stato.ps1"), "refreshInterval": 30}
-        stato = True
+    stato = ponte = False
+    if riga_stato and not solo_avvisi:
+        attuale = d.get("statusLine") if isinstance(d.get("statusLine"), dict) else None
+        cmd = str((attuale or {}).get("command") or "")
+        if attuale is None:
+            d["statusLine"] = {"type": "command", "command": _comando(destinazione / "riga-stato.ps1"), "refreshInterval": 30}
+            stato = True
+        elif segno in cmd:
+            stato, ponte = True, "-Ponte" in cmd  # gia' nostra (o gia' il ponte): resta com'e'
+        elif cmd:
+            # riga di stato dell'utente: la si salva accanto agli hook e la fa girare il ponte,
+            # che prima registra l'uso del piano per l'app; l'utente continua a vedere la sua
+            (destinazione / "riga-stato-utente.sh").write_text(cmd + "\n", encoding="utf-8", newline="\n")
+            (destinazione / "riga-stato-utente.json").write_text(json.dumps(attuale, ensure_ascii=False, indent=2), encoding="utf-8")
+            d["statusLine"] = {**attuale, "type": "command", "command": _comando(destinazione / "riga-stato.ps1", "-Ponte")}
+            stato = ponte = True
     if json.dumps(d, sort_keys=True) == prima:
-        return {"ok": True, "cambiato": False, "riga_stato": stato}
+        return {"ok": True, "cambiato": False, "riga_stato": stato, "ponte": ponte}
     settings.parent.mkdir(parents=True, exist_ok=True)
     if testo:
         shutil.copy2(settings, settings.with_name(f"settings.json.prima-di-second-brain-{datetime.now():%Y%m%d-%H%M%S}"))
     settings.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {"ok": True, "cambiato": True, "riga_stato": stato}
+    return {"ok": True, "cambiato": True, "riga_stato": stato, "ponte": ponte}

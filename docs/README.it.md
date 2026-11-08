@@ -98,7 +98,7 @@ Colori per area o per freschezza: gli appunti fermi sbiadiscono come vecchie mai
 | 🔄 **GitHub integrato** | Accesso con codice dal browser (l'app non vede mai la tua password), creazione del repository privato, sincronizzazione con un clic, conflitti affidati a Claude. |
 | 💻 **Chat di tutti i PC** | Ogni PC pubblica un piccolo riepilogo delle sue chat (parole chiave, orari, stato, mai i messaggi) su un ramo del tuo repository. |
 | ⬆️ **Si aggiorna da sola** | Le nuove versioni si scaricano e si controllano (dimensione + SHA-256) in background; un clic le installa e riapre le tue chat. |
-| 📊 **Consumo del piano** | L'uso di Claude nelle 5 ore e nella settimana, nella barra di stato. |
+| 📊 **Consumo del piano** | L'uso di Claude nelle 5 ore e nella settimana, nella barra di stato. Serve un abbonamento Claude (Pro o Max): con una chiave API Claude Code non lo comunica. Se hai già una tua riga di stato di Claude Code, le barre arrivano con la prossima versione (la tua riga resta com'è). |
 | 🌍 **Italiano e inglese** | La lingua si cambia in Impostazioni → Generale. |
 | 🌗 **Scuro e chiaro** | Tavolozza "Chiostro di Santa Chiara", come le maioliche: cobalto, limone, verderame e terracotta. |
 
