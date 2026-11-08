@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas to discuss
+    url: https://github.com/Axelina23/second-brain-studio/discussions
+    about: How do I…, show your setup, ideas that need a chat first.
+  - name: Claude Code itself
+    url: https://github.com/anthropics/claude-code/issues
+    about: Problems with claude.exe, its hooks or your plan belong there.

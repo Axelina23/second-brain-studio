@@ -1,0 +1,11 @@
+# build e file generati
+app/dist/
+app/versione.txt
+__pycache__/
+.pytest_cache/
+.playwright-mcp/
+app/.impeccable/questions/
+app/.impeccable/review/
+
+# bozze e cache del lavoro di design (Impeccable): restano sul disco, non nel repository
+app/.impeccable/

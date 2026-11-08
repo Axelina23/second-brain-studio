@@ -1,0 +1,18 @@
+name: Idea
+description: A feature or a change you'd like to see.
+labels: ["idea"]
+body:
+  - type: markdown
+    attributes:
+      value: For open-ended questions or "how do I…", Discussions is a better place.
+  - type: textarea
+    id: problema
+    attributes:
+      label: What would it help with
+      description: The situation you're in and what's missing today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposta
+    attributes:
+      label: What you have in mind

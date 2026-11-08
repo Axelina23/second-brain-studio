@@ -1,0 +1,84 @@
+/* Primo avvio: procedura guidata (vedi primo-avvio.mjs). Stessi colori dell'app. */
+.primo-avvio { display: grid; grid-template-columns: 248px minmax(0, 1fr); height: 100vh; }
+.pa-lato { background: var(--notte-2); border-right: 1px solid var(--cucitura); padding: 22px 16px; display: flex; flex-direction: column; }
+.pa-passi { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 2px; }
+.pa-passi li { display: flex; align-items: center; gap: 12px; height: 38px; padding: 0 10px; border-radius: var(--raggio-s); color: var(--muto); font-weight: 550; }
+.pa-passi li.attivo { background: var(--pannello); color: var(--testo); }
+.pa-passi li.fatto { color: var(--testo-2); }
+.pa-num { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700;
+  border: 1px solid var(--cucitura-2); flex: none; }
+.pa-passi li.attivo .pa-num { background: var(--limone); border-color: var(--limone); color: var(--inchiostro); }
+.pa-passi li.fatto .pa-num { background: rgba(111,162,135,.18); border-color: var(--verderame); color: var(--verderame-chiaro); }
+.pa-centro { display: flex; flex-direction: column; min-height: 0; overflow: auto;
+  background: radial-gradient(1200px 600px at 85% -10%, rgba(31,79,163,.16), transparent 60%), var(--notte); }
+.pa-contenuto { flex: 1; width: min(720px, 100%); margin: 0 auto; padding: 56px 40px 24px; animation: pa-entra .35s var(--ease); }
+@keyframes pa-entra { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .pa-contenuto { animation: none; } }
+.pa-pagina { display: grid; gap: 16px; }
+.pa-pagina h1 { margin: 0; font-size: 30px; letter-spacing: -.02em; line-height: 1.15; }
+.pa-pagina h2 { margin: 0; font-size: 23px; letter-spacing: -.015em; }
+.pa-logo { border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+.pa-intro { margin: 0; color: var(--testo-2); font-size: 15px; max-width: 60ch; }
+.pa-nota { margin: 0; color: var(--muto); font-size: 13px; }
+.pa-punti { margin: 4px 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.pa-punti li { padding: 12px 16px; border-radius: var(--raggio); background: var(--pannello); border: 1px solid var(--cucitura); color: var(--testo-2); }
+.pa-punti b { color: var(--testo); display: block; }
+.pa-reqs { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.pa-req { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: var(--raggio); background: var(--pannello); border: 1px solid var(--cucitura); }
+.pa-req-segno { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; flex: none; }
+.pa-req.ok .pa-req-segno { background: rgba(111,162,135,.2); color: var(--verderame-chiaro); }
+.pa-req.no .pa-req-segno { background: rgba(200,100,59,.2); color: var(--terracotta-chiaro); }
+.pa-req-testo { flex: 1; display: grid; }
+.pa-req-testo span { color: var(--muto); font-size: 13px; }
+.pa-ricontrolla { justify-self: start; display: inline-flex; gap: 8px; align-items: center; }
+.pa-ricontrolla .ic { width: 15px; height: 15px; }
+.pa-scelte { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.pa-scelta { text-align: left; display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: var(--raggio);
+  background: var(--pannello); border: 1px solid var(--cucitura); cursor: pointer; transition: border-color .15s, background .15s; }
+.pa-scelta:hover { border-color: var(--cucitura-2); background: var(--pannello-2); }
+.pa-scelta.scelto { border-color: var(--limone); background: var(--pannello-2); box-shadow: inset 0 0 0 1px var(--limone); }
+.pa-scelta > span:last-child { display: grid; gap: 3px; }
+.pa-scelta b { font-size: 14px; }
+.pa-scelta span span { color: var(--muto); font-size: 12.5px; line-height: 1.4; }
+.pa-scelta-ic { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: var(--pannello-3); color: var(--limone); flex: none; }
+.pa-scelta-ic .ic { width: 17px; height: 17px; }
+.pa-riga { display: flex; gap: 8px; align-items: center; }
+.pa-riga .campo { min-width: 0; }
+select.campo { padding: 0 10px; appearance: auto; }
+.pa-avviso { margin: 0; font-size: 13px; color: var(--testo-2); padding: 9px 12px; border-radius: var(--raggio-s); background: var(--pannello); border-left: 3px solid var(--cobalto-chiaro); }
+.pa-avviso.grave { border-left-color: var(--terracotta); color: var(--terracotta-chiaro); }
+.pa-gh { padding: 14px; border-radius: var(--raggio); background: var(--pannello); border: 1px solid var(--cucitura); display: grid; gap: 10px; }
+.pa-gh > .btn { justify-self: start; display: inline-flex; gap: 8px; align-items: center; }
+.pa-gh .btn .ic { width: 16px; height: 16px; }
+.pa-codice { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; color: var(--testo-2); }
+.pa-codice b { font-size: 22px; letter-spacing: .12em; color: var(--limone); }
+.pa-ok { color: var(--verderame-chiaro); font-weight: 800; margin-right: 8px; }
+.pa-griglia { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px; }
+.pa-gettoni { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pa-lingua { margin-top: 18px; }
+.pa-gettone { height: 32px; padding: 0 13px; border-radius: 16px; border: 1px solid var(--cucitura-2); background: var(--pannello); color: var(--testo-2); cursor: pointer; font-size: 13px; }
+.pa-gettone:hover { color: var(--testo); border-color: #3b5a70; }
+.pa-gettone.scelto { background: var(--cobalto); border-color: var(--cobalto); color: #fff; }
+.pa-altro { flex: 1 1 200px; height: 32px; font-size: 13px; }
+.pa-interruttore { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: var(--raggio); background: var(--pannello);
+  border: 1px solid var(--cucitura); color: var(--muto); font-size: 13px; cursor: pointer; }
+.pa-interruttore b { color: var(--testo); font-size: 14px; }
+.pa-interruttore input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--limone); flex: none; }
+.pa-interruttore code { font-family: var(--mono); font-size: 12px; color: var(--testo-2); }
+.consigliato { font-size: 11px; font-weight: 700; color: var(--verderame-chiaro); background: rgba(111,162,135,.14); padding: 1px 7px; border-radius: 9px; margin-left: 4px; }
+.pa-ruoli { display: grid; gap: 8px; }
+.pa-ruoli > .btn { justify-self: start; }
+.pa-ruolo-nome { flex: 0 0 160px; }
+.pa-riepilogo { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 13px; }
+.pa-riepilogo dt { color: var(--muto); }
+.pa-riepilogo dd { margin: 0; color: var(--testo-2); word-break: break-all; }
+.pa-fatti { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.pa-fatti li { padding: 10px 14px; border-radius: var(--raggio-s); background: var(--pannello); border: 1px solid var(--cucitura); }
+.pa-errore { width: min(640px, calc(100% - 80px)); margin: 0 auto 12px; }
+.pa-azioni { position: sticky; bottom: 0; display: flex; gap: 10px; align-items: center; padding: 14px max(40px, calc((100% - 640px) / 2));
+  border-top: 1px solid var(--cucitura); background: rgba(11,21,28,.92); backdrop-filter: blur(6px); }
+.pa-azioni .pa-spazio { flex: 1; }
+.pa-azioni .btn.primario { min-width: 140px; }
+@media (max-width: 1100px) { .pa-scelte { grid-template-columns: 1fr; } .primo-avvio { grid-template-columns: 200px minmax(0, 1fr); } }
+.pa-regole { display: grid; gap: 8px; }
+.pa-regole-titolo { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muto); }

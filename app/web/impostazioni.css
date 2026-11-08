@@ -1,0 +1,101 @@
+/* Impostazioni (impostazioni.mjs) e tema chiaro. */
+.dialogo.imp { width: min(920px, calc(100vw - 48px)); height: min(640px, calc(100vh - 48px)); padding: 0; display: grid;
+  grid-template-columns: 230px minmax(0, 1fr); overflow: hidden; }
+.imp-nav { background: var(--notte-2); border-right: 1px solid var(--cucitura); padding: 18px 10px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
+.imp-nav h3 { margin: 0 8px 12px; font-size: 16px; }
+.imp-nav button { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border: 0; border-radius: var(--raggio-s);
+  background: transparent; color: var(--testo-2); cursor: pointer; text-align: left; font-size: 13.5px; }
+.imp-nav button .ic { width: 16px; height: 16px; flex: none; }
+.imp-nav button:hover { background: var(--pannello); color: var(--testo); }
+.imp-nav button.attivo { background: var(--cobalto); color: #fff; }
+.imp-corpo { display: flex; flex-direction: column; min-height: 0; }
+.imp-testa { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 10px; }
+.imp-testa h2 { margin: 0; font-size: 19px; }
+.imp-testa .ic { width: 16px; height: 16px; }
+.imp-voci { padding: 4px 22px 24px; overflow: auto; display: grid; gap: 2px; align-content: start; }
+.imp-voce { display: flex; align-items: center; gap: 16px; padding: 12px 2px; border-bottom: 1px solid var(--cucitura); }
+.imp-voce.spenta { opacity: .55; }
+.imp-testi { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.imp-testi b { font-weight: 600; font-size: 14px; }
+.imp-testi span { color: var(--muto); font-size: 12.5px; overflow-wrap: anywhere; }
+.imp-comando { display: flex; align-items: center; gap: 8px; flex: none; }
+.imp-cestino { flex-wrap: wrap; }
+.cestino-elenco { flex-basis: 100%; list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; max-height: 280px; overflow: auto; }
+.cestino-elenco li { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; background: var(--pannello-2); }
+.cestino-nome { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.cestino-nome b { font-weight: 550; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cestino-nome span { color: var(--muto); font-size: 12px; }
+.imp-comando input[type="range"] { width: 180px; accent-color: var(--limone); }
+.imp-sel { height: 32px; min-width: 160px; font-size: 13px; }
+.imp-int { cursor: pointer; position: relative; }
+.imp-int input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.imp-levetta { width: 38px; height: 22px; border-radius: 11px; background: var(--cucitura-2); position: relative; flex: none; transition: background .15s; }
+.imp-levetta::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--testo); transition: transform .15s var(--ease); }
+.imp-int input:checked + .imp-levetta { background: var(--limone); }
+.imp-int input:checked + .imp-levetta::after { transform: translateX(16px); background: var(--inchiostro); }
+.imp-int input:focus-visible + .imp-levetta { outline: 2px solid var(--limone); outline-offset: 2px; }
+.imp-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 8px; background: var(--notte-2); border: 1px solid var(--cucitura); flex-wrap: wrap; }
+.imp-seg button { border: 0; background: transparent; color: var(--testo-2); height: 28px; padding: 0 11px; border-radius: 6px; cursor: pointer; font-size: 12.5px; }
+.imp-seg button.scelto { background: var(--cobalto); color: #fff; }
+.imp-seg button:disabled { opacity: .45; cursor: default; }
+.imp-colori { display: flex; gap: 8px; }
+.imp-colore { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0,0,0,.2); }
+.imp-colore.scelto { border-color: var(--testo); }
+.imp-ore { display: flex; align-items: center; gap: 8px; }
+.imp-ore .campo { height: 32px; width: 110px; flex: none; }
+.imp-gruppo { margin: 16px 0 2px; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muto); }
+.imp-riquadro { display: grid; gap: 6px; padding: 14px 16px; margin: 6px 0 8px; border-radius: var(--raggio); background: var(--pannello-2); border: 1px solid var(--cucitura); }
+.imp-riquadro span { color: var(--testo-2); font-size: 13px; }
+.imp-riquadro .btn { justify-self: start; margin-top: 4px; }
+.imp-bottoni { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.imp-nota { margin: 8px 0; color: var(--muto); font-size: 13px; line-height: 1.5; }
+.imp-nota code { font-family: var(--mono); font-size: 12px; color: var(--testo-2); }
+.imp-tasti { display: grid; grid-template-columns: auto 1fr; gap: 8px 18px; margin: 6px 0; font-size: 13px; }
+.imp-tasti dd { margin: 0; color: var(--testo-2); }
+kbd { font-family: var(--mono); font-size: 11.5px; padding: 2px 7px; border-radius: 5px; background: var(--pannello-3); border: 1px solid var(--cucitura-2); }
+.imp-info { display: flex; gap: 14px; align-items: center; margin: 8px 0 10px; }
+.imp-info img { border-radius: 12px; }
+.imp-info div { display: grid; }
+.imp-info span { color: var(--muto); font-size: 13px; }
+/* Ko-fi: striscia discreta in fondo alle impostazioni, riquadro in Informazioni */
+.imp-kofi { margin: auto 22px 16px; flex: none; display: flex; align-items: center; gap: 10px; padding: 9px 14px;
+  border-radius: var(--raggio-s); border: 1px dashed var(--cucitura-2); background: transparent; color: var(--testo-2);
+  font: inherit; font-size: 12.5px; cursor: pointer; text-align: left; transition: background .18s var(--ease), border-color .18s var(--ease); }
+.imp-kofi > span { flex: 1; }
+.imp-kofi b { color: var(--limone); font-weight: 600; }
+.imp-kofi .ic { flex: none; color: var(--limone); }
+.imp-kofi .ic:last-child { color: var(--muto); width: 13px; height: 13px; }
+.imp-kofi:hover { background: var(--pannello); border-color: var(--limone); color: var(--testo); }
+.imp-kofi-grande .btn .ic { margin-right: 6px; }
+:root[data-tema="chiaro"] .imp-kofi b, :root[data-tema="chiaro"] .imp-kofi .ic:first-child { color: #8a6a00; }
+.lat-imp { border: 0; background: transparent; color: var(--muto); cursor: pointer; display: flex; align-items: center; gap: 8px;
+  padding: 4px 6px; border-radius: 5px; font: inherit; }
+.lat-imp:hover { background: var(--pannello); color: var(--testo); }
+.lat-imp svg { width: 15px; height: 15px; }
+/* scheda con una risposta di Claude non ancora vista */
+.pallino.risposta { background: var(--limone); box-shadow: 0 0 0 3px rgba(242, 201, 76, .25); }
+.pallino.attesa { background: var(--terracotta-chiaro); box-shadow: 0 0 0 3px rgba(200, 100, 59, .3); }
+
+/* animazioni spente */
+:root[data-animazioni="no"] *, :root[data-animazioni="no"] *::before, :root[data-animazioni="no"] *::after {
+  animation: none !important; transition: none !important; }
+
+/* tema chiaro: carta e smalto, il terminale resta scuro */
+:root[data-tema="chiaro"] {
+  --notte: #f3eee3; --notte-2: #e9e2d3; --pannello: #fbf7ef; --pannello-2: #f4eee2; --pannello-3: #ece4d4;
+  --cucitura: #ddd3c0; --cucitura-2: #c9bca4;
+  --testo: #1c2830; --testo-2: #43515a; --muto: #6b7880;
+  --cobalto: #1f4fa3; --cobalto-chiaro: #2558b4; --verderame-chiaro: #3b7a5a; --terracotta-chiaro: #ad4f2a;
+  --ombra: 0 10px 30px -14px rgba(60, 45, 20, .35), 0 2px 6px -2px rgba(60, 45, 20, .2);
+  color-scheme: light;
+}
+:root[data-tema="chiaro"] ::selection { background: rgba(31, 79, 163, .2); }
+:root[data-tema="chiaro"] .messaggio { background: #fbe6dc; border-color: #e3a98c; color: #7a2f12; }
+:root[data-tema="chiaro"] .pa-azioni { background: rgba(243, 238, 227, .94); }
+:root[data-tema="chiaro"] .pa-centro { background: radial-gradient(1200px 600px at 85% -10%, rgba(31,79,163,.08), transparent 60%), var(--notte); }
+:root[data-tema="chiaro"] .marchio-img, :root[data-tema="chiaro"] .pa-logo { box-shadow: 0 2px 8px rgba(60,45,20,.25); }
+:root[data-tema="chiaro"] .imp-levetta::after { background: #fff; }
+:root[data-tema="chiaro"] .btn:hover { border-color: #b3a68d; }
+.piede-lat .lat-riga { justify-content: space-between; }
+.lat-riga > span { display: flex; align-items: center; gap: 8px; }
+.pa-annulla { margin-top: auto; }

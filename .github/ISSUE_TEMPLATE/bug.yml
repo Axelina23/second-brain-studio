@@ -1,0 +1,44 @@
+name: Bug report
+description: Something in Second Brain Studio doesn't work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time! Italian is fine too.
+        Please don't paste your notes or chats: they may contain personal information.
+  - type: textarea
+    id: cosa
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: passi
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the Chats page
+        2. Click …
+  - type: input
+    id: versione
+    attributes:
+      label: App version
+      description: Bottom left of the window (status bar), or Settings → About.
+      placeholder: "2026.11.8.1444"
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: "Windows 11 24H2"
+  - type: textarea
+    id: registri
+    attributes:
+      label: Logs
+      description: |
+        Settings → Data and maintenance → App logs. `app-errori.log` (and `aggiornamento.log` for update problems) usually tell what went wrong.
+        Check them for anything personal before pasting.
+      render: text

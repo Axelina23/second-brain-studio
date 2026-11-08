@@ -1,0 +1,19 @@
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Second Brain Studio: "Sinapsi", un nodo luminoso collegato agli appunti -->
+  <defs>
+    <linearGradient id="b-fondo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#173a44"/><stop offset="1" stop-color="#0b1a22"/></linearGradient>
+    <radialGradient id="b-alone" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#f2c94c" stop-opacity=".55"/><stop offset="1" stop-color="#f2c94c" stop-opacity="0"/></radialGradient>
+    <linearGradient id="b-ramo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#bfe6cf"/><stop offset="1" stop-color="#6fa287"/></linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="232" fill="url(#b-fondo)"/>
+  <circle cx="512" cy="512" r="330" fill="url(#b-alone)"/>
+  <g fill="none" stroke="url(#b-ramo)" stroke-width="40" stroke-linecap="round">
+    <path d="M512 512C470 400 380 330 270 300"/><path d="M512 512C590 420 690 380 780 330"/>
+    <path d="M512 512C430 580 360 680 330 770"/><path d="M512 512C600 590 700 640 790 690"/><path d="M512 512C520 420 500 330 470 220"/>
+  </g>
+  <g fill="#f1ece0" stroke="#0b1a22" stroke-width="16">
+    <circle cx="270" cy="300" r="46"/><circle cx="780" cy="330" r="40"/><circle cx="330" cy="770" r="42"/><circle cx="790" cy="690" r="48"/><circle cx="470" cy="220" r="36"/>
+  </g>
+  <circle cx="512" cy="512" r="96" fill="#f2c94c" stroke="#fff3c4" stroke-width="18"/>
+  <rect x="6" y="6" width="1012" height="1012" rx="228" fill="none" stroke="#fff" stroke-opacity=".1" stroke-width="10"/>
+</svg>

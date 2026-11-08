@@ -1,0 +1,214 @@
+<!doctype html>
+<!-- Banco di prova dell'interfaccia in un browser normale: ponte finto con dati inventati
+     (persona di esempio "Giulia", nessun accesso ai file veri). Non va nell'eseguibile.
+     Parametri: ?primo (primo avvio), ?demo (due chat aperte con un terminale finto, per gli
+     screenshot), ?en (interfaccia e dati in inglese, persona "Emma"), ?pagina=chat|appunti|mappa|inbox,
+     ?vista=<vista della mappa>, ?tema=chiaro, ?imp=<sezione> (apre le Impostazioni), ?statico (senza animazioni).
+     Gli screenshot del README si rifanno con docs/immagini/screenshot.ps1. -->
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>Second Brain Studio · prova</title>
+  <link rel="stylesheet" href="vendor/xterm.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="primo-avvio.css">
+  <link rel="stylesheet" href="impostazioni.css">
+  <script src="vendor/xterm.js"></script>
+  <script src="vendor/addon-fit.js"></script>
+  <script src="vendor/addon-unicode11.js"></script>
+  <script src="vendor/addon-web-links.js"></script>
+  <script src="vendor/addon-webgl.js"></script>
+  <script>
+    const par = new URLSearchParams(location.search);
+    const demo = par.has("demo"), EN = par.has("en");
+    const T = (it, en) => EN ? en : it;   // dato demo nella lingua scelta
+    // struttura delle cartelle come la crea il primo avvio (motore/struttura.py)
+    const PROG = EN ? "Projects" : "Progetti";
+    const CARTELLA = EN ? { Io: "Me", "Università": "University", Vita: "Life", Sistema: "System" } : {};
+    const percorsoDemo = (gruppo, nome) => gruppo === "Progetti" ? `${PROG}/${nome}/CLAUDE.md`
+      : gruppo === "Generali" ? (/^(INDICE|INDEX)$/.test(nome) ? `${nome}.md` : `${EN ? "Archive" : "Archivio"}/${nome}.md`)
+      : `${CARTELLA[gruppo] || gruppo}/${nome}.md`;
+    // stato iniziale per gli screenshot: vista della mappa, sezione delle impostazioni
+    try {
+      if (par.has("statico")) {   // scatto pulito: niente stato rimasto da una visita precedente
+        localStorage.clear();
+        localStorage.setItem("appunto", `${PROG}/${EN ? "Thesis" : "Tesi di laurea"}/CLAUDE.md`);   // la nota mostrata in Appunti
+      }
+      if (par.get("vista")) localStorage.setItem("mappaVista", JSON.stringify(par.get("vista")));
+      if (par.get("imp")) localStorage.setItem("impSezione", par.get("imp"));
+    } catch (_) {}
+    if (par.has("imp")) addEventListener("load", () => setTimeout(() =>
+      dispatchEvent(new KeyboardEvent("keydown", { key: ",", ctrlKey: true, bubbles: true })), 600));
+    const ore = (h) => new Date(Date.now() - h * 3600e3).toISOString();
+    const cestinoDemo = {};
+    const chat = (EN ? [
+      ["a1", "thesis · chapter 3, data analysis", "reread chapter 3 of my thesis and tell me what's missing in the analysis", 0.4, "non_salvata", 820000],
+      ["a2", "podcast · episode 12 outline", "let's outline episode 12 of the podcast", 3, "salvata", 120000],
+      ["a3", "japan · Kyoto itinerary", "plan three days in Kyoto with the JR Pass", 26, "salvata", 90000],
+      ["a4", "etsy · new print descriptions", "write the descriptions for the five new prints in the shop", 80, "non_salvata", 400000],
+      ["a5", "marathon · week 9 plan", "update the training plan after Sunday's long run", 100, "salvata", 230000],
+      ["a6", "guitar · barre chords", "drills to switch from F to B flat without stopping", 150, "salvata", 160000],
+      ["a7", "garden · tomatoes and basil", "when should I move the basil to the balcony?", 300, "breve", 9000],
+    ] : [
+      ["a1", "tesi · capitolo 3, analisi dei dati", "rileggi il capitolo 3 della tesi e dimmi cosa manca nell'analisi", 0.4, "non_salvata", 820000],
+      ["a2", "podcast · scaletta puntata 12", "prepariamo la scaletta della puntata 12 del podcast", 3, "salvata", 120000],
+      ["a3", "giappone · itinerario Kyoto", "organizza tre giorni a Kyoto con il JR Pass", 26, "salvata", 90000],
+      ["a4", "etsy · descrizioni nuove stampe", "scrivi le descrizioni per le cinque stampe nuove del negozio", 80, "non_salvata", 400000],
+      ["a5", "maratona · tabella settimana 9", "aggiorna la tabella di allenamento dopo il lungo di domenica", 100, "salvata", 230000],
+      ["a6", "chitarra · accordi barrè", "esercizi per passare da Fa a Si bemolle senza fermarmi", 150, "salvata", 160000],
+      ["a7", "orto · pomodori e basilico", "quando trapianto il basilico sul balcone?", 300, "breve", 9000],
+    ]).map(([id, etichetta, primo, h, stato, dimensione]) => ({ id, etichetta, primo, ultima: ore(h), stato, dimensione, messaggi: 12 }));
+    // come ponte._ordinate: fissate in cima (l'ultima fissata per prima), poi dalla piu' recente
+    const ordina = () => chat.sort((a, b) => (b.fissata ? b.fissata_il : 0) - (a.fissata ? a.fissata_il : 0) || b.ultima.localeCompare(a.ultima));
+    const P = EN ? { tesi: "Thesis", podcast: "Podcast Undertone", giappone: "Japan trip", etsy: "Etsy shop", maratona: "Rome Marathon", chitarra: "Guitar lessons", orto: "Balcony garden" }
+      : { tesi: "Tesi di laurea", podcast: "Podcast Sottovoce", giappone: "Viaggio in Giappone", etsy: "Negozio Etsy", maratona: "Maratona di Roma", chitarra: "Corso di chitarra", orto: "Orto sul balcone" };
+    const progetti = [[P.tesi, 0.3], [P.podcast, 5], [P.giappone, 1.2], [P.etsy, 6], [P.maratona, 9], [P.chitarra, 7], [P.orto, 16]]
+      .map(([nome, giorni]) => ({ nome, giorni, percorso: `${PROG}/${nome}/CLAUDE.md`, colore: giorni < 7 ? "verde" : giorni <= 14 ? "giallo" : "rosso" }));
+    const appunti = [
+      ["Io", T("Profilo", "Profile")], ["Io", T("Regole", "Rules")], ["Io", T("Abitudini", "Habits")], ["Università", T("stato", "status")], ["Vita", T("Salute", "Health")],
+      ...progetti.map((p) => ["Progetti", p.nome]), ["Progetti", T("Idee", "Ideas")], ["Sistema", T("strumenti", "tools")], ["Sistema", T("segreti", "secrets")],
+      ["Generali", T("Registro", "Log")], ["Generali", T("INDICE", "INDEX")],
+    ].map(([gruppo, nome], i) => ({ gruppo, nome, percorso: percorsoDemo(gruppo, nome),
+      giorni: (i * 3.7) % 20, colore: (i * 3.7) % 20 < 7 ? "verde" : (i * 3.7) % 20 <= 14 ? "giallo" : "rosso", abbandonato: false }));
+    const testo = EN ? "# Thesis — status\n\nSupervisor: Prof. Rossi · submission planned for **March 2027**.\n\n## Done\n- Chapters 1 and 2 approved by the supervisor.\n- Survey data collected: **214 responses**.\n\n## In progress\n- Chapter 3: data analysis with charts by age group.\n\n## To do\n- Bibliography in APA format.\n- Rehearse the presentation with Marta.\n\n| Chapter | Status |\n|---|---|\n| 1. Introduction | approved |\n| 2. Method | approved |\n| 3. Results | writing |\n"
+      : "# Tesi di laurea — stato\n\nRelatrice: prof. Rossi · consegna prevista **marzo 2027**.\n\n## Fatto\n- Capitoli 1 e 2 approvati dalla relatrice.\n- Dati del questionario raccolti: **214 risposte**.\n\n## In corso\n- Capitolo 3: analisi dei dati con grafici per fascia d'età.\n\n## Da fare\n- Bibliografia in formato APA.\n- Prova della presentazione con Marta.\n\n| Capitolo | Stato |\n|---|---|\n| 1. Introduzione | approvato |\n| 2. Metodo | approvato |\n| 3. Risultati | in scrittura |\n";
+    const nodi = appunti.map((a) => ({ id: a.percorso, nome: a.nome, gruppo: a.gruppo, giorni: a.giorni, colore: a.colore, peso: 2000 + a.nome.length * 300 }));
+    const per = (g, n) => (appunti.find((a) => a.gruppo === g && a.nome === n) || {}).percorso;
+    const indice = per("Generali", T("INDICE", "INDEX")), regole = per("Io", T("Regole", "Rules")), uni = per("Università", T("stato", "status"));
+    const archi = [[indice, per("Progetti", P.tesi)], [indice, per("Progetti", P.podcast)], [regole, per("Sistema", T("segreti", "secrets"))],
+      [indice, regole], [uni, per("Progetti", P.tesi)], [per("Progetti", P.giappone), per("Io", T("Profilo", "Profile"))],
+      [per("Progetti", P.maratona), per("Vita", T("Salute", "Health"))], [indice, uni]].map(([da, a]) => ({ da, a }));
+    // chat di altri PC (pagina Chat divisa per dispositivo)
+    const remoti = [
+      { pc: T("PORTATILE", "LAPTOP"), sistema: "windows", battito: Date.now() / 1000 - 40, app: "2026.11.8.0600",
+        chat: [
+          { id: "r1", etichetta: T("podcast · montaggio intro", "podcast · intro edit"), ultima: ore(0.05), stato: "aperta", messaggi: 18, progetto: P.podcast },
+          { id: "r2", etichetta: T("giappone · prenotazione ryokan", "japan · ryokan booking"), ultima: ore(5), stato: "non_salvata", messaggi: 9, progetto: P.giappone },
+          { id: "r3", etichetta: T("tesi · bibliografia APA", "thesis · APA bibliography"), ultima: ore(30), stato: "salvata", messaggi: 22, progetto: P.tesi }] },
+      { pc: "MAC-STUDIO", sistema: "mac", battito: Date.now() / 1000 - 3 * 3600, app: "2026.11.7.2237",
+        chat: [{ id: "m1", etichetta: T("etsy · foto prodotti", "etsy · product photos"), ultima: ore(3.2), stato: "aperta", messaggi: 7, progetto: P.etsy }] },
+    ];
+    const schedeDemo = demo ? [
+      { id: "t1", titolo: T("tesi · capitolo 3, analisi dei dati per fascia d'età e regione", "thesis · chapter 3, data analysis by age group and region"), sessione: "a1", chiusa: false, stato: "in_corso", url: "ws://demo/t1" },
+      { id: "t2", titolo: T("podcast · scaletta puntata 12", "podcast · episode 12 outline"), sessione: "a2", chiusa: false, stato: "in_corso", avviso: "fine", url: "ws://demo/t2" }] : [];
+    const api = {
+      home: async () => ({ data: T("Domenica 8 novembre", "Sunday, November 8"), saluto: T("Buon pomeriggio", "Good afternoon"), nome: T("Giulia", "Emma"), dispositivo: T("Fisso", "Desktop"), sync: "verde",
+        oggi: { eventi: [], scadenze: T("Puntata 12 online ven 13 nov · Ricevimento relatrice 18 nov · Volo per Tokyo 2 dic", "Episode 12 live Fri Nov 13 · Supervisor meeting Nov 18 · Flight to Tokyo Dec 2") },
+        avvisi: [
+          { tipo: "non_salvate", livello: "attenzione", testo: T("2 chat chiuse senza salvare gli appunti", "2 chats closed without saving notes"), chat: chat.filter((c) => c.stato === "non_salvata") },
+          { tipo: "fermo", livello: "info", percorso: `${PROG}/${P.orto}/CLAUDE.md`, testo: T("Orto sul balcone: appunti fermi da 16 giorni", "Balcony garden: notes untouched for 16 days") },
+          { tipo: "inbox", livello: "info", testo: T("1 nota da smistare in Inbox", "1 note to sort in the Inbox") }],
+        progetti, inbox: 1, chat }),
+      chat: async () => ({ chat }), appunti: async () => ({ appunti }),
+      pc_remoti: async () => ({ attivo: true, questo: T("FISSO", "DESKTOP"), pc: remoti.map((d) => ({ ...d, eta: Math.round(Date.now() / 1000 - d.battito), acceso: Date.now() / 1000 - d.battito < 600 })) }),
+      leggi: async (rel) => ({ percorso: rel, testo, mtime: 1, giorni: 0.2 }),
+      scrivi: async () => ({ ok: true, mtime: 2 }),
+      cerca: async (q) => ({ risultati: appunti.filter((a) => a.nome.toLowerCase().includes(q.toLowerCase())).map((a) => ({ ...a, estratto: `…${q} compare in ${a.nome}…` })) }),
+      inbox: async () => ({ inbox: [EN ? { nome: "2026-11-08 podcast-mic.md", percorso: "Inbox/2026-11-08 podcast-mic.md", anteprima: "Try the dynamic mic before episode 12, the one with the USB-C plug.\n\n_Quick note, 2026-11-08 11:12_", modificato: ore(2) }
+        : { nome: "2026-11-08 microfono-podcast.md", percorso: "Inbox/2026-11-08 microfono-podcast.md", anteprima: "Provare il microfono dinamico prima della puntata 12, quello con l'attacco USB-C.\n\n_Nota al volo, 2026-11-08 11:12_", modificato: ore(2) }] }),
+      nota: async (t) => ({ ok: true, nome: "2026-11-08 nota-1530.md" }),
+      apri_chat: async () => ({ errore: "Nel banco di prova il terminale non c'è" }),
+      salva_chat: async () => ({ errore: "Nel banco di prova il terminale non c'è" }),
+      elimina_chat: async (id) => { const i = chat.findIndex((c) => c.id === id); if (i < 0) return { errore: "Chat non trovata" }; cestinoDemo[id] = chat.splice(i, 1)[0]; return { ok: true }; },
+      ripristina_chat: async (id) => { if (!cestinoDemo[id]) return { errore: "La chat non è più nel cestino" }; chat.push(cestinoDemo[id]); ordina(); delete cestinoDemo[id]; return { ok: true }; },
+      // tasto destro (banco di prova): fissa, rinomina, ricerca nel testo, cestino, Inbox
+      cestino_chat: async () => ({ giorni: 30, cestino: Object.values(cestinoDemo).map((c) => ({ id: c.id, etichetta: c.etichetta, ultima: c.ultima, eliminata: new Date().toISOString(), giorni_rimasti: 30 })) }),
+      elimina_per_sempre: async (id) => { delete cestinoDemo[id]; return { ok: true }; },
+      svuota_cestino_chat: async () => { const n = Object.keys(cestinoDemo).length; for (const k in cestinoDemo) delete cestinoDemo[k]; return { ok: true, conto: n }; },
+      fissa_chat: async (id, si) => { const c = chat.find((x) => x.id === id); c.fissata = si; c.fissata_il = Date.now(); ordina(); window.sb && sb.evento("chat-cambiate", { id }); return { ok: true }; },
+      rinomina_chat: async (id, t) => { const c = chat.find((x) => x.id === id); c.originale = c.originale || c.etichetta; c.etichetta = t || c.originale; c.rinominata = !!t; window.sb && sb.evento("chat", { id, etichetta: c.etichetta, rinominata: !!t }); return { ok: true, etichetta: c.etichetta }; },
+      rinomina_scheda: async (sid, t) => ({ ok: true, etichetta: t }),
+      cerca_chat: async (q) => { const dentro = T("dentro la conversazione si parla di analisi statistica", "the conversation talks about statistical analysis");
+        return { trovate: chat.filter((c) => q.toLowerCase().split(/\s+/).every((w) => `${c.primo} ${dentro}`.toLowerCase().includes(w))).map((c) => ({ id: c.id, estratto: `…${dentro}…` })) }; },
+      riga_registro: async () => ({ percorso: "Archivio/Registro.md", riga: "- 2026-11-08 · Claude Code · prova" }),
+      esporta_chat: async () => ({ ok: true, nome: "2026-11-08 chat prova.md", percorso: "Inbox/2026-11-08 chat prova.md" }),
+      duplica_chat: async () => ({ errore: "Nel banco di prova il terminale non c'è" }), apri_in_cartella: async () => ({ errore: "Nel banco di prova il terminale non c'è" }),
+      scegli_cartella: async () => ({ percorso: null }),
+      elimina_inbox: async () => ({ ok: true, chiave: "1-x.md" }), ripristina_inbox: async () => ({ ok: true }),
+      rinomina_inbox: async (rel, n) => ({ ok: true, nome: n, percorso: `Inbox/${n}` }), sposta_inbox: async (rel, p) => ({ ok: true, percorso: p, progetto: p.split("/")[1] }),
+      schede: async () => ({ schede: schedeDemo }), chiudi_scheda: async () => ({ ok: true }),
+      apri_esterno: async () => ({ ok: true }), apri_cartella: async () => ({ ok: true }),
+      stato_git: async () => ({ ramo: "main", modifiche: 2, da_caricare: 0, sync: "verde" }),
+      mappa: async () => ({ nodi, archi }),
+      pagina: async () => ({ ok: true }), github_stato: async () => ({ collegato: true, utente: T("giulia-demo", "emma-demo"), repo: T("giulia-demo/second-brain", "emma-demo/second-brain"), in_corso: false }),
+      github_sincronizza: async () => ({ avviata: true }), crea_progetto: async (nome) => ({ ok: true, nome, percorso: `${PROG}/${nome}/CLAUDE.md` }),
+      cambia_aspetto: async () => ({ ok: true }), apri_link: async () => ({ ok: true }), apri_github: async () => ({ ok: true }),
+      aggiornamento: async () => ({ pronto: !demo, versione: "2026.11.8.0600", nuova: "2026.11.8.0900" }), aggiorna: async () => ({ ok: true }), da_riaprire: async () => ({ sessioni: [] }),
+      cerca_aggiornamenti: async () => ({ ok: true, nuova: null }),
+      attivita: async () => { const giorni = {}; for (let i = 0; i < 120; i++) { if ((i * 7) % 5 > 1) { const d = new Date(Date.now() - i * 864e5); giorni[d.toISOString().slice(0, 10)] = (i * 13) % 17 + 1; } }
+        return { giorni, aree: { Progetti: 86, Generali: 51, Sistema: 39, Io: 19, "Università": 8, Vita: 2 } }; },
+      uso: async () => ({ noto: true, aggiornato: Date.now() / 1000 - 60, five_hour: { percentuale: 48, azzera: Date.now() / 1000 + 11640 }, seven_day: { percentuale: 14, azzera: Date.now() / 1000 + 370000 } }), esci: async () => ({ ok: true }), nascondi: async () => ({ ok: true }),
+    };
+    // impostazioni finte (salvate in memoria)
+    let impFinte = { lingua: EN ? "en" : "it", tema: par.get("tema") || "scuro", colore: "limone", testo: 100, animazioni: !par.has("statico"), pagina_iniziale: par.get("pagina") || "oggi",
+      notifica_risposta: true, notifica_permesso: true, notifica_non_salvate: true, notifica_scadenze: true, notifica_inbox: true,
+      notifica_sync: true, notifica_fuori_app: false, anteprima: true, silenzio_attivo: false, silenzio_da: "23:00", silenzio_a: "08:00",
+      silenzio_gioco: true, terminale_testo: 13.5, terminale_carattere: "JetBrains Mono", modello_chat: "predefinito",
+      appunti_auto: true, modello_appunti: "sonnet", soglia_kb: 30, sync_minuti: 0, scorciatoia_globale: true,
+      aggiornamenti_auto: true, aggiornamenti_prova: true, chat_altri_pc: true };
+    Object.assign(api, {
+      impostazioni: async () => ({ impostazioni: impFinte, avvio: true, installata: true, avvisi: false, radice: T("C:/Users/giulia/Second Brain", "C:/Users/emma/Second Brain"),
+        versione: "2026.11.8.0600", account: { tipo: "abbonamento", testo: "Abbonamento Claude", email: T("giulia@example.com", "emma@example.com") } }),
+      salva_impostazioni: async (n) => { impFinte = { ...impFinte, ...n }; return { ok: true, impostazioni: impFinte }; },
+      imposta_avvio: async () => ({ ok: true }), collega_avvisi: async () => ({ ok: true }), esporta: async () => ({ ok: true, conto: 312 }),
+      svuota_cache: async () => ({ ok: true }), apri_registri: async () => ({ ok: true }), rifai_primo_avvio: async () => ({ ok: true }),
+      accedi_claude_terminale: async () => ({ ok: true }), visibile: async () => ({ ok: true }), github_scollega: async () => ({ ok: true }),
+    });
+    // primo avvio finto: prova.html?primo  (niente viene scritto davvero)
+    if (location.search.includes("primo")) {
+      let ghOk = false;
+      Object.assign(api, {
+        configurazione: async () => ({ configurato: false, proposta: "C:\\Users\\prova\\Second Brain",
+          requisiti: { claude: "C:\\Users\\prova\\.local\\bin\\claude.exe", git: true, accesso: location.search.includes("login") } }),
+        valuta_cartella: async (p) => /^[A-Za-z]:\\/.test(p) ? { percorso: p, esiste: /Documenti|appunti/i.test(p), vuota: !/appunti/i.test(p),
+          second_brain: /appunti/i.test(p), git: false, file: /appunti/i.test(p) ? 12 : 0 } : { errore: "Serve un percorso completo, ad esempio C:\\Users\\nome\\Second Brain" },
+        scegli_cartella: async () => ({ percorso: "C:\\Users\\prova\\Documenti" }),
+        github_crea_repo: async () => ({ ok: true, repo: "utente-prova/second-brain" }),
+        accedi_claude: async () => ({ ok: true }),
+        github_stato: async () => ({ collegato: ghOk, utente: ghOk ? "utente-prova" : null }),
+        github_accedi: async () => { setTimeout(() => { ghOk = true; window.sb.evento("github", { esito: "collegato", collegato: true, utente: "utente-prova" }); }, 4000);
+          return { codice: "ABCD-1234", url: "https://github.com/login/device" }; },
+        github_repo_lista: async () => ({ repo: [{ nome: "utente-prova/second-brain", privato: true, url: "https://github.com/utente-prova/second-brain.git" },
+          { nome: "utente-prova/sito", privato: false, url: "https://github.com/utente-prova/sito.git" }] }),
+        completa_configurazione: async (s) => { console.log("[prova] completa_configurazione", JSON.stringify(s)); await new Promise((r) => setTimeout(r, 900));
+          return { ok: true, radice: s.cartella, passi: [s.modo === "github" ? "Second brain scaricato da GitHub" : "Cartelle, regole e indice creati",
+            ...(s.claude_md ? ["Claude Code legge regole e indice in ogni chat"] : []), ...(s.hook ? ["Appunti aggiornati da soli a fine chat"] : [])],
+            prompt: s.modo === "github" ? null : `Ciao ${s.risposte.nome}! Questo è il mio second brain appena creato…` }; },
+      });
+    }
+    // terminale finto per gli screenshot (?demo): una risposta di Claude scritta come farebbe il vero claude.exe
+    if (demo) {
+      const E = "\x1b[", B = E + "1m", R = E + "0m", G = E + "38;2;242;201;76m", V = E + "38;2;134;197;161m", M = E + "38;2;95;116;128m", C = E + "38;2;122;162;236m";
+      const testi = EN ? {
+        a1: `${M}╭──────────────────────────────────────────────╮\r\n│ ${R}${B}✻ Claude Code${R}${M}   ~/Second Brain               │\r\n╰──────────────────────────────────────────────╯${R}\r\n\r\n` +
+          `${G}>${R} reread chapter 3 of my thesis: what's missing?\r\n\r\n` +
+          `${V}●${R} Reading ${B}Projects/Thesis/CLAUDE.md${R} and the chapter 3 draft.\r\n\r\n` +
+          `${V}●${R} ${B}Already there${R}\r\n  · the 214 responses split by age group\r\n  · the charts for questions 1–6\r\n\r\n` +
+          `${V}●${R} ${B}Missing${R}\r\n  1. a comparison between regions (asked on Oct 18)\r\n  2. a significance test for question 4\r\n  3. a summary table before the conclusions\r\n\r\n` +
+          `  Want me to draft the table and update the thesis status in your notes?\r\n\r\n${M}──────────────────────────────────────────────${R}\r\n${G}>${R} ${C}█${R}`,
+        a2: `${V}●${R} Episode 12 outline saved in ${B}Projects/Podcast Undertone/${R}.\r\n${G}>${R} `,
+      } : {
+        a1: `${M}╭──────────────────────────────────────────────╮\r\n│ ${R}${B}✻ Claude Code${R}${M}   ~/Second Brain               │\r\n╰──────────────────────────────────────────────╯${R}\r\n\r\n` +
+          `${G}>${R} rileggi il capitolo 3 della tesi: cosa manca?\r\n\r\n` +
+          `${V}●${R} Leggo ${B}Progetti/Tesi di laurea/CLAUDE.md${R} e la bozza del capitolo 3.\r\n\r\n` +
+          `${V}●${R} ${B}Cosa c'è già${R}\r\n  · le 214 risposte divise per fascia d'età\r\n  · i grafici delle domande 1–6\r\n\r\n` +
+          `${V}●${R} ${B}Cosa manca${R}\r\n  1. il confronto tra regioni (chiesto il 18/10)\r\n  2. un test di significatività per la domanda 4\r\n  3. una tabella riassuntiva prima delle conclusioni\r\n\r\n` +
+          `  Vuoi che prepari la tabella e aggiorni lo stato della tesi negli appunti?\r\n\r\n${M}──────────────────────────────────────────────${R}\r\n${G}>${R} ${C}█${R}`,
+        a2: `${V}●${R} Scaletta della puntata 12 salvata in ${B}Progetti/Podcast Sottovoce/${R}.\r\n${G}>${R} `,
+      };
+      // il renderer WebGL nei browser senza scheda video si vede rovinato: si usa quello normale
+      window.WebglAddon = { WebglAddon: class { constructor() { throw new Error("niente WebGL nella prova"); } } };
+      window.WebSocket = class {
+        constructor(url) { this.readyState = 1; const sid = (schedeDemo.find((s) => url.includes(s.id)) || schedeDemo[0]).sessione;
+          setTimeout(() => { this.onopen && this.onopen(); this.onmessage && this.onmessage({ data: testi[sid] || "" }); }, 300); }
+        send() {} close() {}
+      };
+    }
+    window.pywebview = { api };
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="app.mjs"></script>
+</body>
+</html>
