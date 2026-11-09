@@ -68,7 +68,7 @@ try {
     "2) If there are lasting facts (a project changing status, decisions, deadlines, preferences) that are missing or outdated in the files listed in the index, update them with minimal edits, replacing outdated information. " +
     "Every status file must stay under ~80 lines: if it goes over, move the old part to a history.md file in the same folder. " +
     "3) Change INDEX.md only if a project is new or finished. " +
-    "Follow the rules in Me/Rules.md. Don't save temporary details. Never write passwords, API keys, tokens or access codes in the notes, not even partially. Don't make things up. If there is nothing relevant, don't touch anything. " +
+    "Follow the rules in Me/Rules.md. Do not run shell or git commands: only read and edit files. Don't save temporary details. Never write passwords, API keys, tokens or access codes in the notes, not even partially. Don't make things up. If there is nothing relevant, don't touch anything. " +
     "At the end write in one line what you changed."
   } else {
   $prompt = "Sei il passaggio automatico che aggiorna gli appunti di questo second brain. " +
@@ -78,7 +78,7 @@ try {
     "2) Se ci sono fatti durevoli (cambi di stato di un progetto, decisioni, scadenze, preferenze) che mancano o sono superati nei file indicati dall'indice, aggiornali con modifiche minime, sostituendo le informazioni superate. " +
     "Ogni file di stato deve restare sotto le ~80 righe: se lo superi, sposta la parte vecchia in un file storico.md nella stessa cartella. " +
     "3) Modifica INDICE.md solo se un progetto e' nuovo o concluso. " +
-    "Rispetta le regole di Io/Regole.md. Non salvare dettagli temporanei. Mai scrivere negli appunti password, chiavi API, token o codici di accesso, nemmeno in parte. Non inventare. Se non c'e' niente di rilevante, non toccare nulla. " +
+    "Rispetta le regole di Io/Regole.md. Non eseguire comandi da terminale o git: usa solo lettura e modifica dei file. Non salvare dettagli temporanei. Mai scrivere negli appunti password, chiavi API, token o codici di accesso, nemmeno in parte. Non inventare. Se non c'e' niente di rilevante, non toccare nulla. " +
     "Alla fine scrivi in una riga cosa hai modificato."
   }
 
@@ -86,19 +86,23 @@ try {
   $origine = if ($Assistente -in @("claude", "codex", "agy")) { $Assistente } elseif ($Strumento -eq "Codex") { "codex" } elseif ($Strumento -eq "Antigravity") { "agy" } else { "claude" }
   $chi = if ($SB_ASSISTENTE_APPUNTI -in @("claude", "codex", "agy")) { $SB_ASSISTENTE_APPUNTI } else { $origine }
   $modUsato = if ($chi -eq "agy") { $SB_MODELLO_AGY } elseif ($chi -eq "codex") { $SB_MODELLO_CODEX } else { $SB_MODELLO }
-  "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Appunti: $chi ($modUsato) - chat $Id" | Out-File $log -Encoding utf8
+  $logTmp = Join-Path $env:TEMP "appunti-log-$PID.txt"
+  $errTmp = Join-Path $env:TEMP "appunti-err-$PID.txt"
+  "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Appunti: $chi ($modUsato) - chat $Id" | Out-File $logTmp -Encoding utf8
   if ($chi -eq "agy" -and (Get-Command agy -ErrorAction SilentlyContinue)) {
-    & agy --model $SB_MODELLO_AGY --mode auto --add-dir $env:TEMP -p $prompt 2> $err | Out-File $log -Append -Encoding utf8
+    & agy --model $SB_MODELLO_AGY --add-dir $env:TEMP -p $prompt 2> $errTmp | Out-File $logTmp -Append -Encoding utf8
   } elseif ($chi -eq "codex" -and (Get-Command codex -ErrorAction SilentlyContinue)) {
     $modArg = if ($SB_MODELLO_CODEX -and $SB_MODELLO_CODEX -ne "predefinito") { @("-m", $SB_MODELLO_CODEX) } else { @() }
-    $prompt | & codex exec --ephemeral -s workspace-write --add-dir $env:TEMP @modArg - 2> $err | Out-File $log -Append -Encoding utf8
+    $prompt | & codex exec --ephemeral -s workspace-write --add-dir $env:TEMP @modArg - 2> $errTmp | Out-File $logTmp -Append -Encoding utf8
   } else {
-    $prompt | & $SB_CLAUDE -p --model $SB_MODELLO --add-dir $env:TEMP --allowedTools "Read" "Edit" "Write" "Glob" "Grep" 2> $err | Out-File $log -Append -Encoding utf8
+    $prompt | & $SB_CLAUDE -p --model $SB_MODELLO --add-dir $env:TEMP --allowedTools "Read" "Edit" "Write" "Glob" "Grep" 2> $errTmp | Out-File $logTmp -Append -Encoding utf8
   }
   if ($LASTEXITCODE -eq 0) { Segna-Salvata }
-  Remove-Item $riassunto -ErrorAction SilentlyContinue
+  try { Move-Item -Force $logTmp $log -ErrorAction SilentlyContinue } catch {}
+  try { Move-Item -Force $errTmp $err -ErrorAction SilentlyContinue } catch {}
+  Remove-Item $riassunto, $logTmp, $errTmp -ErrorAction SilentlyContinue
 } catch {
-  $_ | Out-String | Out-File $err -Encoding utf8
+  try { $_ | Out-String | Out-File $err -Encoding utf8 } catch {}
 }
 Remove-Item (Join-Path $SB_CACHE "segni\$Id.in-corso") -ErrorAction SilentlyContinue
 & (Join-Path $PSScriptRoot "sync.ps1") -Modo push
