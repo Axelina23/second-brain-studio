@@ -6,6 +6,16 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 
 ## Next version (not released yet)
 
+- **New chat with tabs already open asks which assistant and model to use**, instead of reopening the last one.
+  Model choice now also for Codex and Antigravity (Settings → Terminal).
+- **Each assistant does its own background work.** Notes at the end of a Codex or Antigravity chat, chat keywords
+  and quick-note titles are written by the chat's own assistant, so Claude's plan is not used. Settings → Automatic
+  notes lets you pick who writes the notes ("Chat's own", Claude, Codex, Antigravity) and the model for each.
+- **Delete and restore also for Codex and Antigravity chats** (bin kept 30 days, Settings → Data).
+- **Windows notification when Antigravity asks you a question.**
+- **Status bar usage follows the assistant in use**: Claude plan bars, Codex limits when available, otherwise
+  messages in the last 5 hours and 7 days.
+
 - **Choose the assistant and the model for a new chat.** When no chat is open, the terminal panel lets you pick
   Claude, Codex or Antigravity (`agy`), and for Claude the model (Default, Fable, Opus, Sonnet, Haiku). The same
   choice is in Settings → Terminal and is used by every "New chat" button, Briefing and Review included. Codex and

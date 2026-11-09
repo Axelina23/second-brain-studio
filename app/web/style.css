@@ -434,14 +434,14 @@ a { color: var(--cobalto-chiaro); text-underline-offset: 3px; }
   padding: 10px 14px; border-radius: var(--raggio); background: var(--pannello-2); border: 1px solid var(--cucitura-2); box-shadow: var(--ombra);
   animation: entra .3s var(--ease); z-index: 3; }
 .fine-chat p { margin: 0; flex: 1; min-width: 160px; }
-.term-vuoto { flex: 1; display: grid; place-content: center; text-align: center; gap: 14px; padding: 30px; color: var(--testo-2); }
+.term-vuoto { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 14px; padding: 30px; color: var(--testo-2); }
 .term-vuoto h3 { margin: 0; color: var(--testo); font-size: 17px; font-weight: 650; }
-.term-vuoto p { margin: 0; max-width: 34ch; }
+.term-vuoto p { margin: 0; max-width: 34ch; justify-self: center; }
 .term-vuoto .azioni { justify-content: center; }
 .etichetta-assistente { margin-right: 7px; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--cucitura); color: var(--testo-2); font-size: 10.5px; font-weight: 500; vertical-align: 1px; white-space: nowrap; }
 .scelta-chat { display: grid; justify-items: center; gap: 8px; }
 .scelta-chat .nota { font-size: 12.5px; max-width: 38ch; }
-.scelta-chat .imp-seg { flex-wrap: nowrap; }
+.scelta-chat .imp-seg { flex-wrap: wrap; justify-content: center; }
 .scelta-chat .imp-seg button { padding: 0 8px; font-size: 12px; white-space: nowrap; }
 
 /* ---------- barra di stato ---------- */

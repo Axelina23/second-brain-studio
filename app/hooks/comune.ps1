@@ -3,7 +3,9 @@
 # Nota: niente lettere accentate in questi file (PowerShell 5.1 legge male l'UTF-8).
 $SB_CACHE = Join-Path $env:USERPROFILE ".claude\second-brain"
 $SB_RADICE = $null
-$SB_APPUNTI = $true; $SB_MODELLO = "sonnet"; $SB_SOGLIA = 30KB
+$SB_APPUNTI = $true; $SB_ASSISTENTE_APPUNTI = "chat"
+$SB_MODELLO = "sonnet"; $SB_MODELLO_CODEX = "gpt-5.6-luna"; $SB_MODELLO_AGY = "gemini-3.8-flash-high"
+$SB_SOGLIA = 30KB
 $SB_CLAUDE = Join-Path $env:USERPROFILE ".local\bin\claude.exe"
 try {
   $cfg = Get-Content -Raw -Encoding UTF8 (Join-Path $SB_CACHE "config.json") | ConvertFrom-Json
@@ -13,7 +15,10 @@ try {
   $imp = $cfg.impostazioni
   if ($imp) {
     if ($imp.appunti_auto -eq $false) { $SB_APPUNTI = $false }
+    if ($imp.assistente_appunti -in @("chat", "claude", "codex", "agy")) { $SB_ASSISTENTE_APPUNTI = $imp.assistente_appunti }
     if ($imp.modello_appunti -in @("sonnet", "haiku", "opus")) { $SB_MODELLO = $imp.modello_appunti }
+    if ($imp.modello_appunti_codex -in @("predefinito", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5")) { $SB_MODELLO_CODEX = $imp.modello_appunti_codex }
+    if ($imp.modello_appunti_agy -in @("gemini-3.8-flash-high", "gemini-3.8-flash-low", "gemini-4-argon-low", "gemini-4-argon-medium", "gemini-4-argon-high")) { $SB_MODELLO_AGY = $imp.modello_appunti_agy }
     if ($imp.soglia_kb -gt 0) { $SB_SOGLIA = [int]$imp.soglia_kb * 1KB }
   }
 } catch {}

@@ -93,6 +93,12 @@ def test_argomenti_per_nuova_ripresa_e_messaggio():
     assert assistenti.argomenti("codex", "id1", "salva") == ["resume", "id1", "salva"]
     assert assistenti.argomenti("agy", "id1", "salva") == ["--conversation", "id1", "-i", "salva"]
     assert assistenti.argomenti("codex", prompt="briefing") == ["briefing"]
+    assert assistenti.argomenti("codex", prompt="briefing", modello="gpt-5.6-luna") == ["-m", "gpt-5.6-luna", "briefing"]
+    assert assistenti.argomenti("agy", modello="gemini-4-argon-high") == ["--model", "gemini-4-argon-high"]
+    # predefinito, modello di un altro assistente o chat ripresa: nessuna opzione di modello
+    assert assistenti.argomenti("codex", modello="predefinito") == []
+    assert assistenti.argomenti("codex", modello="opus") == []
+    assert assistenti.argomenti("agy", "id1", modello="gemini-4-argon-high") == ["--conversation", "id1"]
 
 
 def test_hook_di_codex_aggiunti_senza_toccare_gli_altri(tmp_path):
@@ -117,8 +123,11 @@ def test_hook_di_antigravity_nel_file_condiviso(tmp_path):
     d = json.loads((tmp_path / ".gemini" / "config" / "hooks.json").read_text(encoding="utf-8"))
     assert r["cambiato"] and "-Assistente agy" in d["second-brain-studio"]["Stop"][0]["command"]
     assert "-Json" in d["second-brain-studio"]["SessionStart"][0]["command"]
+    pre = d["second-brain-studio"]["PreToolUse"][0]
+    assert pre["matcher"] == "ask_question" and "-Evento attesa -Assistente agy" in pre["hooks"][0]["command"]
     # Antigravity rovina le virgolette doppie: nei suoi comandi non ce ne devono essere
     assert '"' not in d["second-brain-studio"]["Stop"][0]["command"] and "-Command . '" in d["second-brain-studio"]["Stop"][0]["command"]
+    assert '"' not in pre["hooks"][0]["command"]
 
 
 def test_agents_md_creato_una_volta_sola(tmp_path):

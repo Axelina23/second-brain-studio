@@ -93,7 +93,8 @@ class Api:
     def nota(self, testo): return self._p.nota(testo)
     def apri_chat(self, tipo="nuova", sessione=None, prompt=None, cartella=None, titolo=None):
         imp = imp_mod.leggi()
-        return self._p.apri_chat(tipo, sessione, prompt, cartella, titolo, imp["modello_chat"], imp["assistente_chat"])
+        chiave_mod = {"codex": "modello_codex", "agy": "modello_agy"}.get(imp["assistente_chat"], "modello_chat")
+        return self._p.apri_chat(tipo, sessione, prompt, cartella, titolo, imp[chiave_mod], imp["assistente_chat"])
     def assistenti(self): return self._p.assistenti()
     def salva_chat(self, sessione): return self._p.salva_chat(sessione)
     def elimina_chat(self, sessione): return self._p.elimina_chat(sessione)

@@ -364,9 +364,11 @@ def test_chat_nuova_con_modello_e_assistente(tmp_path, monkeypatch):
     # Claude con il modello scelto
     assert p.apri_chat("nuova", modello="fable")["assistente"] == "claude"
     assert p.terminali.avviate[-1][-2:] == ["--model", "fable"]
-    # Codex: il suo eseguibile, nessun modello di Claude, titolo col suo nome
+    # Codex: il suo eseguibile, nessun modello di Claude, ma accetta il suo modello
     v = p.apri_chat("nuova", modello="opus", assistente="codex")
     assert v["assistente"] == "codex" and v["titolo"] == "Codex" and p.terminali.avviate[-1] == ["C:/bin/codex.exe"]
+    p.apri_chat("nuova", modello="gpt-5.6-luna", assistente="codex")
+    assert p.terminali.avviate[-1] == ["C:/bin/codex.exe", "-m", "gpt-5.6-luna"]
     # assistente non installato: errore chiaro, niente scheda
     assert "non è installato" in p.apri_chat("nuova", assistente="agy")["errore"]
     # i comandi dell'app (con un prompt) vanno all'assistente scelto, come primo messaggio
@@ -453,8 +455,16 @@ def test_ripresa_e_salvataggio_tornano_dal_loro_assistente(tmp_path, monkeypatch
     assert p.terminali.avviate[-1][:4] == ["C:/bin/agy.exe", "--conversation", ID_AGY, "-i"]
     # azioni che esistono solo per Claude: errore chiaro
     assert "non si possono duplicare" in p.apri_chat("duplica", ID_CODEX)["errore"]
-    assert "si eliminano da Codex" in p.elimina_chat(ID_CODEX)["errore"]
     assert "Solo le chat di Claude" in p.apri_in_cartella(ID_AGY, str(tmp_path))["errore"]
+    # cestino e ripristino funzionano anche per Codex e Antigravity
+    p.terminali.schede.clear()
+    for sid, ass in ((ID_CODEX, "codex"), (ID_AGY, "agy")):
+        assert p.elimina_chat(sid) == {"ok": True}
+        assert sid not in {c["id"] for c in p.chat()["chat"]}
+        nel_cestino = {v["id"]: v for v in p.cestino_chat()["cestino"]}
+        assert nel_cestino[sid]["assistente"] == ass
+        assert p.ripristina_chat(sid) == {"ok": True}
+        assert sid in {c["id"] for c in p.chat()["chat"]}
 
 
 def test_linguetta_di_codex_prende_la_sua_chat_e_il_titolo(tmp_path, monkeypatch):
@@ -482,6 +492,7 @@ def test_appunti_a_fine_chat_per_codex(tmp_path, monkeypatch):
     comando = avviati[-1]
     assert "fine-sessione-worker.ps1" in comando[5] and comando[comando.index("-Id") + 1] == ID_CODEX
     assert comando[comando.index("-Strumento") + 1] == "Codex"
+    assert comando[comando.index("-Assistente") + 1] == "codex"
     riassunto = Path(comando[comando.index("-Testo") + 1])
     assert riassunto.read_text(encoding="utf-8").startswith("UTENTE: sistema il sito")
     riassunto.unlink()
@@ -491,3 +502,18 @@ def test_appunti_a_fine_chat_per_codex(tmp_path, monkeypatch):
     # appunti automatici spenti: solo sincronizzazione anche per la chat lunga
     monkeypatch.setattr(ponte.Ponte, "_impostazioni", staticmethod(lambda: {"appunti_auto": False}))
     assert p._appunti_di(lunga) is False and "sync.ps1" in avviati[-1][5]
+
+
+def test_uso_per_assistente(tmp_path):
+    import time
+    p, r = _ponte_con_altri(tmp_path)
+    p_codex = _chat_codex(p.cartella_codex, ID_CODEX, r)
+    with open(p_codex, "a", encoding="utf-8") as f:
+        f.write(_riga_codex("event_msg", {"type": "token_count", "rate_limits": {
+            "primary": {"used_percent": 22.4, "resets_at": time.time() + 1800},
+            "secondary": {"used_percent": 15.1, "resets_at": time.time() + 86400}}}) + "\n")
+    _chat_agy(p.cartella_agy, ID_AGY, r)
+    u = p.uso()
+    assert u["assistenti"]["codex"]["five_hour"]["percentuale"] == 22
+    assert u["assistenti"]["codex"]["seven_day"]["percentuale"] == 15
+    assert u["assistenti"]["codex"]["cinque_ore"] == 1 and u["assistenti"]["agy"]["cinque_ore"] == 1

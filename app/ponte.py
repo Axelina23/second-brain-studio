@@ -3,6 +3,7 @@
 # restituisce dati JSON-serializzabili e non solleva: in caso di errore {"errore": "..."}.
 # I lavori lenti (git fetch, Haiku, lettura delle trascrizioni) girano in thread e
 # avvisano l'interfaccia con self.emetti(nome_evento, dati).
+import json
 import os
 import re
 import shutil
@@ -311,7 +312,7 @@ class Ponte:
     def _lavoro_parole(self, elenco) -> None:
         for s in elenco:
             prima = self._etichetta(s)
-            parole.aggiorna_parole([s], self.cache / "parole.json", chiedi=self._chiedi)
+            parole.aggiorna_parole([s], self.cache / "parole.json", chiedi=self._chiedi_per(s.assistente))
             dopo = self._etichetta(s)
             if dopo != prima:
                 self.emetti("chat", {"id": s.id, "etichetta": dopo})
@@ -485,7 +486,7 @@ class Ponte:
         self.oggi_eventi = mod_oggi.eventi_oggi(self.radice) or []
         self.emetti("oggi", self._oggi_dati())
         self.oggi_scadenze = mod_oggi.scadenze(self.radice, self.cache, self.adesso().date(),
-                                               chiedi=self._chiedi)
+                                               chiedi=self._chiedi_per())
         self.emetti("oggi", self._oggi_dati())
 
     # ---------- appunti ----------
@@ -619,7 +620,7 @@ class Ponte:
             return {"errore": str(e)}
 
         def rinomina():
-            nuovo = mod_note.rinomina_nota(p, testo, adesso, chiedi=self._chiedi)
+            nuovo = mod_note.rinomina_nota(p, testo, adesso, chiedi=self._chiedi_per())
             if nuovo != p:
                 self.emetti("nota", {"nome": nuovo.name})
         self._in_thread(f"nota-{p.name}", rinomina)
@@ -650,7 +651,7 @@ class Ponte:
         elif tipo != "nuova":
             assistente = "claude"
         if assistente in ("codex", "agy"):
-            return self._apri_altro(assistente, tipo, esistente, prompt, dove, titolo)
+            return self._apri_altro(assistente, tipo, esistente, prompt, dove, titolo, modello)
         argv = [str(CLAUDE)]
         if tipo != "riprendi" and modello in MODELLI_CLAUDE:
             argv += ["--model", modello]
@@ -679,9 +680,10 @@ class Ponte:
             return {"errore": f"Non riesco ad avviare Claude: {e}"}
         return self._voce_scheda(t)
 
-    def _apri_altro(self, assistente: str, tipo: str, s, prompt: str | None, dove: Path, titolo: str | None) -> dict:
+    def _apri_altro(self, assistente: str, tipo: str, s, prompt: str | None, dove: Path, titolo: str | None,
+                    modello: str | None = None) -> dict:
         # linguetta con Codex o Antigravity: chat nuova, ripresa (anche con un messaggio, per
-        # "Salva gli appunti") e primo messaggio. La copia di una chat esiste solo per Claude.
+        # "Salva gli appunti"), modello scelto e primo messaggio. La copia di una chat esiste solo per Claude.
         nome = ASSISTENTI[assistente]
         if tipo == "duplica":
             return {"errore": f"Le chat di {nome} non si possono duplicare dall'app"}
@@ -690,7 +692,8 @@ class Ponte:
             return {"errore": f"{nome} non è installato su questo PC"}
         if prompt and mod_assistenti.passa_da_cmd(argv):
             prompt = re.sub(r'[&|<>^%"]', " ", prompt)  # cmd.exe li interpreterebbe
-        argv = argv + mod_assistenti.argomenti(assistente, s.id if s else None, prompt)
+        argv = argv + mod_assistenti.argomenti(assistente, s.id if s else None, prompt,
+                                               modello if tipo != "riprendi" else None)
         nota = self._prepara_assistente(assistente)
         etichetta = (titolo or "").strip()[:60] or (self._etichetta(s) if s else (prompt.capitalize() if prompt else nome))
         try:
@@ -744,12 +747,11 @@ class Ponte:
         if any(t.sessione == sessione for t in (self.terminali.attive() if self.terminali else [])):
             return {"errore": "La chat è aperta in una linguetta: chiudila prima di eliminarla"}
         trascritto = self.cartella_sessioni / f"{sessione}.jsonl"
+        altra = None
         if not trascritto.exists():
             altra = self._sessione(sessione)
-            if altra is not None and altra.assistente != "claude":
-                nome = ASSISTENTI[altra.assistente]
-                return {"errore": f"Le chat di {nome} si eliminano da {nome}, non dall'app"}
-            return {"errore": "Chat non trovata"}
+            if altra is None or altra.assistente == "claude":
+                return {"errore": "Chat non trovata"}
         try:
             cestino = self.cache / "cestino-chat"
             self._svuota_cestino(cestino)
@@ -757,10 +759,24 @@ class Ponte:
             if dest.exists():
                 shutil.rmtree(dest, ignore_errors=True)
             dest.mkdir(parents=True)
-            shutil.move(str(trascritto), str(dest / trascritto.name))
-            cartella = self.cartella_sessioni / sessione
-            if cartella.is_dir():
-                shutil.move(str(cartella), str(dest / sessione))
+            if altra is None:
+                shutil.move(str(trascritto), str(dest / trascritto.name))
+                cartella = self.cartella_sessioni / sessione
+                if cartella.is_dir():
+                    shutil.move(str(cartella), str(dest / sessione))
+            elif altra.assistente == "codex":
+                shutil.move(str(altra.percorso), str(dest / altra.percorso.name))
+                (dest / "origine.json").write_text(
+                    json.dumps({"assistente": "codex", "percorso": str(altra.percorso), "file": altra.percorso.name},
+                               ensure_ascii=False), encoding="utf-8")
+                self._altre_cache.pop(str(altra.percorso), None)
+            else:
+                cartella_conv = altra.percorso.parents[2]
+                shutil.move(str(cartella_conv), str(dest / "brain"))
+                (dest / "origine.json").write_text(
+                    json.dumps({"assistente": "agy", "percorso": str(cartella_conv)}, ensure_ascii=False),
+                    encoding="utf-8")
+                self._altre_cache.pop(str(altra.percorso), None)
         except OSError as e:
             self._log()
             return {"errore": f"Non riesco a eliminare la chat: {e}"}
@@ -772,6 +788,24 @@ class Ponte:
         if not self._id_valido(sessione):
             return {"errore": "Chat non valida"}
         dest = self.cache / "cestino-chat" / sessione
+        meta_orig = dest / "origine.json"
+        if meta_orig.is_file():
+            try:
+                info = json.loads(meta_orig.read_text(encoding="utf-8"))
+                origine = Path(info["percorso"])
+                sorgente = dest / (info["file"] if info["assistente"] == "codex" else "brain")
+                if not sorgente.exists():
+                    return {"errore": "La chat non è più nel cestino"}
+                if origine.exists():
+                    return {"errore": "Esiste già una chat con lo stesso id"}
+                origine.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(sorgente), str(origine))
+                shutil.rmtree(dest, ignore_errors=True)
+            except (OSError, ValueError, KeyError) as e:
+                self._log()
+                return {"errore": f"Non riesco a ripristinare la chat: {e}"}
+            self.emetti("chat-eliminata", {"id": sessione, "ripristinata": True})
+            return {"ok": True}
         trascritto = dest / f"{sessione}.jsonl"
         if not trascritto.exists():
             return {"errore": "La chat non è più nel cestino"}
@@ -805,17 +839,28 @@ class Ponte:
         voci = []
         cestino = self.cache / "cestino-chat"
         for d in (cestino.iterdir() if cestino.is_dir() else []):
-            trascritto = d / f"{d.name}.jsonl"
+            meta_orig = d / "origine.json"
             try:
-                s = mod_sessioni._leggi(trascritto) if trascritto.exists() else None
                 quando = d.stat().st_mtime
-            except OSError:
+                if meta_orig.is_file():
+                    info = json.loads(meta_orig.read_text(encoding="utf-8"))
+                    if info.get("assistente") == "codex":
+                        p = d / info.get("file", "")
+                        s = mod_assistenti.leggi(p, "codex", d.name) if p.is_file() else None
+                    else:
+                        p = d / "brain" / ".system_generated" / "logs" / "transcript.jsonl"
+                        s = mod_assistenti.leggi(p, "agy", d.name) if p.is_file() else None
+                else:
+                    trascritto = d / f"{d.name}.jsonl"
+                    s = mod_sessioni._leggi(trascritto) if trascritto.exists() else None
+            except (OSError, ValueError):
                 continue
             if s is None:
                 continue
             voci.append({"id": d.name, "etichetta": self._etichetta(s), "ultima": s.ultima.isoformat(),
                          "eliminata": datetime.fromtimestamp(quando).astimezone().isoformat(),
-                         "giorni_rimasti": max(0, self.GIORNI_CESTINO - int((time.time() - quando) / 86400))})
+                         "giorni_rimasti": max(0, self.GIORNI_CESTINO - int((time.time() - quando) / 86400)),
+                         "assistente": s.assistente})
         voci.sort(key=lambda v: v["eliminata"], reverse=True)
         return {"cestino": voci, "giorni": self.GIORNI_CESTINO}
 
@@ -1117,11 +1162,19 @@ class Ponte:
             (self.segni / f"{s.id}.in-corso").write_text(datetime.now().isoformat(), encoding="utf-8")
             self._avvia(ps + [str(worker), "-Testo", str(riassunto), "-Id", s.id,
                               "-Strumento", mod_assistenti.STRUMENTI[s.assistente], "-Progetto", str(self.radice),
-                              "-Data", f"{s.ultima:%Y-%m-%d}"])
+                              "-Data", f"{s.ultima:%Y-%m-%d}", "-Assistente", s.assistente])
             return True
         except Exception:
             self._log()
             return False
+
+    def _chiedi_per(self, assistente: str | None = None):
+        if self._chiedi is not chiedi_haiku:
+            return self._chiedi
+        imp = self._impostazioni()
+        scelta = imp.get("assistente_appunti") or "chat"
+        risolto = (assistente or imp.get("assistente_chat") or "claude") if scelta == "chat" else scelta
+        return lambda prompt, timeout=60: chiedi_haiku(prompt, timeout, assistente=risolto)
 
     @staticmethod
     def _impostazioni() -> dict:
@@ -1200,16 +1253,11 @@ class Ponte:
                 aree[area] = aree.get(area, 0) + 1
         return {"giorni": giorni, "aree": aree}
 
-    def uso(self) -> dict:
-        # uso del piano Claude (5 ore e settimana) scritto dalla riga di stato di Claude Code
-        # in cache/uso.json; una finestra gia' ripartita vale 0%
-        try:
-            import json
-            dati = json.loads((self.cache / "uso.json").read_text(encoding="utf-8"))
-        except (OSError, ValueError):
+    @staticmethod
+    def _finestre_uso(dati: dict | None, adesso: float) -> dict:
+        if not dati:
             return {"noto": False}
-        adesso = time.time()
-        out = {"noto": True, "aggiornato": dati.get("aggiornato")}
+        out: dict = {"noto": True, "aggiornato": dati.get("aggiornato")}
         for k in ("five_hour", "seven_day"):
             w = dati.get(k) or {}
             p, reset = w.get("used_percentage"), w.get("resets_at")
@@ -1219,6 +1267,34 @@ class Ponte:
                 p, reset = 0, None
             out[k] = {"percentuale": round(float(p)), "azzera": reset}
         return out
+
+    def uso(self) -> dict:
+        # uso del piano per Claude (da cache/uso.json), Codex (dai suoi file di sessione) e
+        # contatori dei messaggi (5 ore e 7 giorni) per ciascun assistente
+        adesso = time.time()
+        try:
+            dati_claude = json.loads((self.cache / "uso.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            dati_claude = None
+        u_claude = self._finestre_uso(dati_claude, adesso)
+        u_codex = self._finestre_uso(mod_assistenti.uso_codex(self.cartella_codex) if self.cartella_codex else None, adesso)
+        sessioni = self._sessioni()
+        if not u_claude["noto"] and not u_codex["noto"] and not sessioni:
+            return {"noto": False}
+        ora = self.adesso()
+        lim_5h, lim_7g = ora - timedelta(hours=5), ora - timedelta(days=7)
+        per_ass = {a: {"noto": False, "cinque_ore": 0, "sette_giorni": 0} for a in ("claude", "codex", "agy")}
+        per_ass["claude"].update(u_claude)
+        per_ass["codex"].update(u_codex)
+        for s in sessioni:
+            v = per_ass.get(s.assistente)
+            if not v:
+                continue
+            if s.ultima >= lim_5h:
+                v["cinque_ore"] += s.n_messaggi
+            if s.ultima >= lim_7g:
+                v["sette_giorni"] += s.n_messaggi
+        return {**u_claude, "assistenti": per_ass}
 
     def mappa(self) -> dict:
         # grafo del second brain: un nodo per appunto, archi quando un appunto ne cita un altro

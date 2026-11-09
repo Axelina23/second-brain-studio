@@ -6,6 +6,7 @@
 param([ValidateSet("pull", "push")][string]$Modo = "pull", [switch]$Json)
 . (Join-Path $PSScriptRoot "comune.ps1")
 if ($Json) { Write-Output "{}" }
+if ($Modo -eq "pull" -and $env:CLAUDE_NOTES_PASS) { exit 0 }
 if (-not $SB_RADICE -or -not (Test-Path (Join-Path $SB_RADICE ".git"))) { exit 0 }
 Set-Location $SB_RADICE
 $log = Join-Path $SB_CACHE "sync-ultimo.log"

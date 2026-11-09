@@ -4,7 +4,7 @@
 # Per le chat di Codex e Antigravity lo lancia l'app con -Testo (il riassunto gia' estratto,
 # in un file della cartella temporanea), -Id, -Strumento e -Data al posto di -Transcript.
 param([string]$Transcript, [string]$Progetto, [string]$Testo = "", [string]$Id = "",
-      [string]$Strumento = "Claude Code", [string]$Data = "")
+      [string]$Strumento = "Claude Code", [string]$Data = "", [string]$Assistente = "")
 . (Join-Path $PSScriptRoot "comune.ps1")
 $env:CLAUDE_NOTES_PASS = "1"
 $log = Join-Path $SB_CACHE "appunti-ultimo.log"
@@ -82,7 +82,16 @@ try {
   }
 
   Set-Location $SB_RADICE
-  $prompt | & $SB_CLAUDE -p --model $SB_MODELLO --add-dir $env:TEMP --allowedTools "Read" "Edit" "Write" "Glob" "Grep" 2> $err | Out-File $log -Encoding utf8
+  $origine = if ($Assistente -in @("claude", "codex", "agy")) { $Assistente } elseif ($Strumento -eq "Codex") { "codex" } elseif ($Strumento -eq "Antigravity") { "agy" } else { "claude" }
+  $chi = if ($SB_ASSISTENTE_APPUNTI -in @("claude", "codex", "agy")) { $SB_ASSISTENTE_APPUNTI } else { $origine }
+  if ($chi -eq "agy" -and (Get-Command agy -ErrorAction SilentlyContinue)) {
+    $prompt | & agy -p --model $SB_MODELLO_AGY --mode auto --add-dir $env:TEMP 2> $err | Out-File $log -Encoding utf8
+  } elseif ($chi -eq "codex" -and (Get-Command codex -ErrorAction SilentlyContinue)) {
+    $modArg = if ($SB_MODELLO_CODEX -and $SB_MODELLO_CODEX -ne "predefinito") { @("-m", $SB_MODELLO_CODEX) } else { @() }
+    $prompt | & codex exec --ephemeral -s workspace-write --add-dir $env:TEMP @modArg - 2> $err | Out-File $log -Encoding utf8
+  } else {
+    $prompt | & $SB_CLAUDE -p --model $SB_MODELLO --add-dir $env:TEMP --allowedTools "Read" "Edit" "Write" "Glob" "Grep" 2> $err | Out-File $log -Encoding utf8
+  }
   if ($LASTEXITCODE -eq 0) { Segna-Salvata }
   Remove-Item $riassunto -ErrorAction SilentlyContinue
 } catch {

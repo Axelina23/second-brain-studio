@@ -1,16 +1,40 @@
-# Chiamata a Haiku tramite `claude -p` (abbonamento). Restituisce None su
-# errore, timeout o uscita diversa da 0. Gira in cwd CACHE con
-# CLAUDE_NOTES_PASS=1 cosi' la chiamata non produce note ne' sessioni nel second brain.
+# Chiamata rapida a un assistente (predefinito: Haiku tramite `claude -p`).
+# Se si passa assistente="codex" o "agy", usa Codex (`codex exec --ephemeral`) o
+# Antigravity (`agy -p`) cosi' ogni IA fa il lavoro per se' senza consumare il piano
+# di Claude. Se l'assistente richiesto non e' installato, ripiega su Claude.
+# Gira in cwd CACHE con CLAUDE_NOTES_PASS=1 (niente note ne' sessioni nel second brain).
 import os
 import subprocess
 
+import assistenti
 from percorsi import CACHE, CLAUDE
 
+MODELLI_BREVI = {
+    "claude": "haiku",
+    "codex": "gpt-5.6-luna",
+    "agy": "gemini-3.8-flash-low",
+}
 
-def chiedi_haiku(prompt: str, timeout: float = 60) -> str | None:
+
+def _comando_breve(assistente: str | None, modello: str | None) -> list[str]:
+    nome = assistente if assistente in ("claude", "codex", "agy") else "claude"
+    mod = modello if modello and modello != "predefinito" else MODELLI_BREVI[nome]
+    if nome in ("codex", "agy"):
+        base = assistenti.comando(nome)
+        if base:
+            if nome == "agy":
+                return [*base, "-p", "--model", mod, "--disable-slash-commands"]
+            return [*base, "exec", "--ephemeral", "--skip-git-repo-check", "-s", "read-only", "-m", mod, "-"]
+        mod = MODELLI_BREVI["claude"]
+    return [str(CLAUDE), "-p", "--model", mod]
+
+
+def chiedi_haiku(prompt: str, timeout: float = 60, assistente: str | None = None,
+                 modello: str | None = None) -> str | None:
     try:
         CACHE.mkdir(parents=True, exist_ok=True)
-        r = subprocess.run([str(CLAUDE), "-p", "--model", "haiku"], input=prompt,
+        cmd = _comando_breve(assistente, modello)
+        r = subprocess.run(cmd, input=prompt,
                            cwd=CACHE, env={**os.environ, "CLAUDE_NOTES_PASS": "1"},
                            timeout=timeout, encoding="utf-8", errors="replace",
                            capture_output=True,

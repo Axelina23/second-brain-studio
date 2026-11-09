@@ -157,13 +157,23 @@ export function Impostazioni({ api, chiudi, avvisa, gh, accediGh, sincronizzaGh,
         <input type="range" min="10" max="20" step="0.5" value=${imp.terminale_testo} onChange=${(e) => metti("terminale_testo", +e.target.value)} /></${Voce}>
       <${Voce} titolo="Assistente delle chat nuove" testo="Codex e Antigravity devono essere installati; usano il loro modello e il loro abbonamento.">
         <${Segmenti} valore=${imp.assistente_chat} cambia=${(v) => metti("assistente_chat", v)} opzioni=${[["claude", "Claude"], ["codex", "Codex"], ["agy", "Antigravity"]]} /></${Voce}>
-      <${Voce} titolo="Modello delle chat nuove" testo="Vale per Claude. Predefinito = quello scelto in Claude Code.">
-        <${Segmenti} valore=${imp.modello_chat} cambia=${(v) => metti("modello_chat", v)} opzioni=${[["predefinito", "Predefinito"], ["fable", "Fable"], ["opus", "Opus"], ["sonnet", "Sonnet"], ["haiku", "Haiku"]]} /></${Voce}>`,
+      <${Voce} titolo="Modello di Claude" testo="Predefinito = quello scelto in Claude Code.">
+        <${Segmenti} valore=${imp.modello_chat} cambia=${(v) => metti("modello_chat", v)} opzioni=${[["predefinito", "Predefinito"], ["fable", "Fable"], ["opus", "Opus"], ["sonnet", "Sonnet"], ["haiku", "Haiku"]]} /></${Voce}>
+      <${Voce} titolo="Modello di Codex" testo="Predefinito = quello in config.toml di Codex.">
+        <${Segmenti} valore=${imp.modello_codex} cambia=${(v) => metti("modello_codex", v)} opzioni=${[["predefinito", "Predefinito"], ["gpt-5.6-terra", "5.6 Terra"], ["gpt-5.6-luna", "5.6 Luna"], ["gpt-5.5", "5.5"]]} /></${Voce}>
+      <${Voce} titolo="Modello di Antigravity" testo="Predefinito = quello scelto in Antigravity.">
+        <${Segmenti} valore=${imp.modello_agy} cambia=${(v) => metti("modello_agy", v)} opzioni=${[["predefinito", "Predefinito"], ["gemini-4-argon-high", "Argon High"], ["gemini-4-argon-medium", "Argon Med"], ["gemini-4-argon-low", "Argon Low"], ["gemini-3.8-flash-high", "Flash High"], ["gemini-3.8-flash-low", "Flash Low"]]} /></${Voce}>`,
 
     appunti: html`
-      <${Interruttore} titolo="Aggiorna gli appunti a fine chat" testo="Claude riassume la chat e aggiorna Registro e file di stato in background." valore=${imp.appunti_auto} cambia=${(v) => metti("appunti_auto", v)} />
-      <${Voce} titolo="Chi scrive gli appunti" testo="Sonnet è il più accurato, Haiku consuma meno.">
+      <${Interruttore} titolo="Aggiorna gli appunti a fine chat" testo="L'assistente riassume la chat e aggiorna Registro e file di stato in background." valore=${imp.appunti_auto} cambia=${(v) => metti("appunti_auto", v)} />
+      <${Voce} titolo="Chi scrive gli appunti" testo="'Quello della chat' fa lavorare ogni assistente sulle proprie chat, senza consumare Claude.">
+        <${Segmenti} valore=${imp.assistente_appunti} cambia=${(v) => metti("assistente_appunti", v)} opzioni=${[["chat", "Quello della chat"], ["claude", "Claude"], ["codex", "Codex"], ["agy", "Antigravity"]]} /></${Voce}>
+      <${Voce} titolo="Modello appunti di Claude" testo="Sonnet è il più accurato, Haiku consuma meno.">
         <${Segmenti} valore=${imp.modello_appunti} cambia=${(v) => metti("modello_appunti", v)} opzioni=${[["sonnet", "Sonnet"], ["haiku", "Haiku"], ["opus", "Opus"]]} /></${Voce}>
+      <${Voce} titolo="Modello appunti di Codex" testo="Predefinito = quello configurato in Codex.">
+        <${Segmenti} valore=${imp.modello_appunti_codex} cambia=${(v) => metti("modello_appunti_codex", v)} opzioni=${[["predefinito", "Predefinito"], ["gpt-5.6-terra", "5.6 Terra"], ["gpt-5.6-luna", "5.6 Luna"], ["gpt-5.5", "5.5"]]} /></${Voce}>
+      <${Voce} titolo="Modello appunti di Antigravity" testo="Flash è veloce e leggero; Argon è più approfondito.">
+        <${Segmenti} valore=${imp.modello_appunti_agy} cambia=${(v) => metti("modello_appunti_agy", v)} opzioni=${[["gemini-3.8-flash-high", "Flash High"], ["gemini-3.8-flash-low", "Flash Low"], ["gemini-4-argon-low", "Argon Low"], ["gemini-4-argon-medium", "Argon Med"], ["gemini-4-argon-high", "Argon High"]]} /></${Voce}>
       <${Voce} titolo="Chat troppo corte" testo=${`Sotto ${imp.soglia_kb} KB di trascrizione non si aggiornano gli appunti.`}>
         <input type="range" min="5" max="200" step="5" value=${imp.soglia_kb} onChange=${(e) => metti("soglia_kb", +e.target.value)} /></${Voce}>
       <p class="imp-nota">Valgono per gli hook installati dall'app (primo avvio). Se usi hook tuoi, restano i tuoi.</p>`,

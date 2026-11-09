@@ -398,8 +398,8 @@ def collega_hook_assistente(assistente: str, hook: Path, base: Path) -> dict:
     comando = _comando if assistente == "codex" else _comando_senza_virgolette
     sync = comando(hook / "sync.ps1", "-Modo", "pull", "-Json")
     fine = comando(hook / "avviso.ps1", "-Evento", "fine", "-Assistente", assistente)
+    attesa = comando(hook / "avviso.ps1", "-Evento", "attesa", "-Assistente", assistente)
     if assistente == "codex":
-        attesa = _comando(hook / "avviso.ps1", "-Evento", "attesa", "-Assistente", assistente)
         hooks = d.setdefault("hooks", {})
         segno = hook.as_posix()
         for evento, riga, tempo in (("SessionStart", sync, 20), ("Stop", fine, 10), ("PermissionRequest", attesa, 10)):
@@ -409,7 +409,9 @@ def collega_hook_assistente(assistente: str, hook: Path, base: Path) -> dict:
     else:
         d["second-brain-studio"] = {
             "SessionStart": [{"type": "command", "command": sync, "timeout": 20}],
-            "Stop": [{"type": "command", "command": fine, "timeout": 10}]}
+            "Stop": [{"type": "command", "command": fine, "timeout": 10}],
+            "PreToolUse": [{"matcher": "ask_question",
+                            "hooks": [{"type": "command", "command": attesa, "timeout": 10}]}]}
     if json.dumps(d, sort_keys=True) == prima:
         return {"ok": True, "cambiato": False, "file": str(file)}
     file.parent.mkdir(parents=True, exist_ok=True)

@@ -19,6 +19,12 @@ from sessioni import MAX_COMPLETO, MAX_TESTO, Sessione, _data
 
 NOMI = {"claude": "Claude", "codex": "Codex", "agy": "Antigravity"}
 STRUMENTI = {"claude": "Claude Code", "codex": "Codex", "agy": "Antigravity"}
+MODELLI = {
+    "claude": ("predefinito", "fable", "opus", "sonnet", "haiku"),
+    "codex": ("predefinito", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5"),
+    "agy": ("predefinito", "gemini-4-argon-high", "gemini-4-argon-medium", "gemini-4-argon-low",
+            "gemini-3.8-flash-high", "gemini-3.8-flash-low"),
+}
 RE_ID = re.compile(r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})", re.IGNORECASE)
 RE_BLOCCO = re.compile(r"^<([A-Za-z_]+)[\s>]")
 RE_RICHIESTA = re.compile(r"<USER_REQUEST>\s*(.*?)\s*</USER_REQUEST>", re.DOTALL)
@@ -101,6 +107,39 @@ def file_codex(base: Path | None = None) -> list[Path]:
     return [p for p in cartella.rglob("rollout-*") if p.name.endswith((".jsonl", ".jsonl.zst"))]
 
 
+def uso_codex(base: Path | None = None) -> dict | None:
+    # ultimo stato dei limiti (5 ore e 7 giorni) scritto da Codex nei file di sessione
+    files = file_codex(base)
+    if not files:
+        return None
+    try:
+        recenti = sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)[:5]
+    except OSError:
+        return None
+    for p in recenti:
+        ultimo, ts = None, None
+        try:
+            for r in _righe(p):
+                if r.get("type") != "event_msg":
+                    continue
+                carico = r.get("payload") or {}
+                rl = carico.get("rate_limits") if carico.get("type") == "token_count" else None
+                if isinstance(rl, dict) and (rl.get("primary") or rl.get("secondary")):
+                    ultimo, ts = rl, _data(r.get("timestamp"))
+            if ultimo:
+                agg = int(ts.timestamp()) if ts else int(p.stat().st_mtime)
+                out: dict = {"aggiornato": agg}
+                for k_da, k_a in (("primary", "five_hour"), ("secondary", "seven_day")):
+                    w = ultimo.get(k_da)
+                    if isinstance(w, dict) and w.get("used_percent") is not None:
+                        out[k_a] = {"used_percentage": w["used_percent"], "resets_at": w.get("resets_at")}
+                if "five_hour" in out or "seven_day" in out:
+                    return out
+        except (OSError, EOFError, ImportError):
+            continue
+    return None
+
+
 # ---------- Antigravity ----------
 def turni_agy(p: Path):
     for r in _righe(p):
@@ -174,6 +213,10 @@ def cartelle_agy(base: Path | None = None) -> dict[str, str]:
 
 
 # ---------- lettura comune ----------
+PROMPT_WORKER = ("Sei il passaggio automatico che aggiorna gli appunti",
+                 "You are the automatic step that updates the notes")
+
+
 def turni(percorso: Path, assistente: str):
     return turni_codex(percorso) if assistente == "codex" else turni_agy(percorso)
 
@@ -190,7 +233,8 @@ def leggi(percorso: Path, assistente: str, sid: str, completo: bool = False) -> 
                 dim_tutto += len(testo)
     except (EOFError, ImportError):
         pass  # file troncato, o Python senza zstd: si tiene quello che si e' letto
-    if not messaggi:
+    # fuori le sessioni del worker degli appunti (girano nella cartella del second brain)
+    if not messaggi or messaggi[0].startswith(PROMPT_WORKER):
         return None
     st = percorso.stat()
     if ultima is None:
@@ -240,8 +284,10 @@ def passa_da_cmd(argv: list[str]) -> bool:
     return len(argv) > 1 and argv[1] == "/c"
 
 
-def argomenti(nome: str, sessione: str | None = None, prompt: str | None = None) -> list[str]:
-    # nuova chat, ripresa di una chat e primo messaggio, per ciascun assistente
+def argomenti(nome: str, sessione: str | None = None, prompt: str | None = None,
+              modello: str | None = None) -> list[str]:
+    # nuova chat, ripresa di una chat, modello e primo messaggio, per ciascun assistente
+    valido = modello if not sessione and modello in MODELLI.get(nome, ()) and modello != "predefinito" else None
     if nome == "codex":
-        return (["resume", sessione] if sessione else []) + ([prompt] if prompt else [])
-    return (["--conversation", sessione] if sessione else []) + (["-i", prompt] if prompt else [])
+        return (["-m", valido] if valido else []) + (["resume", sessione] if sessione else []) + ([prompt] if prompt else [])
+    return (["--model", valido] if valido else []) + (["--conversation", sessione] if sessione else []) + (["-i", prompt] if prompt else [])
