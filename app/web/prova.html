@@ -58,6 +58,7 @@
       ["a6", "chitarra · accordi barrè", "esercizi per passare da Fa a Si bemolle senza fermarmi", 150, "salvata", 160000],
       ["a7", "orto · pomodori e basilico", "quando trapianto il basilico sul balcone?", 300, "breve", 9000],
     ]).map(([id, etichetta, primo, h, stato, dimensione]) => ({ id, etichetta, primo, ultima: ore(h), stato, dimensione, messaggi: 12 }));
+    chat[1].assistente = "codex"; chat[2].assistente = "agy";  // due chat di altri assistenti, per vedere l'etichetta
     // come ponte._ordinate: fissate in cima (l'ultima fissata per prima), poi dalla piu' recente
     const ordina = () => chat.sort((a, b) => (b.fissata ? b.fissata_il : 0) - (a.fissata ? a.fissata_il : 0) || b.ultima.localeCompare(a.ultima));
     const P = EN ? { tesi: "Thesis", podcast: "Podcast Undertone", giappone: "Japan trip", etsy: "Etsy shop", maratona: "Rome Marathon", chitarra: "Guitar lessons", orto: "Balcony garden" }

@@ -29,10 +29,16 @@ import altri_pc  # noqa: E402
 import avvisi  # noqa: E402
 import configurazione  # noqa: E402
 import struttura  # noqa: E402
+import assistenti as mod_assistenti  # noqa: E402
 import impostazioni as imp_mod  # noqa: E402
 import notifiche_win  # noqa: E402
 from percorsi import cartella_sessioni  # noqa: E402
 from terminale import Terminali  # noqa: E402
+
+
+def _altri_assistenti() -> dict:
+    # dove Codex e Antigravity tengono le chat su questo PC (le cartelle che non esistono si saltano da sole)
+    return {"cartella_codex": mod_assistenti.cartella_codex(), "cartella_agy": mod_assistenti.cartella_agy()}
 
 PORTA_ISTANZA = 47823
 TITOLO = "Second Brain Studio"
@@ -192,7 +198,7 @@ class App:
         self.icona = None
         self.uscendo = False
         self.terminali = Terminali(alla_chiusura=lambda s: self.ponte.scheda_chiusa(s))
-        self.ponte = Ponte(radice=RADICE or CACHE / "nessun-second-brain", terminali=self.terminali)
+        self.ponte = Ponte(radice=RADICE or CACHE / "nessun-second-brain", terminali=self.terminali, **_altri_assistenti())
         self.ponte.emetti = self.emetti
         self.github = GitHub(RADICE or CACHE, emetti=self.emetti, log=self.ponte._log, nota=self.ponte._nota)
         self.ponte.token_git = self.github._token
@@ -266,9 +272,16 @@ class App:
         attesa = e.get("evento") == "attesa"
         progetto = avvisi.nome_progetto(e.get("cwd"), self.ponte.radice)
         titolo = scheda.titolo if scheda else ""
-        anteprima = (e.get("messaggio") or "") if attesa else avvisi.ultima_risposta(e.get("trascrizione"))
+        assistente = e.get("assistente") if e.get("assistente") in mod_assistenti.NOMI else "claude"
+        if attesa:
+            anteprima = e.get("messaggio") or ""
+        elif assistente == "claude":
+            anteprima = avvisi.ultima_risposta(e.get("trascrizione"))
+        else:
+            # Codex manda l'ultima risposta nell'evento; per Antigravity si legge dal trascritto
+            anteprima = avvisi.accorcia(e.get("anteprima") or "") or mod_assistenti.ultima_risposta(e.get("trascrizione") or "", assistente)
         dati = {"sessione": sessione, "scheda": scheda.id if scheda else None, "tipo": "attesa" if attesa else "fine",
-                "progetto": progetto, "titolo": titolo, "anteprima": anteprima}
+                "progetto": progetto, "titolo": titolo, "anteprima": anteprima, "assistente": assistente}
         self.emetti("claude-avviso", dati)
         if not imp["notifica_permesso" if attesa else "notifica_risposta"]:
             return
@@ -279,7 +292,8 @@ class App:
         if imp_mod.in_silenzio(imp) or not self.icona:
             return
         testa = f"{progetto}" + (f" · {titolo}" if titolo and titolo.lower() != progetto.lower() else "")
-        corpo = ("Claude aspetta un tuo permesso" if attesa else "Claude ha finito")
+        nome = mod_assistenti.NOMI[assistente]
+        corpo = (f"{nome} aspetta un tuo permesso" if attesa else f"{nome} ha finito")
         if imp["anteprima"] and anteprima:
             corpo += f": {anteprima}"
         self._notifica(corpo[:250], testa[:60], sessione)
@@ -423,7 +437,8 @@ class App:
 
     def ricarica_radice(self, radice: Path) -> None:
         # il ponte riparte sulla cartella nuova; GitHub tiene l'accesso gia' fatto
-        self.ponte = Ponte(radice=radice, cartella_sessioni=cartella_sessioni(radice), terminali=self.terminali)
+        self.ponte = Ponte(radice=radice, cartella_sessioni=cartella_sessioni(radice), terminali=self.terminali,
+                           **_altri_assistenti())
         self.ponte.emetti = self.emetti
         self.github.radice = radice
         self.github._log = self.ponte._log

@@ -369,8 +369,9 @@ def test_chat_nuova_con_modello_e_assistente(tmp_path, monkeypatch):
     assert v["assistente"] == "codex" and v["titolo"] == "Codex" and p.terminali.avviate[-1] == ["C:/bin/codex.exe"]
     # assistente non installato: errore chiaro, niente scheda
     assert "non è installato" in p.apri_chat("nuova", assistente="agy")["errore"]
-    # i comandi dell'app (con un prompt) restano di Claude anche se e' scelto Codex
-    assert p.apri_chat("nuova", prompt="briefing", assistente="codex")["assistente"] == "claude"
+    # i comandi dell'app (con un prompt) vanno all'assistente scelto, come primo messaggio
+    assert p.apri_chat("nuova", prompt="briefing", assistente="codex")["assistente"] == "codex"
+    assert p.terminali.avviate[-1] == ["C:/bin/codex.exe", "briefing"]
     assert [a["id"] for a in p.assistenti()["assistenti"] if a["installato"]] == ["claude", "codex"]
 
 
@@ -381,3 +382,112 @@ def test_scheda_di_codex_non_prende_una_sessione_di_claude(tmp_path, monkeypatch
     p.apri_chat("nuova", assistente="codex")
     _sessione(tmp_path / "sessioni", "nata-dopo", "ciao", datetime.now().astimezone())
     assert p.schede()["schede"][0]["sessione"] is None
+
+
+# ---------- chat di Codex e Antigravity ----------
+ID_CODEX = "019f95b2-4a71-7a02-b726-5b8ef5f70a51"
+ID_AGY = "ef8ac9af-61a7-4ca7-83eb-1caa7e6d03eb"
+
+
+def _riga_codex(tipo, carico):
+    return json.dumps({"timestamp": datetime.now().astimezone().isoformat(), "type": tipo, "payload": carico})
+
+
+def _chat_codex(base, sid, cwd, testo="sistema il sito", gonfia=0):
+    cartella = base / "sessions" / "2026" / "11" / "09"
+    cartella.mkdir(parents=True, exist_ok=True)
+    righe = [_riga_codex("session_meta", {"id": sid, "cwd": str(cwd), "source": "cli", "thread_source": "user"}),
+             _riga_codex("response_item", {"type": "message", "role": "user", "content": [{"type": "input_text", "text": testo}]}),
+             _riga_codex("response_item", {"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "Fatto, sito sistemato."}]})]
+    p = cartella / f"rollout-2026-11-09T20-00-00-{sid}.jsonl"
+    p.write_text("\n".join(righe) + "\n" + (" " * gonfia), encoding="utf-8")
+    return p
+
+
+def _chat_agy(base, sid, cwd, testo="collegati alla tv"):
+    logs = base / "brain" / sid / ".system_generated" / "logs"
+    logs.mkdir(parents=True, exist_ok=True)
+    passi = [{"type": "USER_INPUT", "content": f"<USER_REQUEST>\n{testo}\n</USER_REQUEST>"},
+             {"type": "PLANNER_RESPONSE", "content": "Sono collegato."}]
+    (logs / "transcript.jsonl").write_text("\n".join(json.dumps(x) for x in passi) + "\n", encoding="utf-8")
+    with open(base / "history.jsonl", "a", encoding="utf-8") as f:
+        f.write(json.dumps({"display": testo, "workspace": str(cwd), "conversationId": sid}) + "\n")
+
+
+def _ponte_con_altri(tmp_path):
+    r = _radice(tmp_path)
+    p = ponte.Ponte(radice=r, cartella_sessioni=tmp_path / "sessioni", cache=tmp_path / "cache",
+                    segni=tmp_path / "segni", chiedi=lambda *a, **k: None,
+                    cartella_codex=tmp_path / "codex", cartella_agy=tmp_path / "gemini" / "antigravity-cli")
+    p.terminali = _TerminaliFinti()
+    return p, r
+
+
+def test_chat_di_codex_e_antigravity_in_elenco_solo_del_second_brain(tmp_path):
+    p, r = _ponte_con_altri(tmp_path)
+    _sessione(tmp_path / "sessioni", "di-claude", "domanda a claude", datetime.now().astimezone() - timedelta(hours=2))
+    _chat_codex(p.cartella_codex, ID_CODEX, r)
+    _chat_codex(p.cartella_codex, "11111111-2222-3333-4444-555555555555", tmp_path / "altro-progetto")
+    _chat_agy(p.cartella_agy, ID_AGY, r)
+    _chat_agy(p.cartella_agy, "99999999-2222-3333-4444-555555555555", tmp_path / "altro-progetto")
+    per_id = {c["id"]: c for c in p.chat()["chat"]}
+    assert set(per_id) == {"di-claude", ID_CODEX, ID_AGY}
+    assert per_id[ID_CODEX]["assistente"] == "codex" and per_id[ID_AGY]["assistente"] == "agy"
+    assert per_id["di-claude"]["assistente"] == "claude"
+    # ricerca nel testo ed esportazione valgono anche per loro
+    assert [x["id"] for x in p.cerca_chat("sito sistemato")["trovate"]] == [ID_CODEX]
+    esportata = (r / "Inbox" / p.esporta_chat(ID_AGY)["nome"]).read_text(encoding="utf-8")
+    assert "Chat di Antigravity" in esportata and "## Antigravity" in esportata and "collegati alla tv" in esportata
+
+
+def test_ripresa_e_salvataggio_tornano_dal_loro_assistente(tmp_path, monkeypatch):
+    p, r = _ponte_con_altri(tmp_path)
+    monkeypatch.setattr(ponte.Ponte, "_comando_assistente", staticmethod(lambda n: [f"C:/bin/{n}.exe"]))
+    _chat_codex(p.cartella_codex, ID_CODEX, r)
+    _chat_agy(p.cartella_agy, ID_AGY, r)
+    v = p.apri_chat("riprendi", ID_CODEX, assistente="claude")
+    assert v["assistente"] == "codex" and v["sessione"] == ID_CODEX
+    assert p.terminali.avviate[-1] == ["C:/bin/codex.exe", "resume", ID_CODEX]
+    p.terminali.schede.clear()
+    p.salva_chat(ID_AGY)
+    assert p.terminali.avviate[-1][:4] == ["C:/bin/agy.exe", "--conversation", ID_AGY, "-i"]
+    # azioni che esistono solo per Claude: errore chiaro
+    assert "non si possono duplicare" in p.apri_chat("duplica", ID_CODEX)["errore"]
+    assert "si eliminano da Codex" in p.elimina_chat(ID_CODEX)["errore"]
+    assert "Solo le chat di Claude" in p.apri_in_cartella(ID_AGY, str(tmp_path))["errore"]
+
+
+def test_linguetta_di_codex_prende_la_sua_chat_e_il_titolo(tmp_path, monkeypatch):
+    p, r = _ponte_con_altri(tmp_path)
+    monkeypatch.setattr(ponte.Ponte, "_comando_assistente", staticmethod(lambda n: [f"C:/bin/{n}.exe"]))
+    p.apri_chat("nuova", assistente="codex")
+    _sessione(tmp_path / "sessioni", "di-claude", "ciao", datetime.now().astimezone())
+    _chat_codex(p.cartella_codex, ID_CODEX, r)
+    scheda = p.schede()["schede"][0]
+    assert scheda["sessione"] == ID_CODEX and scheda["titolo"] != "Codex"
+
+
+def test_appunti_a_fine_chat_per_codex(tmp_path, monkeypatch):
+    p, r = _ponte_con_altri(tmp_path)
+    (p.cartella_hook).mkdir(parents=True)
+    for nome in ("fine-sessione-worker.ps1", "sync.ps1"):
+        (p.cartella_hook / nome).write_text("", encoding="utf-8")
+    avviati = []
+    monkeypatch.setattr(ponte.Ponte, "_avvia", staticmethod(avviati.append))
+    monkeypatch.setattr(ponte.Ponte, "_impostazioni", staticmethod(lambda: {"appunti_auto": True, "soglia_kb": 30}))
+    _chat_codex(p.cartella_codex, ID_CODEX, r, gonfia=40 * 1024)
+    _chat_agy(p.cartella_agy, ID_AGY, r)  # corta: niente appunti, solo sincronizzazione
+    lunga, corta = p._sessione(ID_CODEX), p._sessione(ID_AGY)
+    assert p._appunti_di(lunga) is True
+    comando = avviati[-1]
+    assert "fine-sessione-worker.ps1" in comando[5] and comando[comando.index("-Id") + 1] == ID_CODEX
+    assert comando[comando.index("-Strumento") + 1] == "Codex"
+    riassunto = Path(comando[comando.index("-Testo") + 1])
+    assert riassunto.read_text(encoding="utf-8").startswith("UTENTE: sistema il sito")
+    riassunto.unlink()
+    assert (p.segni / f"{ID_CODEX}.in-corso").is_file()
+    assert p._voce_chat(lunga)["stato"] in ("aperta", "in_corso")
+    assert p._appunti_di(corta) is False and "sync.ps1" in avviati[-1][5]
+    # appunti automatici spenti: solo sincronizzazione anche per la chat lunga
+    monkeypatch.setattr(ponte.Ponte, "_impostazioni", staticmethod(lambda: {"appunti_auto": False}))
+    assert p._appunti_di(lunga) is False and "sync.ps1" in avviati[-1][5]

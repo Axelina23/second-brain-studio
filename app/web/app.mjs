@@ -171,14 +171,14 @@ function App({ primaChat, impIniziali, primoAvvio }) {
       c.stato === "non_salvata" && { testo: "Salva gli appunti", icona: Icona.salva, fai: () => salvaChat(c.id) },
       { testo: "Rinomina…", icona: Icona.matita, fai: () => rinominaChat(c) },
       { testo: c.fissata ? "Togli dall'alto" : "Fissa in alto", icona: Icona.puntina, fai: async () => { if (ok(await api("fissa_chat", c.id, !c.fissata))) caricaHome(); } },
-      { testo: "Apri in un'altra cartella…", icona: Icona.cartella, fai: () => apriInCartella(c) },
+      diClaude(c) && { testo: "Apri in un'altra cartella…", icona: Icona.cartella, fai: () => apriInCartella(c) },
       "-",
       { testo: "Copia l'id della chat", icona: Icona.copia, fai: () => copia(c.id, `Id copiato: ${c.id}`) },
       { testo: "Mostra nel Registro", icona: Icona.appunti, fai: () => mostraRegistro(c) },
       { testo: "Esporta in Markdown", icona: Icona.esporta, fai: () => esportaChat(c) },
-      "-",
-      { testo: "Elimina chat", icona: Icona.cestino, pericolo: true, fai: () => eliminaChat([c]) },
-    ]);
+      diClaude(c) && "-",
+      diClaude(c) && { testo: "Elimina chat", icona: Icona.cestino, pericolo: true, fai: () => eliminaChat([c]) },
+    ].filter(Boolean));
   };
   // linguette delle chat aperte (in alto sul terminale e nella barra laterale)
   const menuScheda = (e, s) => apriMenu(e, [
@@ -265,6 +265,7 @@ function App({ primaChat, impIniziali, primoAvvio }) {
   const apriChat = useCallback(async (tipo = "nuova", sessione = null, prompt = null, cartella = null, titolo = null) => {
     const r = await api("apri_chat", tipo, sessione, prompt, cartella, titolo);
     if (r.errore) { avvisa(r.errore, "errore"); return; }
+    if (r.nota) avvisa(r.nota);
     setSchede((s) => s.some((x) => x.id === r.id) ? s : [...s, r]);
     setAttiva(r.id);
     setModoTerm((m) => m === "nascosto" ? "normale" : m);
@@ -463,7 +464,7 @@ function Laterale({ pagina, setPagina, home, schede, attiva, setAttiva, apriChat
       ${schede.length === 0 ? html`<div class="vuoto-lat">Nessuna chat aperta</div>` :
         schede.map((s) => html`<button class=${`lat-chat ${s.id === attiva ? "attiva" : ""}`} onClick=${() => setAttiva(s.id)} onContextMenu=${(e) => menuScheda(e, s)}>
           <span class=${`pallino ${s.avviso === "attesa" ? "attesa" : s.avviso ? "risposta" : s.chiusa ? (s.stato === "non_salvata" ? "rosso" : "grigio") : "giallo pulsa"}`}
-            title=${s.avviso === "attesa" ? "Claude aspetta un tuo permesso" : s.avviso ? "Claude ha risposto" : ""}></span><span title=${s.titolo}>${s.titolo}</span></button>`)}
+            title=${s.avviso === "attesa" ? "Aspetta un tuo permesso" : s.avviso ? "Ha risposto" : ""}></span><span title=${s.titolo}>${s.titolo}</span></button>`)}
     </div>
     <div class="piede-lat">
       <div><span class=${`pallino ${sync}`}></span>${SYNC[sync]}</div>
@@ -541,7 +542,7 @@ function PaginaOggi({ home, apriChat, salvaChat, vaiAppunto, avvisa, caricaHome,
           : home.chat.map((c) => html`<div class="chat-riga" role="button" tabindex="0" onClick=${() => apriChat("riprendi", c.id)}
               onKeyDown=${(e) => e.key === "Enter" && apriChat("riprendi", c.id)} onContextMenu=${(e) => menuChat(e, c)}
               title="Riprendi questa chat (tasto destro: altre azioni)">
-              <span style="min-width:0"><div class="titolo" title=${c.etichetta}>${c.fissata ? html`<span class="segno-fissata" title="Fissata in alto">${Icona.puntina()}</span>` : ""}${c.etichetta}</div>${!c.primo.startsWith(c.etichetta) && html`<div class="primo">${c.primo}</div>`}</span>
+              <span style="min-width:0"><div class="titolo" title=${c.etichetta}>${c.fissata ? html`<span class="segno-fissata" title="Fissata in alto">${Icona.puntina()}</span>` : ""}<${Assistente} c=${c} />${c.etichetta}</div>${!c.primo.startsWith(c.etichetta) && html`<div class="primo">${c.primo}</div>`}</span>
               <span class="quando num">${quando(c.ultima)}</span><${Timbro} stato=${c.stato} /></div>`)}</div>
         <form class="nota-volo" onSubmit=${salvaNota}>
           <input class="campo" value=${nota} onInput=${(e) => setNota(e.target.value)} placeholder="Nota al volo… (Invio per salvarla in Inbox)" aria-label="Nota al volo" />
@@ -671,7 +672,7 @@ function PaginaChat({ apriChat, salvaChat, remoti, menuChat, eliminaChat }) {
               onClick=${(e) => clicRiga(e, c)} onMouseDown=${(e) => e.shiftKey && e.preventDefault()}
               onKeyDown=${(e) => { if (e.key === "Enter") apriChat("riprendi", c.id); else if (e.key === " ") { e.preventDefault(); clicRiga({ ctrlKey: true }, c); } }}
               onContextMenu=${(e) => menuChat(e, c, scelte, pulisci)}>
-            <span style="min-width:0"><div class="titolo" title=${c.etichetta}>${c.fissata ? html`<span class="segno-fissata" title="Fissata in alto">${Icona.puntina()}</span>` : ""}${c.etichetta}</div>
+            <span style="min-width:0"><div class="titolo" title=${c.etichetta}>${c.fissata ? html`<span class="segno-fissata" title="Fissata in alto">${Icona.puntina()}</span>` : ""}<${Assistente} c=${c} />${c.etichetta}</div>
               <div class="primo">${trovate && trovate.has(c.id) ? html`<span class="estratto">${trovate.get(c.id)}</span>` : c.primo}</div></span>
             <span class="quando num">${quando(c.ultima)}</span><${Timbro} stato=${c.stato} />
             <span class="azione-riga" style="justify-self:end">${c.stato === "non_salvata"
@@ -861,6 +862,12 @@ function Schermo({ scheda, attiva, salvaChat, apriChat, chiudi }) {
   </div>`;
 }
 
+// le chat di Codex e Antigravity portano il nome dell'assistente accanto al titolo; alcune
+// azioni (eliminare, aprire in un'altra cartella, duplicare) esistono solo per quelle di Claude
+const NOMI_ASSISTENTI = { codex: "Codex", agy: "Antigravity" };
+const diClaude = (c) => !c.assistente || c.assistente === "claude";
+const Assistente = ({ c }) => NOMI_ASSISTENTI[c.assistente] ? html`<span class="etichetta-assistente">${NOMI_ASSISTENTI[c.assistente]}</span>` : null;
+
 // con quale assistente e modello parte una chat nuova: stesse impostazioni di Impostazioni > Terminale
 const MODELLI = [["predefinito", "Predefinito"], ["fable", "Fable"], ["opus", "Opus"], ["sonnet", "Sonnet"], ["haiku", "Haiku"]];
 function SceltaChat({ imp, mettiImp, assistenti }) {
@@ -874,7 +881,7 @@ function SceltaChat({ imp, mettiImp, assistenti }) {
     ${scelto === "claude"
       ? html`<span class="imp-seg" role="radiogroup" aria-label="Modello">${MODELLI.map(([v, n]) => html`<button role="radio"
           aria-checked=${imp.modello_chat === v} class=${imp.modello_chat === v ? "scelto" : ""} onClick=${() => mettiImp("modello_chat", v)}>${n}</button>`)}</span>`
-      : html`<p class="nota">Usa il suo modello. Le sue chat non compaiono in Chat e non aggiornano gli appunti.</p>`}
+      : html`<p class="nota">Usa il suo modello e il suo abbonamento. Chat, appunti e notifiche funzionano come con Claude.</p>`}
   </div>`;
 }
 

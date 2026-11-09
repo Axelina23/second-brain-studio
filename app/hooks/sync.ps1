@@ -2,8 +2,10 @@
 #   -Modo pull : a inizio sessione, scarica le modifiche degli altri PC
 #   -Modo push : a fine sessione, salva e carica tutto
 # Non blocca mai Claude Code: in caso di errore scrive nel log ed esce.
-param([ValidateSet("pull", "push")][string]$Modo = "pull")
+# -Json: stampa un oggetto JSON vuoto (lo vogliono gli hook di Codex e Antigravity).
+param([ValidateSet("pull", "push")][string]$Modo = "pull", [switch]$Json)
 . (Join-Path $PSScriptRoot "comune.ps1")
+if ($Json) { Write-Output "{}" }
 if (-not $SB_RADICE -or -not (Test-Path (Join-Path $SB_RADICE ".git"))) { exit 0 }
 Set-Location $SB_RADICE
 $log = Join-Path $SB_CACHE "sync-ultimo.log"

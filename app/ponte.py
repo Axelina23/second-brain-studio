@@ -27,9 +27,12 @@ import sessioni as mod_sessioni  # noqa: E402
 import struttura as mod_struttura  # noqa: E402
 import sync as mod_sync  # noqa: E402
 from haiku import chiedi_haiku  # noqa: E402
-# assistenti da riga di comando che l'app sa ospitare in una linguetta, oltre a Claude Code
-ASSISTENTI = {"claude": "Claude", "codex": "Codex", "agy": "Antigravity"}
+import assistenti as mod_assistenti  # noqa: E402
+
+# assistenti da riga di comando che l'app ospita in una linguetta, oltre a Claude Code
+ASSISTENTI = mod_assistenti.NOMI
 MODELLI_CLAUDE = ("fable", "opus", "sonnet", "haiku")
+TITOLI_PROVVISORI = ("Nuova chat", *ASSISTENTI.values())
 
 from percorsi import CACHE, CARTELLA_SESSIONI, CLAUDE, RADICE, SEGNI, SOGLIA_SIGNIFICATIVA  # noqa: E402
 from percorsi import cartella_sessioni as cartella_sessioni_di  # noqa: E402
@@ -94,9 +97,17 @@ def _rel(p: Path, radice: Path) -> str:
 class Ponte:
     def __init__(self, radice: Path = RADICE, cartella_sessioni: Path = CARTELLA_SESSIONI,
                  cache: Path = CACHE, segni: Path = SEGNI, terminali=None, chiedi=chiedi_haiku,
-                 adesso=lambda: datetime.now().astimezone()):
+                 adesso=lambda: datetime.now().astimezone(), cartella_codex: Path | None = None,
+                 cartella_agy: Path | None = None, cartella_hook: Path | None = None):
         self.radice = Path(radice)
         self.cartella_sessioni = Path(cartella_sessioni)
+        # dove Codex e Antigravity tengono le loro chat (None: non si guardano) e dove stanno
+        # gli script degli hook dell'app (per gli appunti a fine chat)
+        self.cartella_codex = Path(cartella_codex) if cartella_codex else None
+        self.cartella_agy = Path(cartella_agy) if cartella_agy else None
+        self.cartella_hook = Path(cartella_hook) if cartella_hook else Path(cache) / "hooks"
+        self._altre_cache: dict[str, tuple] = {}
+        self._cartelle_agy: tuple = (None, {})
         self.cache = Path(cache)
         self.segni = Path(segni)
         self.terminali = terminali
@@ -191,7 +202,58 @@ class Ponte:
                 continue
             nuove[p.stem] = (chiave, s)
         self._sessioni_cache = nuove
-        return sorted((s for _, s in nuove.values() if s), key=lambda s: s.ultima, reverse=True)
+        tutte = [s for _, s in nuove.values() if s] + self._altre_sessioni()
+        return sorted(tutte, key=lambda s: s.ultima, reverse=True)
+
+    def _altre_sessioni(self) -> list:
+        # chat di Codex e Antigravity nate nella cartella del second brain; come sopra, si
+        # rilegge solo cio' che e' cambiato (anche il "non e' di questa cartella" resta in memoria)
+        candidati = []
+        if self.cartella_codex:
+            candidati += [("codex", p) for p in mod_assistenti.file_codex(self.cartella_codex)]
+        if self.cartella_agy:
+            candidati += [("agy", p) for p in mod_assistenti.file_agy(self.cartella_agy)]
+        nuove = {}
+        for assistente, p in candidati:
+            try:
+                st = p.stat()
+                chiave = (st.st_size, st.st_mtime)
+                vecchia = self._altre_cache.get(str(p))
+                if vecchia and vecchia[0] == chiave:
+                    nuove[str(p)] = vecchia
+                    continue
+                nuove[str(p)] = (chiave, self._leggi_altra(assistente, p))
+            except OSError:
+                continue
+        self._altre_cache = nuove
+        return [s for _, s in nuove.values() if s]
+
+    def _leggi_altra(self, assistente: str, p: Path):
+        if assistente == "codex":
+            meta = mod_assistenti.meta_codex(p)
+            m = mod_assistenti.RE_ID.search(p.name)
+            sid = meta.get("id") or (m.group(1) if m else None)
+            # fuori le esecuzioni non interattive (codex exec) e i sotto-agenti
+            if not sid or meta.get("source") == "exec" or meta.get("thread_source") not in (None, "user"):
+                return None
+            cwd = meta.get("cwd")
+        else:
+            sid = mod_assistenti.id_agy(p)
+            cwd = self._cartella_agy_di(sid)
+        if not mod_assistenti.stessa_cartella(cwd, self.radice):
+            return None
+        return mod_assistenti.leggi(p, assistente, sid, completo=True)
+
+    def _cartella_agy_di(self, sid: str) -> str | None:
+        # l'elenco delle cartelle di lavoro si rilegge solo quando Antigravity lo aggiorna
+        try:
+            segno = tuple((self.cartella_agy / f).stat().st_mtime if (self.cartella_agy / f).exists() else 0
+                          for f in ("conversation_summaries.db", "history.jsonl"))
+        except OSError:
+            segno = None
+        if segno is None or self._cartelle_agy[0] != segno:
+            self._cartelle_agy = (segno, mod_assistenti.cartelle_agy(self.cartella_agy))
+        return self._cartelle_agy[1].get(sid)
 
     def _meta(self) -> dict:
         # titoli scelti a mano e chat fissate; si rilegge solo se il file e' cambiato
@@ -229,7 +291,7 @@ class Ponte:
         return {"id": s.id, "etichetta": self._etichetta(s), "ultima": s.ultima.isoformat(),
                 "dimensione": s.dimensione, "messaggi": s.n_messaggi, "stato": self._stato(s),
                 "primo": s.primo_messaggio[:200], "fissata": s.id in self._meta()["fissate"],
-                "rinominata": s.id in self._meta()["titoli"]}
+                "rinominata": s.id in self._meta()["titoli"], "assistente": s.assistente}
 
     def voci_per_altri_pc(self, limite: int = 100) -> list:
         # chat di questo PC per il riepilogo condiviso (altri_pc.py): senza il primo messaggio,
@@ -569,8 +631,8 @@ class Ponte:
                   assistente: str | None = None) -> dict:
         # cartella: dove lavora Claude (predefinita: il second brain); deve esistere.
         # modello: "fable" / "opus" / "sonnet" / "haiku" per le chat nuove (Impostazioni > Terminale)
-        # assistente: "codex" / "agy" solo per una chat nuova e vuota; riprendere una chat e i
-        # comandi dell'app (briefing, smista l'inbox...) sono cose di Claude e usano sempre lui
+        # assistente: "codex" / "agy" per le chat nuove; una chat ripresa torna dall'assistente
+        # con cui e' nata
         if self.terminali is None:
             return {"errore": "Terminale non disponibile"}
         if tipo == "riprendi" and sessione:
@@ -582,17 +644,13 @@ class Ponte:
             dove = Path(cartella)
             if not dove.is_absolute() or not dove.is_dir():
                 return {"errore": f"La cartella non esiste: {cartella}"}
-        if tipo == "nuova" and not prompt and assistente in ("codex", "agy"):
-            argv = self._comando_assistente(assistente)
-            if argv is None:
-                return {"errore": f"{ASSISTENTI[assistente]} non è installato su questo PC"}
-            try:
-                t = self.terminali.apri(argv, str(dove), (titolo or "").strip()[:60] or ASSISTENTI[assistente],
-                                        assistente=assistente)
-            except Exception as e:
-                self._log()
-                return {"errore": f"Non riesco ad avviare {ASSISTENTI[assistente]}: {e}"}
-            return self._voce_scheda(t)
+        esistente = self._sessione(sessione) if tipo in ("riprendi", "duplica") and sessione else None
+        if esistente is not None:
+            assistente = esistente.assistente
+        elif tipo != "nuova":
+            assistente = "claude"
+        if assistente in ("codex", "agy"):
+            return self._apri_altro(assistente, tipo, esistente, prompt, dove, titolo)
         argv = [str(CLAUDE)]
         if tipo != "riprendi" and modello in MODELLI_CLAUDE:
             argv += ["--model", modello]
@@ -621,15 +679,47 @@ class Ponte:
             return {"errore": f"Non riesco ad avviare Claude: {e}"}
         return self._voce_scheda(t)
 
+    def _apri_altro(self, assistente: str, tipo: str, s, prompt: str | None, dove: Path, titolo: str | None) -> dict:
+        # linguetta con Codex o Antigravity: chat nuova, ripresa (anche con un messaggio, per
+        # "Salva gli appunti") e primo messaggio. La copia di una chat esiste solo per Claude.
+        nome = ASSISTENTI[assistente]
+        if tipo == "duplica":
+            return {"errore": f"Le chat di {nome} non si possono duplicare dall'app"}
+        argv = self._comando_assistente(assistente)
+        if argv is None:
+            return {"errore": f"{nome} non è installato su questo PC"}
+        if prompt and mod_assistenti.passa_da_cmd(argv):
+            prompt = re.sub(r'[&|<>^%"]', " ", prompt)  # cmd.exe li interpreterebbe
+        argv = argv + mod_assistenti.argomenti(assistente, s.id if s else None, prompt)
+        nota = self._prepara_assistente(assistente)
+        etichetta = (titolo or "").strip()[:60] or (self._etichetta(s) if s else (prompt.capitalize() if prompt else nome))
+        try:
+            t = self.terminali.apri(argv, str(dove), etichetta, sessione=s.id if s else None, assistente=assistente)
+        except Exception as e:
+            self._log()
+            return {"errore": f"Non riesco ad avviare {nome}: {e}"}
+        return {**self._voce_scheda(t), **({"nota": nota} if nota else {})}
+
+    def _prepara_assistente(self, assistente: str) -> str | None:
+        # al primo uso: hook di Codex/Antigravity (notifiche, sync a inizio chat) e un AGENTS.md
+        # nel second brain che li manda a leggere regole e indice. Restituisce un avviso da
+        # mostrare, se serve un gesto dell'utente. Un errore qui non deve fermare la chat.
+        try:
+            import modello
+            base = self.cartella_codex if assistente == "codex" else self.cartella_agy
+            if base is None or not self.cartella_hook.is_dir():
+                return None
+            modello.collega_agents_md(self.radice)
+            r = modello.collega_hook_assistente(assistente, self.cartella_hook, base)
+            if r.get("cambiato") and assistente == "codex":
+                return "Codex: scrivi /hooks nella chat e approva gli hook di Second Brain Studio, così arrivano le notifiche"
+        except Exception:
+            self._log()
+        return None
+
     @staticmethod
     def _comando_assistente(nome: str) -> list[str] | None:
-        # eseguibile nel PATH; i .cmd di npm (codex) passano da cmd.exe, che il terminale non avvia da solo
-        trovato = shutil.which(nome)
-        if not trovato:
-            return None
-        if trovato.lower().endswith((".cmd", ".bat")):
-            return [os.environ.get("COMSPEC", "cmd.exe"), "/c", trovato]
-        return [trovato]
+        return mod_assistenti.comando(nome)
 
     def assistenti(self) -> dict:
         # quali assistenti si possono scegliere per una chat nuova su questo PC
@@ -655,6 +745,10 @@ class Ponte:
             return {"errore": "La chat è aperta in una linguetta: chiudila prima di eliminarla"}
         trascritto = self.cartella_sessioni / f"{sessione}.jsonl"
         if not trascritto.exists():
+            altra = self._sessione(sessione)
+            if altra is not None and altra.assistente != "claude":
+                nome = ASSISTENTI[altra.assistente]
+                return {"errore": f"Le chat di {nome} si eliminano da {nome}, non dall'app"}
             return {"errore": "Chat non trovata"}
         try:
             cestino = self.cache / "cestino-chat"
@@ -807,6 +901,8 @@ class Ponte:
         s = self._sessione(sessione)
         if s is None:
             return {"errore": "Chat non trovata"}
+        if s.assistente != "claude":
+            return {"errore": "Solo le chat di Claude si possono aprire in un'altra cartella"}
         dove = Path(cartella or "")
         if not dove.is_absolute() or not dove.is_dir():
             return {"errore": f"La cartella non esiste: {cartella}"}
@@ -948,8 +1044,7 @@ class Ponte:
     def _risolvi_schede(self) -> None:
         # una chat nuova non sa ancora il suo id: lo deduce dal trascritto nato dopo l'apertura
         # della scheda; poi il titolo diventa le parole chiave (se la scheda non ha un comando)
-        senza = sorted((t for t in self.terminali.schede.values()
-                        if t.sessione is None and getattr(t, "assistente", "claude") == "claude"),
+        senza = sorted((t for t in self.terminali.schede.values() if t.sessione is None),
                        key=lambda t: t.aperta_il)
         if not senza:
             return
@@ -957,14 +1052,16 @@ class Ponte:
         nuove = sorted((s for s in self._sessioni() if s.id not in usate),
                        key=lambda s: s.percorso.stat().st_ctime)
         for t in senza:
-            s = next((s for s in nuove if s.percorso.stat().st_ctime >= t.aperta_il - 2), None)
+            # ogni linguetta prende solo una chat del suo assistente
+            s = next((s for s in nuove if s.assistente == getattr(t, "assistente", "claude")
+                      and s.percorso.stat().st_ctime >= t.aperta_il - 2), None)
             if s is None:
                 continue
             nuove.remove(s)
             t.sessione = s.id
             if getattr(t, "nome_scelto", False):
                 self._imposta_titolo(s.id, t.titolo)
-            elif t.titolo == "Nuova chat":
+            elif t.titolo in TITOLI_PROVVISORI:
                 t.titolo = self._etichetta(s)
 
     def chiudi_scheda(self, sid: str) -> dict:
@@ -976,23 +1073,65 @@ class Ponte:
         # chiamata dal thread del terminale quando claude esce: individua la sessione e,
         # dopo l'attesa dello hook, dice all'interfaccia se gli appunti risultano non salvati
         def lavoro():
-            if getattr(scheda, "assistente", "claude") != "claude":
-                # Codex e Antigravity non hanno sessioni di Claude ne' appunti da salvare
-                self.emetti("scheda", {"id": scheda.id, "chiusa": True, "sessione": None})
-                return
+            assistente = getattr(scheda, "assistente", "claude")
             sid = scheda.sessione
             if sid is None:
-                nuove = [s for s in self._sessioni() if s.ultima.timestamp() >= scheda.aperta_il - 2]
+                nuove = [s for s in self._sessioni()
+                         if s.assistente == assistente and s.ultima.timestamp() >= scheda.aperta_il - 2]
                 sid = max(nuove, key=lambda s: s.ultima).id if nuove else None
                 scheda.sessione = sid
             self.emetti("scheda", {"id": scheda.id, "chiusa": True, "sessione": sid})
             if not sid:
                 return
-            time.sleep(4)
+            if assistente == "claude":
+                time.sleep(4)  # il suo hook di fine sessione lascia il segno "in corso"
+            else:
+                # Codex e Antigravity: gli appunti a fine chat li avvia l'app (vedi _appunti_di)
+                self._appunti_di(next((x for x in self._sessioni() if x.id == sid), None))
             s = next((x for x in self._sessioni() if x.id == sid), None)
             stato = salvataggio.stato_salvataggio(s, self.segni) if s else "breve"
             self.emetti("scheda", {"id": scheda.id, "chiusa": True, "sessione": sid, "stato": stato})
         self._in_thread(f"chiusa-{scheda.id}", lavoro)
+
+    def _appunti_di(self, s) -> bool:
+        # stesso passaggio che per Claude fa l'hook fine-sessione.ps1: se gli appunti automatici
+        # sono accesi e la chat e' abbastanza lunga parte il worker che li aggiorna (e poi
+        # sincronizza), altrimenti si salvano e si caricano soltanto le modifiche ai file
+        if s is None or s.assistente == "claude":
+            return False
+        imp = self._impostazioni()
+        soglia = imp.get("soglia_kb") if isinstance(imp.get("soglia_kb"), (int, float)) else 30
+        ps = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]
+        try:
+            if imp.get("appunti_auto") is False or s.dimensione < soglia * 1024:
+                if (self.cartella_hook / "sync.ps1").is_file():
+                    self._avvia(ps + [str(self.cartella_hook / "sync.ps1"), "-Modo", "push"])
+                return False
+            worker = self.cartella_hook / "fine-sessione-worker.ps1"
+            if not worker.is_file():
+                return False
+            import tempfile
+            riassunto = Path(tempfile.gettempdir()) / f"appunti-sessione-{s.id}.txt"
+            riassunto.write_text(mod_assistenti.testo_per_appunti(s.percorso, s.assistente), encoding="utf-8")
+            self.segni.mkdir(parents=True, exist_ok=True)
+            (self.segni / f"{s.id}.in-corso").write_text(datetime.now().isoformat(), encoding="utf-8")
+            self._avvia(ps + [str(worker), "-Testo", str(riassunto), "-Id", s.id,
+                              "-Strumento", mod_assistenti.STRUMENTI[s.assistente], "-Progetto", str(self.radice),
+                              "-Data", f"{s.ultima:%Y-%m-%d}"])
+            return True
+        except Exception:
+            self._log()
+            return False
+
+    @staticmethod
+    def _impostazioni() -> dict:
+        import percorsi
+        imp = percorsi.leggi_config().get("impostazioni")
+        return imp if isinstance(imp, dict) else {}
+
+    @staticmethod
+    def _avvia(argv: list[str]) -> None:
+        subprocess.Popen(argv, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
     # ---------- varie ----------
     def apri_esterno(self, rel: str) -> dict:

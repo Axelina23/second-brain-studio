@@ -28,6 +28,11 @@ def leggi_eventi(cartella: Path, adesso: float | None = None) -> list[dict]:
     return eventi
 
 
+def accorcia(testo: str, massimo: int = 180) -> str:
+    testo = " ".join(str(testo or "").replace("*", "").replace("`", "").split())
+    return testo if len(testo) <= massimo else testo[:massimo - 1].rsplit(" ", 1)[0] + "…"
+
+
 def ultima_risposta(trascrizione: str | None, massimo: int = 180) -> str:
     # testo dell'ultima risposta di Claude, dalle ultime righe della trascrizione
     if not trascrizione:

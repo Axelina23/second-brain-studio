@@ -6,6 +6,7 @@ import re
 from datetime import timedelta
 from pathlib import Path
 
+import assistenti as mod_assistenti
 import sessioni as mod_sessioni
 
 MAX_TITOLO = 80
@@ -45,11 +46,9 @@ def _nome_file(testo: str) -> str:
     return re.sub(r"[\s_]+", "-", t)[:50].strip("-") or "chat"
 
 
-def esporta_markdown(sessione, etichetta: str, cartella: Path) -> Path:
-    # conversazione leggibile: messaggi dell'utente e testo delle risposte, niente tool
-    righe = [f"# {etichetta}", "", f"Chat di Claude Code del {sessione.ultima:%Y-%m-%d %H:%M} · id `{sessione.id}`", ""]
-    ultimo = None  # chi ha scritto il blocco precedente: le risposte di fila stanno sotto un titolo
-    with open(sessione.percorso, encoding="utf-8", errors="replace") as f:
+def _turni_claude(percorso: Path):
+    # (chi, testo, None) come assistenti.turni, dal trascritto di Claude Code
+    with open(percorso, encoding="utf-8", errors="replace") as f:
         for riga in f:
             try:
                 r = json.loads(riga)
@@ -59,11 +58,25 @@ def esporta_markdown(sessione, etichetta: str, cartella: Path) -> Path:
                 continue
             t = mod_sessioni._testo(r.get("message")).strip()
             if r.get("type") == "user" and t and not t.startswith(mod_sessioni.PREFISSI_COMANDO + ("<system-reminder",)):
-                righe += ["## Tu", "", t, ""]
-                ultimo = "tu"
+                yield "utente", t, None
             elif r.get("type") == "assistant" and t:
-                righe += ([] if ultimo == "claude" else ["## Claude", ""]) + [t, ""]
-                ultimo = "claude"
+                yield "assistente", t, None
+
+
+def esporta_markdown(sessione, etichetta: str, cartella: Path) -> Path:
+    # conversazione leggibile: messaggi dell'utente e testo delle risposte, niente tool
+    assistente = getattr(sessione, "assistente", "claude")
+    strumento = mod_assistenti.STRUMENTI.get(assistente, "Claude Code")
+    righe = [f"# {etichetta}", "", f"Chat di {strumento} del {sessione.ultima:%Y-%m-%d %H:%M} · id `{sessione.id}`", ""]
+    ultimo = None  # chi ha scritto il blocco precedente: le risposte di fila stanno sotto un titolo
+    nome = mod_assistenti.NOMI.get(assistente, "Claude")
+    turni = _turni_claude(sessione.percorso) if assistente == "claude" else mod_assistenti.turni(sessione.percorso, assistente)
+    for chi, t, _ in turni:
+        if chi == "utente":
+            righe += ["## Tu", "", t, ""]
+        else:
+            righe += ([] if ultimo == chi else [f"## {nome}", ""]) + [t, ""]
+        ultimo = chi
     cartella.mkdir(parents=True, exist_ok=True)
     base = f"{sessione.ultima:%Y-%m-%d} chat {_nome_file(etichetta)}"
     dest, n = cartella / f"{base}.md", 2

@@ -8,9 +8,19 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 
 - **Choose the assistant and the model for a new chat.** When no chat is open, the terminal panel lets you pick
   Claude, Codex or Antigravity (`agy`), and for Claude the model (Default, Fable, Opus, Sonnet, Haiku). The same
-  choice is in Settings → Terminal and is used by every "New chat" button. Codex and Antigravity must already be
-  installed and signed in; they run with their own model, their chats are not listed in Chats and do not update
-  your notes. Briefing, Review and the other app commands always run on Claude.
+  choice is in Settings → Terminal and is used by every "New chat" button, Briefing and Review included. Codex and
+  Antigravity must already be installed and signed in; they run with their own model and subscription.
+- **Codex and Antigravity chats work like Claude's.** Chats started in your second brain folder are listed in Chats
+  and Today with the assistant's name, and you can resume, rename, pin, search and export them. When you close
+  their tab the notes are updated automatically (same background step as for Claude) and the second brain is
+  synced. On first use the app adds its hooks to Codex (`~/.codex/hooks.json`) and Antigravity
+  (`~/.gemini/config/hooks.json`) for the "has finished" notification and the sync at chat start, and creates an
+  `AGENTS.md` in the second brain that points them to your rules and index. Codex asks you to approve hooks once:
+  type `/hooks` in a Codex chat. Not available for these chats: delete, duplicate, open in another folder, and the
+  "waiting for permission" notification for Antigravity. Chats started outside the app are listed, but their notes
+  are saved only with "Save notes".
+- **Fix: the "Claude has finished" notification never arrived.** The hook wrote an empty event (a PowerShell
+  variable name clash), so the app ignored it.
 
 - **Fix: GitHub no longer asks you to reconnect every day.** A single "401" answer from GitHub made the app throw away
   a perfectly valid key. Now the app checks the key again on `/user` first and removes it only if GitHub refuses it

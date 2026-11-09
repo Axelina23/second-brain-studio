@@ -343,3 +343,77 @@ def collega_hook(sorgente: Path, destinazione: Path, settings: Path | None = Non
         shutil.copy2(settings, settings.with_name(f"settings.json.prima-di-second-brain-{datetime.now():%Y%m%d-%H%M%S}"))
     settings.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
     return {"ok": True, "cambiato": True, "riga_stato": stato, "ponte": ponte}
+
+
+# ---------- Codex e Antigravity ----------
+AGENTS = {
+    "it": ("# Second brain\n\n"
+           "Questa cartella è un second brain: appunti che gli assistenti leggono e tengono aggiornati.\n"
+           "Prima di rispondere leggi `{regole}` e `{indice}`: dicono chi è la persona, le regole sempre "
+           "valide e dove sta ogni cosa. Apri gli altri file solo quando la richiesta li riguarda.\n"
+           "Quando qualcosa cambia stato, aggiorna il suo file di stato sostituendo l'informazione superata.\n"),
+    "en": ("# Second brain\n\n"
+           "This folder is a second brain: notes that assistants read and keep up to date.\n"
+           "Before answering read `{regole}` and `{indice}`: they say who the person is, the rules that "
+           "always apply and where everything lives. Open the other files only when the request is about them.\n"
+           "When something changes status, update its status file, replacing the outdated information.\n"),
+}
+
+
+def collega_agents_md(radice: Path) -> dict:
+    # Codex e Antigravity leggono AGENTS.md nella cartella di lavoro: li manda a regole e indice,
+    # come CLAUDE.md fa con Claude. Un AGENTS.md che c'e' gia' non si tocca.
+    file = Path(radice) / "AGENTS.md"
+    if file.exists():
+        return {"ok": True, "cambiato": False}
+    st = struttura.di(radice)
+    lingua = "en" if st is struttura.STRUTTURE["en"] else "it"
+    file.write_text(AGENTS[lingua].format(regole=st["regole"], indice=st["indice"]), encoding="utf-8", newline="\n")
+    return {"ok": True, "cambiato": True}
+
+
+def _comando_senza_virgolette(script: Path, *arg: str) -> str:
+    # Antigravity passa il comando a cmd.exe trasformando le virgolette doppie in \" (che
+    # PowerShell poi prende alla lettera): qui il percorso sta tra apici singoli, dentro -Command
+    percorso = script.as_posix().replace("'", "''")
+    return " ".join(["powershell -NoProfile -ExecutionPolicy Bypass -Command .", f"'{percorso}'", *arg])
+
+
+def collega_hook_assistente(assistente: str, hook: Path, base: Path) -> dict:
+    # aggiunge gli hook dell'app (sync a inizio chat, avvisi per le notifiche) alla
+    # configurazione di Codex (<base>/hooks.json, stesso formato di Claude) o di Antigravity
+    # (<base>/../config/hooks.json, un blocco con il nostro nome), senza toccare gli altri.
+    # Gli appunti a fine chat non passano da qui: li avvia l'app alla chiusura della linguetta.
+    import json
+    hook, base = Path(hook), Path(base)
+    file = base / "hooks.json" if assistente == "codex" else base.parent / "config" / "hooks.json"
+    testo = file.read_text(encoding="utf-8") if file.is_file() else ""
+    try:
+        d = json.loads(testo) if testo.strip() else {}
+    except ValueError:
+        return {"errore": f"{file.name} non è leggibile: lo lascio com'è"}
+    if not isinstance(d, dict):
+        return {"errore": f"{file.name} ha un formato inatteso"}
+    prima = json.dumps(d, sort_keys=True)
+    comando = _comando if assistente == "codex" else _comando_senza_virgolette
+    sync = comando(hook / "sync.ps1", "-Modo", "pull", "-Json")
+    fine = comando(hook / "avviso.ps1", "-Evento", "fine", "-Assistente", assistente)
+    if assistente == "codex":
+        attesa = _comando(hook / "avviso.ps1", "-Evento", "attesa", "-Assistente", assistente)
+        hooks = d.setdefault("hooks", {})
+        segno = hook.as_posix()
+        for evento, riga, tempo in (("SessionStart", sync, 20), ("Stop", fine, 10), ("PermissionRequest", attesa, 10)):
+            elenco = hooks.setdefault(evento, [])
+            elenco[:] = [v for v in elenco if not any(segno in str(h.get("command", "")) for h in v.get("hooks", []))]
+            elenco.append({"hooks": [{"type": "command", "command": riga, "timeout": tempo}]})
+    else:
+        d["second-brain-studio"] = {
+            "SessionStart": [{"type": "command", "command": sync, "timeout": 20}],
+            "Stop": [{"type": "command", "command": fine, "timeout": 10}]}
+    if json.dumps(d, sort_keys=True) == prima:
+        return {"ok": True, "cambiato": False, "file": str(file)}
+    file.parent.mkdir(parents=True, exist_ok=True)
+    if testo:
+        shutil.copy2(file, file.with_name(f"{file.name}.prima-di-second-brain-{datetime.now():%Y%m%d-%H%M%S}"))
+    file.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {"ok": True, "cambiato": True, "file": str(file)}

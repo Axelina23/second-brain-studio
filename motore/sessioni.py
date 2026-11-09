@@ -23,6 +23,7 @@ class Sessione:
     testo_utente: str
     n_messaggi: int = 0
     testo_completo: str = ""  # solo con completo=True, in minuscolo
+    assistente: str = "claude"  # claude, codex o agy (vedi assistenti.py)
 
 
 def _testo(messaggio) -> str:
