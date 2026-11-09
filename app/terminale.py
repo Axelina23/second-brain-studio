@@ -220,7 +220,8 @@ class Terminali:
         return t
 
     def _chiudi_dolce(self, scheda: Scheda) -> None:
-        fine = time.monotonic() + self.USCITA_DOLCE
+        durata = self.USCITA_DOLCE if getattr(scheda, "assistente", "claude") == "claude" else 2.0
+        fine = time.monotonic() + durata
         while not scheda.uscita.is_set() and time.monotonic() < fine:
             for tasto, attesa in self.SEQUENZA_USCITA:
                 try:

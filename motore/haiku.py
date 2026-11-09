@@ -16,25 +16,25 @@ MODELLI_BREVI = {
 }
 
 
-def _comando_breve(assistente: str | None, modello: str | None) -> list[str]:
+def _comando_breve(assistente: str | None, modello: str | None, prompt: str = "") -> tuple[list[str], str | None]:
     nome = assistente if assistente in ("claude", "codex", "agy") else "claude"
     mod = modello if modello and modello != "predefinito" else MODELLI_BREVI[nome]
     if nome in ("codex", "agy"):
         base = assistenti.comando(nome)
         if base:
             if nome == "agy":
-                return [*base, "-p", "--model", mod, "--disable-slash-commands"]
-            return [*base, "exec", "--ephemeral", "--skip-git-repo-check", "-s", "read-only", "-m", mod, "-"]
+                return [*base, "--model", mod, "--disable-slash-commands", "-p", prompt], None
+            return [*base, "exec", "--ephemeral", "--skip-git-repo-check", "-s", "read-only", "-m", mod, "-"], prompt
         mod = MODELLI_BREVI["claude"]
-    return [str(CLAUDE), "-p", "--model", mod]
+    return [str(CLAUDE), "-p", "--model", mod], prompt
 
 
 def chiedi_haiku(prompt: str, timeout: float = 60, assistente: str | None = None,
                  modello: str | None = None) -> str | None:
     try:
         CACHE.mkdir(parents=True, exist_ok=True)
-        cmd = _comando_breve(assistente, modello)
-        r = subprocess.run(cmd, input=prompt,
+        cmd, stdin = _comando_breve(assistente, modello, prompt)
+        r = subprocess.run(cmd, input=stdin,
                            cwd=CACHE, env={**os.environ, "CLAUDE_NOTES_PASS": "1"},
                            timeout=timeout, encoding="utf-8", errors="replace",
                            capture_output=True,

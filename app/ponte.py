@@ -220,7 +220,7 @@ class Ponte:
                 st = p.stat()
                 chiave = (st.st_size, st.st_mtime)
                 vecchia = self._altre_cache.get(str(p))
-                if vecchia and vecchia[0] == chiave:
+                if vecchia and vecchia[0] == chiave and (assistente != "agy" or vecchia[1] is not None):
                     nuove[str(p)] = vecchia
                     continue
                 nuove[str(p)] = (chiave, self._leggi_altra(assistente, p))
@@ -249,10 +249,10 @@ class Ponte:
         # l'elenco delle cartelle di lavoro si rilegge solo quando Antigravity lo aggiorna
         try:
             segno = tuple((self.cartella_agy / f).stat().st_mtime if (self.cartella_agy / f).exists() else 0
-                          for f in ("conversation_summaries.db", "history.jsonl"))
+                          for f in ("conversation_summaries.db", "conversation_summaries.db-wal", "history.jsonl"))
         except OSError:
             segno = None
-        if segno is None or self._cartelle_agy[0] != segno:
+        if segno is None or self._cartelle_agy[0] != segno or sid not in self._cartelle_agy[1]:
             self._cartelle_agy = (segno, mod_assistenti.cartelle_agy(self.cartella_agy))
         return self._cartelle_agy[1].get(sid)
 
@@ -283,10 +283,13 @@ class Ponte:
 
     def _stato(self, s) -> str:
         aperta = any(t.sessione == s.id for t in (self.terminali.attive() if self.terminali else []))
-        # attiva da poco: probabilmente e' aperta in un altro terminale
-        if aperta or s.ultima > self.adesso() - RECENTE:
+        if aperta:
             return "aperta"
-        return salvataggio.stato_salvataggio(s, self.segni)
+        stato = salvataggio.stato_salvataggio(s, self.segni)
+        # attiva da poco (e non gia' chiusa/salvata): probabilmente e' aperta in un altro terminale
+        if stato == "non_salvata" and s.ultima > self.adesso() - RECENTE:
+            return "aperta"
+        return stato
 
     def _voce_chat(self, s) -> dict:
         return {"id": s.id, "etichetta": self._etichetta(s), "ultima": s.ultima.isoformat(),
