@@ -74,8 +74,15 @@ def test_senza_repository(tmp_path):
     assert "errore" in github.GitHub(tmp_path, chiave=ChiaveFinta()).sincronizza()
 
 
-def test_chiave_rifiutata_da_git(tmp_path):
-    # GitHub revoca la chiave: la sincronizzazione lo dice, toglie la chiave e chiede di ricollegare
+def _http(codice):
+    def solleva(*a, **k):
+        raise github.urllib.error.HTTPError("https://api.github.com/user", codice, "x", {}, None)
+    return solleva
+
+
+def test_chiave_rifiutata_da_git(tmp_path, monkeypatch):
+    # GitHub revoca la chiave (anche /user la rifiuta): toglie la chiave e chiede di ricollegare
+    monkeypatch.setattr(github, "_richiesta", _http(401))
     git(tmp_path, "init", "-b", "main")
     git(tmp_path, "config", "user.email", "t@t"); git(tmp_path, "config", "user.name", "t")
     eventi = []
@@ -89,6 +96,39 @@ def test_chiave_rifiutata_da_git(tmp_path):
     assert esito.get("scaduto") is True
     assert g._token() is None and g.scaduto
     assert any(e.get("esito") == "accesso_scaduto" for e in eventi)
+
+
+def test_401_isolato_non_toglie_la_chiave(tmp_path, monkeypatch):
+    # una chiamata ha 401 ma /user accetta la chiave: si tiene e si scrive nel registro
+    monkeypatch.setattr(github, "_richiesta", lambda *a, **k: {"login": "utente"})
+    note = []
+    g = github.GitHub(tmp_path, chiave=ChiaveFinta("gho_buona"), nota=note.append)
+    assert g.rifiutato("chat degli altri PC", "401 passeggero") is False
+    assert g._token() == "gho_buona" and not g.scaduto
+    assert "chat degli altri PC" in note[0] and "tenuta" in note[0] and "gho_buona" not in note[0]
+
+
+def test_401_con_rete_assente_non_toglie_la_chiave(tmp_path, monkeypatch):
+    def senza_rete(*a, **k):
+        raise OSError("rete")
+    monkeypatch.setattr(github, "_richiesta", senza_rete)
+    g = github.GitHub(tmp_path, chiave=ChiaveFinta("gho_buona"))
+    assert g.rifiutato("aggiornamenti") is False and g._token() == "gho_buona"
+
+
+def test_git_rifiutato_per_un_momento(tmp_path, monkeypatch):
+    # git dice "Authentication failed" ma la chiave e' valida: niente "ricollega"
+    monkeypatch.setattr(github, "_richiesta", lambda *a, **k: {"login": "utente"})
+    git(tmp_path, "init", "-b", "main")
+    git(tmp_path, "config", "user.email", "t@t"); git(tmp_path, "config", "user.name", "t")
+    g = github.GitHub(tmp_path, chiave=ChiaveFinta("gho_buona"))
+    g.repo = lambda: "utente/second-brain"
+    g._utente = "utente"
+    fallito = subprocess.CompletedProcess([], 128, "", "fatal: Authentication failed")
+    originale = g._git
+    g._git = lambda *a, **k: fallito if a[0] in ("pull", "push") else originale(*a, **k)
+    esito = g.sincronizza()
+    assert "scaduto" not in esito and "momento" in esito["errore"] and g._token() == "gho_buona"
 
 
 def test_stato_con_chiave_revocata(tmp_path, monkeypatch):

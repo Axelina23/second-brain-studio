@@ -94,6 +94,16 @@ def test_inbox_elenco(tmp_path):
     assert voci[0]["nome"] == "2026-11-07 idea.md" and voci[0]["anteprima"] == "un'idea"
 
 
+def test_conta_inbox_segue_la_cartella(tmp_path):
+    # l'Inbox svuotata da fuori (Claude in un terminale) deve dare 0 subito
+    p, r = _ponte(tmp_path)
+    prima = p.conta_inbox()["inbox"]
+    assert prima == len(p.inbox()["inbox"]) and prima > 0
+    for f in (r / "Inbox").iterdir():
+        f.unlink()
+    assert p.conta_inbox() == {"inbox": 0}
+
+
 def test_chat_attiva_da_poco_risulta_aperta(tmp_path):
     p, _ = _ponte(tmp_path)
     _sessione(tmp_path / "sessioni", "s3", "in corso", datetime.now().astimezone() - timedelta(minutes=1), gonfia=40 * 1024)

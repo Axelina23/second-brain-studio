@@ -125,6 +125,7 @@
       duplica_chat: async () => ({ errore: "Nel banco di prova il terminale non c'è" }), apri_in_cartella: async () => ({ errore: "Nel banco di prova il terminale non c'è" }),
       scegli_cartella: async () => ({ percorso: null }),
       elimina_inbox: async () => ({ ok: true, chiave: "1-x.md" }), ripristina_inbox: async () => ({ ok: true }),
+      conta_inbox: async () => ({ inbox: 1 }),
       rinomina_inbox: async (rel, n) => ({ ok: true, nome: n, percorso: `Inbox/${n}` }), sposta_inbox: async (rel, p) => ({ ok: true, percorso: p, progetto: p.split("/")[1] }),
       schede: async () => ({ schede: schedeDemo }), chiudi_scheda: async () => ({ ok: true }),
       apri_esterno: async () => ({ ok: true }), apri_cartella: async () => ({ ok: true }),

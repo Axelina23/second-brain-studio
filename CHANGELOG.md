@@ -6,6 +6,11 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 
 ## Next version (not released yet)
 
+- **Fix: GitHub no longer asks you to reconnect every day.** A single "401" answer from GitHub made the app throw away
+  a perfectly valid key. Now the app checks the key again on `/user` first and removes it only if GitHub refuses it
+  twice; every 401 is written to `app-errori.log` with the call, the URL and GitHub's answer (never the key).
+- The Inbox counter follows the folder within 10 seconds, also when the Inbox is emptied from a terminal.
+
 - Plan usage bars also for people who already had their own Claude Code status line: the app keeps it and runs it
   after saving the usage numbers, so the line looks exactly as before.
 

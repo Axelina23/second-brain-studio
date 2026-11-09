@@ -42,10 +42,11 @@ def _richiesta(url: str, dati: dict | None = None, token: str | None = None, met
 
 
 class GitHub:
-    def __init__(self, radice: Path, emetti=lambda n, d: None, log=lambda: None, chiave=None):
+    def __init__(self, radice: Path, emetti=lambda n, d: None, log=lambda: None, chiave=None, nota=lambda t: None):
         self.radice = Path(radice)
         self.emetti = emetti
         self._log = log
+        self._nota = nota  # riga di testo nel registro degli errori
         self._chiave = chiave  # per i test: oggetto con get/set/delete al posto di keyring
         self._utente: str | None = None
         self._accesso: dict | None = None
@@ -77,14 +78,27 @@ class GitHub:
             except Exception:
                 pass
 
-    def rifiutato(self) -> None:
-        # GitHub non accetta piu' la chiave: la si toglie, cosi' l'app mostra "Collega GitHub"
-        # invece di fallire in silenzio a ogni sincronizzazione
-        if self._token() is None:
-            return
+    def rifiutato(self, dove: str = "", errore: Exception | str | None = None) -> bool:
+        # una chiamata ha avuto 401. La chiave si toglie solo se GitHub la rifiuta di nuovo
+        # su /user: un 401 isolato (o arrivato con una chiave vecchia mentre se ne salvava una
+        # nuova) non deve costringere a ricollegare. True = chiave tolta, va ricollegato.
+        token = self._token()
+        if token is None:
+            return False
+        try:
+            _richiesta(f"{API}/user", token=token)
+            confermato, verifica = False, "chiave valida su /user: tenuta"
+        except urllib.error.HTTPError as e:
+            confermato, verifica = e.code == 401, f"/user risponde {_dettagli(e)}"
+        except Exception as e:
+            confermato, verifica = False, f"/user non raggiungibile ({type(e).__name__}): chiave tenuta"
+        self._nota(f"GitHub 401 in {dove or '?'}: {_dettagli(errore)} | verifica: {verifica}")
+        if not confermato:
+            return False
         self._salva_token(None)
         self._utente, self.scaduto = None, True
         self.emetti("github", {"esito": "accesso_scaduto", **self.stato()})
+        return True
 
     # ---------- git ----------
     def _git(self, *args, timeout=60, autenticato=False) -> subprocess.CompletedProcess:
@@ -114,8 +128,7 @@ class GitHub:
                 self._utente = _richiesta(f"{API}/user", token=token).get("login")
             except urllib.error.HTTPError as e:
                 self._utente = None
-                if e.code == 401:
-                    self.rifiutato()
+                if e.code == 401 and self.rifiutato("stato", e):
                     token = None
             except Exception:
                 self._utente = None
@@ -263,22 +276,35 @@ class GitHub:
                     return {"conflitto": True, "file": file,
                             "errore": "Lo stesso appunto è cambiato su due dispositivi: serve unirlo a mano"}
                 if _accesso_rifiutato(testo):
-                    return self._accesso_perso()
+                    return self._accesso_perso("git pull", r.stderr)
                 if "couldn't find remote ref" not in testo:
                     return {"errore": f"Scaricamento non riuscito: {r.stderr.strip()[:200]}"}
         r = self._git("push", "-u", "origin", ramo, timeout=120, autenticato=True)
         if r.returncode != 0:
             if _accesso_rifiutato((r.stdout + r.stderr).lower()):
-                return self._accesso_perso()
+                return self._accesso_perso("git push", r.stderr)
             return {"errore": f"Caricamento non riuscito: {r.stderr.strip()[:200]}"}
         return {"ok": True, "salvati": salvati}
 
-    def _accesso_perso(self) -> dict:
+    def _accesso_perso(self, dove: str, testo: str) -> dict:
         # solo se la chiave c'era: senza chiave l'errore e' di git (credenziali del PC), non dell'app
         if self._token() is None:
             return {"errore": "GitHub ha rifiutato l'accesso: collega GitHub dall'app"}
-        self.rifiutato()
+        if not self.rifiutato(dove, testo.strip()):
+            return {"errore": "GitHub ha rifiutato l'accesso per un momento: riprova tra poco"}
         return {"errore": "L'accesso a GitHub è scaduto: ricollega GitHub (i tuoi appunti sono salvi sul PC)", "scaduto": True}
+
+
+def _dettagli(errore) -> str:
+    # testo breve per il registro: codice, URL, id della richiesta e risposta di GitHub (mai la chiave)
+    if isinstance(errore, urllib.error.HTTPError):
+        try:
+            corpo = " ".join(errore.read().decode("utf-8", "replace").split())[:200]
+        except Exception:
+            corpo = ""
+        rid = errore.headers.get("X-GitHub-Request-Id", "") if errore.headers else ""
+        return f"{errore.code} {errore.filename or ''} id={rid} {corpo}".strip()
+    return " ".join(str(errore or "").split())[:300]
 
 
 def _accesso_rifiutato(testo: str) -> bool:

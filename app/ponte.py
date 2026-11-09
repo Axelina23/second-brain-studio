@@ -126,6 +126,14 @@ class Ponte:
                     self._lavori.discard(nome)
         threading.Thread(target=corpo, name=nome, daemon=True).start()
 
+    def _nota(self, testo: str) -> None:
+        try:
+            self.cache.mkdir(parents=True, exist_ok=True)
+            with open(self.cache / "app-errori.log", "a", encoding="utf-8") as f:
+                f.write(f"--- {datetime.now():%Y-%m-%d %H:%M:%S}\n{testo}\n\n")
+        except OSError:
+            pass
+
     def _log(self) -> None:
         try:
             self.cache.mkdir(parents=True, exist_ok=True)
@@ -485,6 +493,16 @@ class Ponte:
             return []
         return sorted((p for p in cartella.iterdir() if p.is_file() and not p.name.startswith(".")),
                       key=lambda p: p.stat().st_mtime, reverse=True)
+
+    def conta_inbox(self) -> dict:
+        # controllo leggero e frequente: il numero sull'icona segue l'Inbox anche quando
+        # la svuota Claude da un terminale
+        try:
+            cartella = self.radice / "Inbox"
+            n = sum(1 for p in cartella.iterdir() if p.is_file() and not p.name.startswith(".")) if cartella.is_dir() else 0
+        except OSError:
+            n = 0
+        return {"inbox": n}
 
     def inbox(self) -> dict:
         voci = []

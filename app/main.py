@@ -83,6 +83,7 @@ class Api:
     def scrivi(self, rel, testo, mtime): return self._p.scrivi(rel, testo, mtime)
     def cerca(self, q): return self._p.cerca(q)
     def inbox(self): return self._p.inbox()
+    def conta_inbox(self): return self._p.conta_inbox()
     def nota(self, testo): return self._p.nota(testo)
     def apri_chat(self, tipo="nuova", sessione=None, prompt=None, cartella=None, titolo=None):
         return self._p.apri_chat(tipo, sessione, prompt, cartella, titolo, imp_mod.leggi()["modello_chat"])
@@ -191,7 +192,7 @@ class App:
         self.terminali = Terminali(alla_chiusura=lambda s: self.ponte.scheda_chiusa(s))
         self.ponte = Ponte(radice=RADICE or CACHE / "nessun-second-brain", terminali=self.terminali)
         self.ponte.emetti = self.emetti
-        self.github = GitHub(RADICE or CACHE, emetti=self.emetti, log=self.ponte._log)
+        self.github = GitHub(RADICE or CACHE, emetti=self.emetti, log=self.ponte._log, nota=self.ponte._nota)
         self.ponte.token_git = self.github._token
         self._blocco_aggiorna = threading.Lock()
         self.pagina = "oggi"
@@ -310,9 +311,10 @@ class App:
             except PermissionError:
                 errore = "Collega GitHub per vedere le chat degli altri PC"
             except urllib.error.HTTPError as e:
-                if e.code == 401:
-                    self.github.rifiutato()
+                if e.code == 401 and self.github.rifiutato("chat degli altri PC", e):
                     errore = "Accesso a GitHub scaduto: ricollega GitHub per vedere le chat degli altri PC"
+                elif e.code == 401:
+                    errore = "GitHub ha rifiutato l'accesso per un momento: riprovo tra poco"
                 else:
                     errore = f"GitHub non raggiungibile (errore {e.code})"
                     if errore != ultimo_errore:
@@ -490,8 +492,9 @@ class App:
             return {"ok": True, **aggiornamenti.controlla(VERSIONE, imp["aggiornamenti_prova"], self.github._token(), CACHE)}
         except urllib.error.HTTPError as e:
             if e.code == 401:
-                self.github.rifiutato()
-                return {"errore": "Accesso a GitHub scaduto: ricollega GitHub per ricevere gli aggiornamenti"}
+                if self.github.rifiutato("aggiornamenti", e):
+                    return {"errore": "Accesso a GitHub scaduto: ricollega GitHub per ricevere gli aggiornamenti"}
+                return {"errore": "GitHub ha rifiutato l'accesso per un momento: riprova tra poco"}
             self.ponte._log()
             return {"errore": f"Controllo non riuscito: {e}"}
         except Exception as e:

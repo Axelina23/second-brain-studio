@@ -224,6 +224,16 @@ function App({ primaChat, impIniziali, primoAvvio }) {
   }, []);
 
   useEffect(() => { caricaHome(); const t = setInterval(caricaHome, 5 * 60e3); return () => clearInterval(t); }, []);
+  // l'Inbox cambia anche da fuori (Claude nei terminali): se il numero di file cambia, home ricaricata
+  const contoInbox = useRef(null);
+  contoInbox.current = home ? home.inbox : null;
+  useEffect(() => {
+    const t = setInterval(async () => {
+      const r = await api("conta_inbox");
+      if (r && typeof r.inbox === "number" && contoInbox.current !== null && r.inbox !== contoInbox.current) caricaHome();
+    }, 10e3);
+    return () => clearInterval(t);
+  }, []);
   useEffect(() => { const t = setInterval(() => setOrologio(new Date()), 20e3); return () => clearInterval(t); }, []);
   useEffect(() => { localStorage.setItem("pagina", pagina); api("pagina", pagina); }, [pagina]);
   useEffect(() => { localStorage.setItem("modoTerm", modoTerm); }, [modoTerm]);
