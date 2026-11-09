@@ -155,8 +155,10 @@ export function Impostazioni({ api, chiudi, avvisa, gh, accediGh, sincronizzaGh,
           ${["JetBrains Mono", "Cascadia Mono", "Consolas"].map((v) => html`<option value=${v}>${v}</option>`)}</select></${Voce}>
       <${Voce} titolo="Dimensione" testo=${`${imp.terminale_testo} pt`}>
         <input type="range" min="10" max="20" step="0.5" value=${imp.terminale_testo} onChange=${(e) => metti("terminale_testo", +e.target.value)} /></${Voce}>
-      <${Voce} titolo="Modello delle chat nuove" testo="Predefinito = quello scelto in Claude Code.">
-        <${Segmenti} valore=${imp.modello_chat} cambia=${(v) => metti("modello_chat", v)} opzioni=${[["predefinito", "Predefinito"], ["opus", "Opus"], ["sonnet", "Sonnet"], ["haiku", "Haiku"]]} /></${Voce}>`,
+      <${Voce} titolo="Assistente delle chat nuove" testo="Codex e Antigravity devono essere installati; usano il loro modello e non aggiornano gli appunti.">
+        <${Segmenti} valore=${imp.assistente_chat} cambia=${(v) => metti("assistente_chat", v)} opzioni=${[["claude", "Claude"], ["codex", "Codex"], ["agy", "Antigravity"]]} /></${Voce}>
+      <${Voce} titolo="Modello delle chat nuove" testo="Vale per Claude. Predefinito = quello scelto in Claude Code.">
+        <${Segmenti} valore=${imp.modello_chat} cambia=${(v) => metti("modello_chat", v)} opzioni=${[["predefinito", "Predefinito"], ["fable", "Fable"], ["opus", "Opus"], ["sonnet", "Sonnet"], ["haiku", "Haiku"]]} /></${Voce}>`,
 
     appunti: html`
       <${Interruttore} titolo="Aggiorna gli appunti a fine chat" testo="Claude riassume la chat e aggiorna Registro e file di stato in background." valore=${imp.appunti_auto} cambia=${(v) => metti("appunti_auto", v)} />

@@ -27,6 +27,10 @@ import sessioni as mod_sessioni  # noqa: E402
 import struttura as mod_struttura  # noqa: E402
 import sync as mod_sync  # noqa: E402
 from haiku import chiedi_haiku  # noqa: E402
+# assistenti da riga di comando che l'app sa ospitare in una linguetta, oltre a Claude Code
+ASSISTENTI = {"claude": "Claude", "codex": "Codex", "agy": "Antigravity"}
+MODELLI_CLAUDE = ("fable", "opus", "sonnet", "haiku")
+
 from percorsi import CACHE, CARTELLA_SESSIONI, CLAUDE, RADICE, SEGNI, SOGLIA_SIGNIFICATIVA  # noqa: E402
 from percorsi import cartella_sessioni as cartella_sessioni_di  # noqa: E402
 import chat_extra  # noqa: E402
@@ -561,9 +565,12 @@ class Ponte:
 
     # ---------- terminali ----------
     def apri_chat(self, tipo: str = "nuova", sessione: str | None = None, prompt: str | None = None,
-                  cartella: str | None = None, titolo: str | None = None, modello: str | None = None) -> dict:
+                  cartella: str | None = None, titolo: str | None = None, modello: str | None = None,
+                  assistente: str | None = None) -> dict:
         # cartella: dove lavora Claude (predefinita: il second brain); deve esistere.
-        # modello: "opus" / "sonnet" / "haiku" per le chat nuove (Impostazioni > Terminale)
+        # modello: "fable" / "opus" / "sonnet" / "haiku" per le chat nuove (Impostazioni > Terminale)
+        # assistente: "codex" / "agy" solo per una chat nuova e vuota; riprendere una chat e i
+        # comandi dell'app (briefing, smista l'inbox...) sono cose di Claude e usano sempre lui
         if self.terminali is None:
             return {"errore": "Terminale non disponibile"}
         if tipo == "riprendi" and sessione:
@@ -575,8 +582,19 @@ class Ponte:
             dove = Path(cartella)
             if not dove.is_absolute() or not dove.is_dir():
                 return {"errore": f"La cartella non esiste: {cartella}"}
+        if tipo == "nuova" and not prompt and assistente in ("codex", "agy"):
+            argv = self._comando_assistente(assistente)
+            if argv is None:
+                return {"errore": f"{ASSISTENTI[assistente]} non è installato su questo PC"}
+            try:
+                t = self.terminali.apri(argv, str(dove), (titolo or "").strip()[:60] or ASSISTENTI[assistente],
+                                        assistente=assistente)
+            except Exception as e:
+                self._log()
+                return {"errore": f"Non riesco ad avviare {ASSISTENTI[assistente]}: {e}"}
+            return self._voce_scheda(t)
         argv = [str(CLAUDE)]
-        if tipo != "riprendi" and modello in ("opus", "sonnet", "haiku"):
+        if tipo != "riprendi" and modello in MODELLI_CLAUDE:
             argv += ["--model", modello]
         nome_scelto = (titolo or "").strip()[:60]
         titolo = "Nuova chat"
@@ -602,6 +620,21 @@ class Ponte:
             self._log()
             return {"errore": f"Non riesco ad avviare Claude: {e}"}
         return self._voce_scheda(t)
+
+    @staticmethod
+    def _comando_assistente(nome: str) -> list[str] | None:
+        # eseguibile nel PATH; i .cmd di npm (codex) passano da cmd.exe, che il terminale non avvia da solo
+        trovato = shutil.which(nome)
+        if not trovato:
+            return None
+        if trovato.lower().endswith((".cmd", ".bat")):
+            return [os.environ.get("COMSPEC", "cmd.exe"), "/c", trovato]
+        return [trovato]
+
+    def assistenti(self) -> dict:
+        # quali assistenti si possono scegliere per una chat nuova su questo PC
+        return {"assistenti": [{"id": k, "nome": n, "installato": k == "claude" or self._comando_assistente(k) is not None}
+                               for k, n in ASSISTENTI.items()]}
 
     def salva_chat(self, sessione: str) -> dict:
         return self.apri_chat("riprendi", sessione, PROMPT_SALVA[mod_struttura.rileva(self.radice)])
@@ -901,7 +934,7 @@ class Ponte:
 
     def _voce_scheda(self, t) -> dict:
         return {"id": t.id, "titolo": t.titolo, "sessione": t.sessione, "url": self.terminali.url(t.id),
-                "chiusa": t.codice is not None}
+                "chiusa": t.codice is not None, "assistente": getattr(t, "assistente", "claude")}
 
     def schede(self) -> dict:
         if self.terminali is None:
@@ -915,7 +948,8 @@ class Ponte:
     def _risolvi_schede(self) -> None:
         # una chat nuova non sa ancora il suo id: lo deduce dal trascritto nato dopo l'apertura
         # della scheda; poi il titolo diventa le parole chiave (se la scheda non ha un comando)
-        senza = sorted((t for t in self.terminali.schede.values() if t.sessione is None),
+        senza = sorted((t for t in self.terminali.schede.values()
+                        if t.sessione is None and getattr(t, "assistente", "claude") == "claude"),
                        key=lambda t: t.aperta_il)
         if not senza:
             return
@@ -942,6 +976,10 @@ class Ponte:
         # chiamata dal thread del terminale quando claude esce: individua la sessione e,
         # dopo l'attesa dello hook, dice all'interfaccia se gli appunti risultano non salvati
         def lavoro():
+            if getattr(scheda, "assistente", "claude") != "claude":
+                # Codex e Antigravity non hanno sessioni di Claude ne' appunti da salvare
+                self.emetti("scheda", {"id": scheda.id, "chiusa": True, "sessione": None})
+                return
             sid = scheda.sessione
             if sid is None:
                 nuove = [s for s in self._sessioni() if s.ultima.timestamp() >= scheda.aperta_il - 2]

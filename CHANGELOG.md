@@ -6,6 +6,12 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 
 ## Next version (not released yet)
 
+- **Choose the assistant and the model for a new chat.** When no chat is open, the terminal panel lets you pick
+  Claude, Codex or Antigravity (`agy`), and for Claude the model (Default, Fable, Opus, Sonnet, Haiku). The same
+  choice is in Settings → Terminal and is used by every "New chat" button. Codex and Antigravity must already be
+  installed and signed in; they run with their own model, their chats are not listed in Chats and do not update
+  your notes. Briefing, Review and the other app commands always run on Claude.
+
 - **Fix: GitHub no longer asks you to reconnect every day.** A single "401" answer from GitHub made the app throw away
   a perfectly valid key. Now the app checks the key again on `/user` first and removes it only if GitHub refuses it
   twice; every 401 is written to `app-errori.log` with the call, the URL and GitHub's answer (never the key).

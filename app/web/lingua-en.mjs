@@ -58,6 +58,11 @@ export const EN = {
   "Chiudi": "Close", "Allarga il terminale": "Widen the terminal", "Allarga o riduci": "Widen or shrink",
   "Nascondi il terminale": "Hide the terminal", "Riduci il terminale": "Shrink the terminal", "mostra terminale": "show terminal",
   "Claude Code, qui accanto": "Claude Code, right here",
+  "Assistente": "Assistant", "Modello": "Model", "Non installato su questo PC": "Not installed on this PC",
+  "Usa il suo modello. Le sue chat non compaiono in Chat e non aggiornano gli appunti.": "It uses its own model. Its chats do not show up in Chats and do not update your notes.",
+  "Assistente delle chat nuove": "Assistant for new chats",
+  "Codex e Antigravity devono essere installati; usano il loro modello e non aggiornano gli appunti.": "Codex and Antigravity must be installed; they use their own model and do not update your notes.",
+  "Vale per Claude. Predefinito = quello scelto in Claude Code.": "Applies to Claude. Default = the one chosen in Claude Code.",
   "Ogni chat si apre in una linguetta. Puoi tenerne aperte più di una e passare dall'una all'altra.": "Each chat opens in a tab. You can keep several open and switch between them.",
   "Riprendi l'ultima": "Resume the last one",
   // barra di stato

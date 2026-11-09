@@ -74,6 +74,7 @@ class Scheda:
     storico: list = field(default_factory=list)  # output gia' emesso, per chi si ricollega
     dim_storico: int = 0
     uscita: threading.Event = field(default_factory=threading.Event)  # claude e' uscito
+    assistente: str = "claude"  # claude, codex o agy: solo le schede di Claude hanno sessione e appunti
 
 
 class Terminali:
@@ -149,9 +150,9 @@ class Terminali:
 
     # --- schede ---
     def apri(self, argv: list[str], cwd: str, titolo: str, sessione: str | None = None,
-             cols: int = 120, rows: int = 32) -> Scheda:
+             cols: int = 120, rows: int = 32, assistente: str = "claude") -> Scheda:
         sid = secrets.token_hex(6)
-        scheda = Scheda(sid, argv, cwd, titolo, sessione)
+        scheda = Scheda(sid, argv, cwd, titolo, sessione, assistente=assistente)
         scheda.pty = self._crea_pty(argv, cwd, cols, rows, ambiente_pulito())
         with self._blocco:
             self.schede[sid] = scheda

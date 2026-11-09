@@ -86,7 +86,9 @@ class Api:
     def conta_inbox(self): return self._p.conta_inbox()
     def nota(self, testo): return self._p.nota(testo)
     def apri_chat(self, tipo="nuova", sessione=None, prompt=None, cartella=None, titolo=None):
-        return self._p.apri_chat(tipo, sessione, prompt, cartella, titolo, imp_mod.leggi()["modello_chat"])
+        imp = imp_mod.leggi()
+        return self._p.apri_chat(tipo, sessione, prompt, cartella, titolo, imp["modello_chat"], imp["assistente_chat"])
+    def assistenti(self): return self._p.assistenti()
     def salva_chat(self, sessione): return self._p.salva_chat(sessione)
     def elimina_chat(self, sessione): return self._p.elimina_chat(sessione)
     def ripristina_chat(self, sessione): return self._p.ripristina_chat(sessione)

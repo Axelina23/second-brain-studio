@@ -438,6 +438,10 @@ a { color: var(--cobalto-chiaro); text-underline-offset: 3px; }
 .term-vuoto h3 { margin: 0; color: var(--testo); font-size: 17px; font-weight: 650; }
 .term-vuoto p { margin: 0; max-width: 34ch; }
 .term-vuoto .azioni { justify-content: center; }
+.scelta-chat { display: grid; justify-items: center; gap: 8px; }
+.scelta-chat .nota { font-size: 12.5px; max-width: 38ch; }
+.scelta-chat .imp-seg { flex-wrap: nowrap; }
+.scelta-chat .imp-seg button { padding: 0 8px; font-size: 12px; white-space: nowrap; }
 
 /* ---------- barra di stato ---------- */
 .stato { grid-column: 1 / -1; grid-row: 2; display: flex; align-items: center; gap: 18px; padding: 0 14px;

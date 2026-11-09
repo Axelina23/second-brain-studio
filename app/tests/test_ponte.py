@@ -336,3 +336,48 @@ def test_inbox_elimina_ripristina_rinomina_sposta(tmp_path):
     assert "errore" in p.elimina_inbox("Io/Regole.md")
     assert "errore" in p.ripristina_inbox("../x")
     assert "errore" in p.sposta_inbox("Inbox/manca.md", "Progetti/Alfa/CLAUDE.md")
+
+
+class _TerminaliFinti:
+    # registra cosa verrebbe avviato, senza aprire un terminale vero
+    def __init__(self):
+        self.schede, self.avviate = {}, []
+
+    def attive(self):
+        return list(self.schede.values())
+
+    def url(self, sid):
+        return f"ws://finto/{sid}"
+
+    def apri(self, argv, cwd, titolo, sessione=None, assistente="claude"):
+        from terminale import Scheda
+        s = Scheda(f"s{len(self.schede)}", argv, cwd, titolo, sessione, assistente=assistente)
+        self.schede[s.id] = s
+        self.avviate.append(argv)
+        return s
+
+
+def test_chat_nuova_con_modello_e_assistente(tmp_path, monkeypatch):
+    p, _ = _ponte(tmp_path)
+    p.terminali = _TerminaliFinti()
+    monkeypatch.setattr(ponte.Ponte, "_comando_assistente", staticmethod(lambda n: [f"C:/bin/{n}.exe"] if n == "codex" else None))
+    # Claude con il modello scelto
+    assert p.apri_chat("nuova", modello="fable")["assistente"] == "claude"
+    assert p.terminali.avviate[-1][-2:] == ["--model", "fable"]
+    # Codex: il suo eseguibile, nessun modello di Claude, titolo col suo nome
+    v = p.apri_chat("nuova", modello="opus", assistente="codex")
+    assert v["assistente"] == "codex" and v["titolo"] == "Codex" and p.terminali.avviate[-1] == ["C:/bin/codex.exe"]
+    # assistente non installato: errore chiaro, niente scheda
+    assert "non è installato" in p.apri_chat("nuova", assistente="agy")["errore"]
+    # i comandi dell'app (con un prompt) restano di Claude anche se e' scelto Codex
+    assert p.apri_chat("nuova", prompt="briefing", assistente="codex")["assistente"] == "claude"
+    assert [a["id"] for a in p.assistenti()["assistenti"] if a["installato"]] == ["claude", "codex"]
+
+
+def test_scheda_di_codex_non_prende_una_sessione_di_claude(tmp_path, monkeypatch):
+    p, _ = _ponte(tmp_path)
+    p.terminali = _TerminaliFinti()
+    monkeypatch.setattr(ponte.Ponte, "_comando_assistente", staticmethod(lambda n: [f"C:/bin/{n}.exe"]))
+    p.apri_chat("nuova", assistente="codex")
+    _sessione(tmp_path / "sessioni", "nata-dopo", "ciao", datetime.now().astimezone())
+    assert p.schede()["schede"][0]["sessione"] is None

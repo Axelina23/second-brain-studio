@@ -126,6 +126,7 @@
       scegli_cartella: async () => ({ percorso: null }),
       elimina_inbox: async () => ({ ok: true, chiave: "1-x.md" }), ripristina_inbox: async () => ({ ok: true }),
       conta_inbox: async () => ({ inbox: 1 }),
+      assistenti: async () => ({ assistenti: [{ id: "claude", nome: "Claude", installato: true }, { id: "codex", nome: "Codex", installato: true }, { id: "agy", nome: "Antigravity", installato: false }] }),
       rinomina_inbox: async (rel, n) => ({ ok: true, nome: n, percorso: `Inbox/${n}` }), sposta_inbox: async (rel, p) => ({ ok: true, percorso: p, progetto: p.split("/")[1] }),
       schede: async () => ({ schede: schedeDemo }), chiudi_scheda: async () => ({ ok: true }),
       apri_esterno: async () => ({ ok: true }), apri_cartella: async () => ({ ok: true }),
@@ -144,7 +145,7 @@
     let impFinte = { lingua: EN ? "en" : "it", tema: par.get("tema") || "scuro", colore: "limone", testo: 100, animazioni: !par.has("statico"), pagina_iniziale: par.get("pagina") || "oggi",
       notifica_risposta: true, notifica_permesso: true, notifica_non_salvate: true, notifica_scadenze: true, notifica_inbox: true,
       notifica_sync: true, notifica_fuori_app: false, anteprima: true, silenzio_attivo: false, silenzio_da: "23:00", silenzio_a: "08:00",
-      silenzio_gioco: true, terminale_testo: 13.5, terminale_carattere: "JetBrains Mono", modello_chat: "predefinito",
+      silenzio_gioco: true, terminale_testo: 13.5, terminale_carattere: "JetBrains Mono", assistente_chat: "claude", modello_chat: "predefinito",
       appunti_auto: true, modello_appunti: "sonnet", soglia_kb: 30, sync_minuti: 0, scorciatoia_globale: true,
       aggiornamenti_auto: true, aggiornamenti_prova: true, chat_altri_pc: true };
     Object.assign(api, {

@@ -35,6 +35,7 @@ PREDEFINITE = {
     "silenzio_attivo": False, "silenzio_da": "23:00", "silenzio_a": "08:00", "silenzio_gioco": True,
     # terminale
     "terminale_testo": 13.5, "terminale_carattere": "JetBrains Mono", "modello_chat": "predefinito",
+    "assistente_chat": "claude",
     # appunti automatici (letti dagli hook)
     "appunti_auto": True, "modello_appunti": "sonnet", "soglia_kb": 30,
     # GitHub
@@ -50,7 +51,7 @@ SCELTE = {
     "lingua": ("it", "en"), "tema": ("scuro", "chiaro", "sistema"),
     "colore": ("limone", "cobalto", "verderame", "terracotta", "viola", "rosa"),
     "pagina_iniziale": ("oggi", "chat", "appunti", "mappa", "inbox"),
-    "modello_chat": ("predefinito", "opus", "sonnet", "haiku"), "modello_appunti": ("sonnet", "haiku", "opus"),
+    "modello_chat": ("predefinito", "fable", "opus", "sonnet", "haiku"), "assistente_chat": ("claude", "codex", "agy"), "modello_appunti": ("sonnet", "haiku", "opus"),
     "terminale_carattere": ("JetBrains Mono", "Cascadia Mono", "Consolas"),
 }
 LIMITI = {"testo": (85, 130), "terminale_testo": (10, 20), "soglia_kb": (5, 500), "sync_minuti": (0, 240)}

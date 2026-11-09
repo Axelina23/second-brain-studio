@@ -254,6 +254,14 @@ function App({ primaChat, impIniziali, primoAvvio }) {
     return () => clearInterval(t);
   }, []);
 
+  const [assistenti, setAssistenti] = useState([]);
+  useEffect(() => { api("assistenti").then((r) => setAssistenti((r && r.assistenti) || [])); }, []);
+  const mettiImp = useCallback(async (k, v) => {
+    setImp((x) => ({ ...x, [k]: v }));
+    const r = await api("salva_impostazioni", { [k]: v });
+    if (r && r.errore) avvisa(r.errore, "errore");
+  }, []);
+
   const apriChat = useCallback(async (tipo = "nuova", sessione = null, prompt = null, cartella = null, titolo = null) => {
     const r = await api("apri_chat", tipo, sessione, prompt, cartella, titolo);
     if (r.errore) { avvisa(r.errore, "errore"); return; }
@@ -378,7 +386,8 @@ function App({ primaChat, impIniziali, primoAvvio }) {
     </main>
     <${Maniglia} />
     <${ColonnaTerminali} schede=${schede} attiva=${attiva} setAttiva=${setAttiva} chiudi=${chiudiScheda}
-      apriChat=${apriChat} salvaChat=${salvaChat} modo=${modoTerm} setModo=${setModoTerm} home=${home} menuScheda=${menuScheda} />
+      apriChat=${apriChat} salvaChat=${salvaChat} modo=${modoTerm} setModo=${setModoTerm} home=${home} menuScheda=${menuScheda}
+      imp=${imp} mettiImp=${mettiImp} assistenti=${assistenti} />
     <${BarraStato} git=${git} home=${home} schede=${schede} orologio=${orologio} modo=${modoTerm} setModo=${setModoTerm} uso=${uso}
       aggiornamento=${aggiornamento} versione=${versione} remoti=${remoti} aggiorna=${() => schede.some((s) => !s.chiusa) ? setDialogo({ tipo: "aggiorna", aperte: schede.filter((s) => !s.chiusa).length }) : aggiornaOra()} />
     <div class="avvisi-volo" role="status">${toasts.map((t) => html`<div class=${`toast ${t.tipo}`} key=${t.id}><span>${t.testo}</span>
@@ -852,7 +861,24 @@ function Schermo({ scheda, attiva, salvaChat, apriChat, chiudi }) {
   </div>`;
 }
 
-function ColonnaTerminali({ schede, attiva, setAttiva, chiudi, apriChat, salvaChat, modo, setModo, home, menuScheda }) {
+// con quale assistente e modello parte una chat nuova: stesse impostazioni di Impostazioni > Terminale
+const MODELLI = [["predefinito", "Predefinito"], ["fable", "Fable"], ["opus", "Opus"], ["sonnet", "Sonnet"], ["haiku", "Haiku"]];
+function SceltaChat({ imp, mettiImp, assistenti }) {
+  if (!imp) return null;
+  const installato = (id) => (assistenti.find((a) => a.id === id) || {}).installato;
+  const scelto = installato(imp.assistente_chat) ? imp.assistente_chat : "claude";
+  return html`<div class="scelta-chat">
+    ${assistenti.length > 1 && html`<span class="imp-seg" role="radiogroup" aria-label="Assistente">${assistenti.map((a) => html`<button role="radio"
+      aria-checked=${scelto === a.id} class=${scelto === a.id ? "scelto" : ""} disabled=${!a.installato}
+      title=${a.installato ? "" : "Non installato su questo PC"} onClick=${() => mettiImp("assistente_chat", a.id)}>${a.nome}</button>`)}</span>`}
+    ${scelto === "claude"
+      ? html`<span class="imp-seg" role="radiogroup" aria-label="Modello">${MODELLI.map(([v, n]) => html`<button role="radio"
+          aria-checked=${imp.modello_chat === v} class=${imp.modello_chat === v ? "scelto" : ""} onClick=${() => mettiImp("modello_chat", v)}>${n}</button>`)}</span>`
+      : html`<p class="nota">Usa il suo modello. Le sue chat non compaiono in Chat e non aggiornano gli appunti.</p>`}
+  </div>`;
+}
+
+function ColonnaTerminali({ schede, attiva, setAttiva, chiudi, apriChat, salvaChat, modo, setModo, home, menuScheda, imp, mettiImp, assistenti }) {
   useEffect(() => { for (const id of [...console_.keys()]) if (!schede.some((s) => s.id === id)) { console_.get(id).distruggi(); console_.delete(id); } }, [schede]);
   useEffect(() => { const c = console_.get(attiva); if (c) setTimeout(() => c.adatta(true), 60); }, [modo]);
   const ultima = home && home.chat && home.chat.find((c) => c.stato !== "aperta");
@@ -874,6 +900,7 @@ function ColonnaTerminali({ schede, attiva, setAttiva, chiudi, apriChat, salvaCh
     ${schede.length === 0 ? html`<div class="term-vuoto">
         <h3>Claude Code, qui accanto</h3>
         <p>Ogni chat si apre in una linguetta. Puoi tenerne aperte più di una e passare dall'una all'altra.</p>
+        <${SceltaChat} imp=${imp} mettiImp=${mettiImp} assistenti=${assistenti} />
         <div class="azioni"><button class="btn" onClick=${() => apriChat()}>${Icona.piu()}Nuova chat</button>
           ${ultima && html`<button class="btn" onClick=${() => apriChat("riprendi", ultima.id)} title=${ultima.etichetta}>${Icona.riprendi()}Riprendi l'ultima</button>`}</div>
       </div>`
