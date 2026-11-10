@@ -6,6 +6,9 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 
 ## Next version
 
+- Add separate Claude, Codex and Antigravity settings for model, permission mode and reasoning effort. Keep notes models in Automatic notes.
+- Adapt the window to the screen, retain proportional panel sizes, stack the terminal in narrow windows and allow resizing the notes list with mouse or keyboard.
+- Fit terminal rows and columns during resizing and after fonts load; improve settings and chat layouts in small windows and with enlarged text.
 - Add an opt-in setting for Codex full access without command approval prompts, applied to new chats, resumed chats and background notes.
 
 ## 2026.11.10.1247 - Reliable notes across assistants

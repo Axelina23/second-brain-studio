@@ -672,6 +672,8 @@ class Ponte:
         if assistente in ("codex", "agy"):
             return self._apri_altro(assistente, tipo, esistente, prompt, dove, titolo, modello)
         argv = [str(CLAUDE)]
+        imp = self._impostazioni()
+        argv += mod_assistenti.opzioni_chat("claude", imp.get("modalita_claude", "predefinito"), imp.get("impegno_claude", "predefinito"))
         if tipo != "riprendi" and modello in MODELLI_CLAUDE:
             argv += ["--model", modello]
         nome_scelto = (titolo or "").strip()[:60]
@@ -729,7 +731,9 @@ class Ponte:
             prompt = re.sub(r'[&|<>^%"]', " ", prompt)  # cmd.exe li interpreterebbe
         argv = argv + mod_assistenti.argomenti(assistente, s.id if s else None, prompt,
                                                modello if tipo != "riprendi" else None,
-                                               senza_conferme=self._impostazioni().get("codex_senza_conferme") is True)
+                                               senza_conferme=self._impostazioni().get("codex_senza_conferme") is True,
+                                               modalita=self._impostazioni().get(f"modalita_{assistente}"),
+                                               impegno=self._impostazioni().get(f"impegno_{assistente}", "predefinito"))
         nota = self._prepara_assistente(assistente)
         etichetta = (titolo or "").strip()[:60] or (self._etichetta(s) if s else (prompt.capitalize() if prompt else nome))
         try:

@@ -28,6 +28,16 @@ def test_predefinite_e_salvataggio():
     assert percorsi.leggi_config()["impostazioni"]["tema"] == "chiaro"
 
 
+def test_modalita_indipendenti_e_migrazione_codex():
+    assert imp.salva({"codex_senza_conferme": True})["ok"]
+    assert imp.leggi()["modalita_codex"] == "completa"
+    assert imp.salva({"modalita_codex": "lettura", "modalita_claude": "plan", "modalita_agy": "auto", "impegno_codex": "high"})["ok"]
+    lette = imp.leggi()
+    assert (lette["modalita_codex"], lette["modalita_claude"], lette["modalita_agy"]) == ("lettura", "plan", "auto")
+    assert lette["impegno_codex"] == "high"
+    assert set(imp.salva({"modalita_codex": "plan", "impegno_codex": "max"})["scartate"]) == {"modalita_codex", "impegno_codex"}
+
+
 def test_limiti_numerici():
     assert "scartate" in imp.salva({"testo": 300})
     assert "scartate" in imp.salva({"sync_minuti": True})

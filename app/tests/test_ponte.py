@@ -5,6 +5,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ponte  # noqa: E402
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def impostazioni_isolate(monkeypatch):
+    monkeypatch.setattr(ponte.Ponte, "_impostazioni", staticmethod(lambda: {}))
 
 
 def _radice(tmp_path: Path) -> Path:

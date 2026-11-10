@@ -56,8 +56,9 @@ export class Console {
     this.collega();
     // durante un'animazione (allarga, ridimensiona finestra) arrivano molte misure:
     // si adatta una volta sola, quando la misura si e' fermata
-    this.osservatore = new ResizeObserver(() => { clearTimeout(this.attesa); this.attesa = setTimeout(() => this.adatta(), 120); });
+    this.osservatore = new ResizeObserver(() => { cancelAnimationFrame(this.attesa); this.attesa = requestAnimationFrame(() => this.adatta()); });
     this.osservatore.observe(contenitore);
+    document.fonts.ready.then(() => { if (!this.chiusa) this.adatta(true); });
   }
 
   collega() {
@@ -102,6 +103,7 @@ export class Console {
   distruggi() {
     tutte.delete(this);
     this.osservatore.disconnect();
+    cancelAnimationFrame(this.attesa);
     try { this.ws.close(); } catch (_) {}
     this.term.dispose();
   }

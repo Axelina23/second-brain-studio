@@ -47,6 +47,15 @@ def test_codex_senza_conferme_chat_nuove_e_riprese():
     assert assistenti.argomenti("agy", senza_conferme=True) == []
 
 
+def test_modalita_e_impegno_per_ogni_assistente():
+    assert assistenti.opzioni_chat("claude", "plan", "high") == ["--permission-mode", "plan", "--effort", "high"]
+    assert assistenti.argomenti("codex", "vecchia", modalita="auto") == ["resume", "vecchia", "--approve-for-me"]
+    assert assistenti.opzioni_chat("codex", "lettura", "high") == ["--ask-for-approval", "on-request", "--sandbox", "read-only", "-c", 'model_reasoning_effort="high"']
+    assert assistenti.argomenti("agy", "vecchia", modalita="plan", impegno="medium") == ["--conversation", "vecchia", "--mode", "plan", "--effort", "medium"]
+    assert assistenti.opzioni_chat("claude", "non-valida", "non-valido") == []
+    assert assistenti.argomenti("codex", senza_conferme=True, modalita="standard") == ["--ask-for-approval", "on-request", "--sandbox", "workspace-write"]
+
+
 def riga_codex(tipo, carico, quando="2026-11-09T20:00:00.000Z"):
     return json.dumps({"timestamp": quando, "type": tipo, "payload": carico})
 

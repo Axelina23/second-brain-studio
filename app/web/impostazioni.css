@@ -1,14 +1,14 @@
 /* Impostazioni (impostazioni.mjs) e tema chiaro. */
-.dialogo.imp { width: min(920px, calc(100vw - 48px)); height: min(640px, calc(100vh - 48px)); padding: 0; display: grid;
-  grid-template-columns: 230px minmax(0, 1fr); overflow: hidden; }
+.dialogo.imp { width: min(1040px, calc(100% - 32px)); height: min(760px, calc(100% - 32px)); padding: 0; display: grid;
+  grid-template-columns: clamp(176px, 20vw, 220px) minmax(0, 1fr); overflow: hidden; }
 .imp-nav { background: var(--notte-2); border-right: 1px solid var(--cucitura); padding: 18px 10px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
 .imp-nav h3 { margin: 0 8px 12px; font-size: 16px; }
-.imp-nav button { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border: 0; border-radius: var(--raggio-s);
+.imp-nav button { display: flex; align-items: center; gap: 10px; min-height: 34px; flex-shrink: 0; padding: 0 10px; border: 0; border-radius: var(--raggio-s);
   background: transparent; color: var(--testo-2); cursor: pointer; text-align: left; font-size: 13.5px; }
 .imp-nav button .ic { width: 16px; height: 16px; flex: none; }
 .imp-nav button:hover { background: var(--pannello); color: var(--testo); }
 .imp-nav button.attivo { background: var(--cobalto); color: #fff; }
-.imp-corpo { display: flex; flex-direction: column; min-height: 0; }
+.imp-corpo { display: flex; flex-direction: column; min-width: 0; min-height: 0; container-type: inline-size; }
 .imp-testa { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 10px; }
 .imp-testa h2 { margin: 0; font-size: 19px; }
 .imp-testa .ic { width: 16px; height: 16px; }
@@ -18,7 +18,7 @@
 .imp-testi { flex: 1; display: grid; gap: 2px; min-width: 0; }
 .imp-testi b { font-weight: 600; font-size: 14px; }
 .imp-testi span { color: var(--muto); font-size: 12.5px; overflow-wrap: anywhere; }
-.imp-comando { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; flex: none; }
+.imp-comando { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; max-width: 65%; min-width: 0; }
 .imp-cestino { flex-wrap: wrap; }
 .cestino-elenco { flex-basis: 100%; list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; max-height: 280px; overflow: auto; }
 .cestino-elenco li { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; background: var(--pannello-2); }
@@ -99,3 +99,11 @@ kbd { font-family: var(--mono); font-size: 11.5px; padding: 2px 7px; border-radi
 .piede-lat .lat-riga { justify-content: space-between; }
 .lat-riga > span { display: flex; align-items: center; gap: 8px; }
 .pa-annulla { margin-top: auto; }
+@container (max-width: 580px) {
+  .imp-voce:not(.imp-int) { flex-direction: column; align-items: stretch; gap: 9px; }
+  .imp-comando { max-width: 100%; justify-content: flex-start; }
+  .imp-comando .imp-sel { max-width: 100%; width: 100%; }
+  .imp-seg { max-width: 100%; flex-wrap: wrap; }
+  .imp-testa { padding: 14px 16px 8px; }
+  .imp-voci { padding: 4px 16px 18px; }
+}

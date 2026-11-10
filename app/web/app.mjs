@@ -799,6 +799,7 @@ function PaginaAppunti({ apri, avvisa, apriChat }) {
               onClick=${() => leggi(v.percorso)} title=${v.percorso}>
               <span class=${`pallino ${v.colore}`}></span><span class="n">${v.nome}</span><span class="g num">${etaTesto(v.giorni)}</span></button>`)}`)}
     </nav>
+    <${Maniglia} tipo="appunti" />
     <article class="lettore" ref=${lettore} onClick=${clicLettore}>
       ${doc && html`<div class="lettore-testa">
         <span class="percorso">${doc.percorso}</span><span class="pallino ${etaClasse(doc.giorni) === "e3" ? "rosso" : "verde"}"></span>
@@ -845,22 +846,55 @@ function PaginaInbox({ apriChat, menuInbox }) {
 }
 
 // ---------- terminali ----------
-function Maniglia() {
-  const [attiva, setAttiva] = useState(false);
-  useEffect(() => { const w = localStorage.getItem("termW"); if (w) document.documentElement.style.setProperty("--term-w", w); }, []);
-  const giu = (e) => {
-    e.preventDefault(); setAttiva(true);
-    const muovi = (ev) => {
-      const w = Math.max(380, Math.min(window.innerWidth - 224 - 420, window.innerWidth - ev.clientX));
-      document.documentElement.style.setProperty("--term-w", `${w}px`);
-    };
-    const su = () => {
-      setAttiva(false); window.removeEventListener("mousemove", muovi); window.removeEventListener("mouseup", su);
-      localStorage.setItem("termW", getComputedStyle(document.documentElement).getPropertyValue("--term-w").trim());
-    };
-    window.addEventListener("mousemove", muovi); window.addEventListener("mouseup", su);
+function Maniglia({ tipo = "terminale" }) {
+  const el = useRef(null), trascina = useRef(false), ratio = useRef(.48);
+  const [attiva, setAttiva] = useState(false), [orizzontale, setOrizzontale] = useState(false);
+  const note = tipo === "appunti";
+  const misure = () => {
+    const box = el.current && el.current.closest(note ? ".appunti" : ".app");
+    if (!box) return null;
+    const verticale = note ? box.clientWidth < 600 : box.clientWidth <= 1100;
+    const lato = note || verticale ? 0 : (box.querySelector(".laterale")?.offsetWidth || 0);
+    const totale = verticale ? box.clientHeight - (note ? 6 : 36) : box.clientWidth - lato - (note ? 6 : 8);
+    return { box, verticale, totale, key: `${note ? "appunti" : "term"}Ratio${verticale ? "H" : ""}` };
   };
-  return html`<div class=${`maniglia ${attiva ? "attiva" : ""}`} onMouseDown=${giu} role="separator" aria-orientation="vertical" title="Trascina per allargare il terminale"></div>`;
+  const applica = (valore, salva = false) => {
+    const m = misure(); if (!m || m.totale < 1) return;
+    const predefinito = note ? (m.verticale ? .28 : .25) : .48;
+    const valoreValido = Number.isFinite(valore) && valore > 0 ? valore : predefinito;
+    const minimo = note ? (m.verticale ? 90 : 145) : (m.verticale ? 170 : 340);
+    const altroMinimo = note ? (m.verticale ? 150 : 260) : (m.verticale ? 180 : 300);
+    const massimo = Math.max(minimo, m.totale - altroMinimo);
+    const px = Math.max(Math.min(minimo, m.totale / 2), Math.min(massimo, m.totale * valoreValido));
+    ratio.current = px / m.totale;
+    document.documentElement.style.setProperty(`--${note ? "appunti" : "term"}-${m.verticale ? "h" : "w"}`, `${px}px`);
+    setOrizzontale(m.verticale);
+    if (salva) localStorage.setItem(m.key, String(ratio.current));
+  };
+  useEffect(() => {
+    const aggiorna = () => { const m = misure(); if (m) applica(Number(localStorage.getItem(m.key))); };
+    aggiorna();
+    const osservatore = new ResizeObserver(aggiorna);
+    osservatore.observe(el.current.closest(note ? ".appunti" : ".app"));
+    window.addEventListener("resize", aggiorna);
+    return () => { osservatore.disconnect(); window.removeEventListener("resize", aggiorna); };
+  }, []);
+  const muovi = (e) => {
+    if (!trascina.current) return;
+    const m = misure(), r = m.box.getBoundingClientRect();
+    const scala = r.width / m.box.clientWidth;
+    const px = m.verticale ? (note ? e.clientY - r.top : r.bottom - e.clientY - 28 * scala) / scala
+      : (note ? e.clientX - r.left : r.right - e.clientX) / scala;
+    applica(px / m.totale, true);
+  };
+  const fine = () => { trascina.current = false; setAttiva(false); };
+  return html`<div ref=${el} class=${`maniglia ${note ? "maniglia-appunti" : ""} ${attiva ? "attiva" : ""}`}
+    onPointerDown=${(e) => { e.preventDefault(); trascina.current = true; setAttiva(true); e.currentTarget.setPointerCapture(e.pointerId); }}
+    onPointerMove=${muovi} onPointerUp=${fine} onPointerCancel=${fine}
+    onDoubleClick=${() => { const m = misure(); localStorage.removeItem(m.key); applica(0); }}
+    onKeyDown=${(e) => { if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) { e.preventDefault(); const cresce = e.key === "ArrowRight" || e.key === "ArrowDown"; applica(ratio.current + (cresce === note ? .04 : -.04), true); } if (e.key === "Home") applica(0, true); }}
+    role="separator" tabIndex="0" aria-orientation=${orizzontale ? "horizontal" : "vertical"}
+    aria-label=${note ? "Ridimensiona elenco appunti" : "Ridimensiona terminale"} title="Trascina per ridimensionare · doppio clic per ripristinare"></div>`;
 }
 
 const console_ = new Map();

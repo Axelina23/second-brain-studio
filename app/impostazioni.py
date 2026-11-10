@@ -37,6 +37,8 @@ PREDEFINITE = {
     "terminale_testo": 13.5, "terminale_carattere": "JetBrains Mono", "modello_chat": "predefinito",
     "modello_codex": "predefinito", "modello_agy": "predefinito", "assistente_chat": "claude",
     "codex_senza_conferme": False,
+    "modalita_claude": "predefinito", "modalita_codex": "predefinito", "modalita_agy": "predefinito",
+    "impegno_claude": "predefinito", "impegno_codex": "predefinito", "impegno_agy": "predefinito",
     # appunti automatici (letti dagli hook)
     "appunti_auto": True, "assistente_appunti": "chat", "modello_appunti": "sonnet",
     "modello_appunti_codex": "gpt-5.6-luna", "modello_appunti_agy": "gemini-3.8-flash-high", "soglia_kb": 30,
@@ -50,6 +52,12 @@ PREDEFINITE = {
     "chat_altri_pc": True,
 }
 SCELTE = {
+    "modalita_claude": ("predefinito", "manual", "auto", "acceptEdits", "plan", "bypassPermissions"),
+    "modalita_codex": ("predefinito", "standard", "auto", "lettura", "completa"),
+    "modalita_agy": ("predefinito", "auto", "accept-edits", "plan", "completa"),
+    "impegno_claude": ("predefinito", "low", "medium", "high", "xhigh", "max"),
+    "impegno_codex": ("predefinito", "low", "medium", "high", "xhigh"),
+    "impegno_agy": ("predefinito", "low", "medium", "high", "xhigh", "max"),
     "lingua": ("it", "en"), "tema": ("scuro", "chiaro", "sistema"),
     "colore": ("limone", "cobalto", "verderame", "terracotta", "viola", "rosa"),
     "pagina_iniziale": ("oggi", "chat", "appunti", "mappa", "inbox"),
@@ -75,6 +83,8 @@ _FLAGS = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 def leggi() -> dict:
     salvate = percorsi.leggi_config().get("impostazioni") or {}
+    if salvate.get("codex_senza_conferme") and "modalita_codex" not in salvate:
+        salvate = {**salvate, "modalita_codex": "completa"}
     return {k: salvate.get(k, v) if _valido(k, salvate.get(k)) else v for k, v in PREDEFINITE.items()}
 
 

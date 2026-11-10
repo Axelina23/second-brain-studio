@@ -1,6 +1,15 @@
 // Dizionario italiano -> inglese dell'interfaccia (vedi lingua.mjs). Chiave = testo esatto
 // mostrato in italiano (senza spazi ai bordi). REGOLE: testi con numeri, date e nomi.
 export const EN = {
+  "Dimensioni dei pannelli": "Panel sizes", "Ripristina dimensioni": "Reset sizes",
+  "Trascina i divisori per ridimensionare. Un doppio clic ripristina le proporzioni iniziali.": "Drag the dividers to resize. Double-click to restore the initial proportions.",
+  "Modalità permessi": "Permission mode", "Livello di ragionamento": "Reasoning effort",
+  "Predefinita": "Default", "Chiedi conferma": "Ask for approval", "Accetta modifiche": "Accept edits", "Pianifica": "Plan", "Sola lettura": "Read only",
+  "Accesso completo, senza conferme": "Full access, no approval prompts",
+  "Basso": "Low", "Medio": "Medium", "Alto": "High", "Molto alto": "Extra high", "Massimo": "Maximum",
+  "Si applicano alle chat nuove e alle chat riprese. Le chat già aperte mantengono la modalità in uso.": "Applies to new and resumed chats. Chats already open keep their current mode.",
+  "I livelli disponibili dipendono dal modello. Predefinito usa la scelta dell'assistente.": "Available levels depend on the model. Default uses the assistant's setting.",
+  "Modello, modalità e ragionamento si configurano nelle sezioni Claude, Codex e Antigravity.": "Configure model, mode and reasoning in the Claude, Codex and Antigravity sections.",
   "Codex senza conferme": "Codex without approval prompts",
   "Accesso completo a file e rete, senza richieste di approvazione dei comandi. Vale per le chat nuove e riprese dopo la modifica.": "Full file and network access without command approval prompts. Applies to chats started or resumed after this change.",
   "Salvataggio non riuscito": "Saving failed", "Appunti automatici disattivati": "Automatic notes disabled", "Riprova": "Retry",

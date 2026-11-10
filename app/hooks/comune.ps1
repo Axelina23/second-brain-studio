@@ -20,6 +20,7 @@ try {
   $imp = $cfg.impostazioni
   if ($imp) {
     $SB_CODEX_SENZA_CONFERME = $imp.codex_senza_conferme -eq $true
+    if ($imp.modalita_codex) { $SB_CODEX_SENZA_CONFERME = $imp.modalita_codex -eq "completa" }
     if ($imp.appunti_auto -eq $false) { $SB_APPUNTI = $false }
     if ($imp.assistente_appunti -in @("chat", "claude", "codex", "agy")) { $SB_ASSISTENTE_APPUNTI = $imp.assistente_appunti }
     if ($imp.modello_appunti -in @("sonnet", "haiku", "opus")) { $SB_MODELLO = $imp.modello_appunti }

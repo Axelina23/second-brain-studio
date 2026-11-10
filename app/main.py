@@ -724,9 +724,16 @@ class App:
             notifiche_win.registra_protocollo(sys.executable)
         self.terminali.avvia()
         threading.Thread(target=self._ascolta_istanze, name="istanza", daemon=True).start()
+        larghezza, altezza = 1360, 800
+        try:
+            schermo = webview.screens[0]
+            larghezza = min(1440, max(840, int(schermo.width * .9)))
+            altezza = min(900, max(560, int(schermo.height * .88)))
+        except (IndexError, AttributeError):
+            pass
         self.finestra = webview.create_window(
             TITOLO, url=str(QUI / "web" / "index.html"), js_api=Api(self),
-            width=1360, height=860, min_size=(980, 640), hidden=self.nascosta,
+            width=larghezza, height=altezza, min_size=(840, 560), hidden=self.nascosta,
             background_color="#0e1a22", text_select=True)
         self.finestra.events.closing += self._in_chiusura
         self.finestra.events.loaded += self._al_caricamento
