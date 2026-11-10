@@ -95,7 +95,7 @@ try {
     $prompt += " Al termine, solo se hai letto i file e completato l'aggiornamento (o verificato che non serve), scrivi su una riga separata SB_NOTES_OK. Se non riesci, non scrivere questo segnale."
     $modArg = if ($SB_MODELLO_CODEX -and $SB_MODELLO_CODEX -ne "predefinito") { @("-m", $SB_MODELLO_CODEX) } else { @() }
     $sandboxCodex = if ($SB_CODEX_SENZA_CONFERME) { "danger-full-access" } else { "workspace-write" }
-    $prompt | & codex exec --ephemeral -a never -s $sandboxCodex --add-dir $env:TEMP @modArg - 2> $errTmp | Out-File $logTmp -Append -Encoding utf8
+    $prompt | & codex -a never exec --ephemeral -s $sandboxCodex --add-dir $env:TEMP @modArg - 2> $errTmp | Out-File $logTmp -Append -Encoding utf8
   } else {
     $prompt | & $SB_CLAUDE -p --model $SB_MODELLO --add-dir $env:TEMP --allowedTools "Read" "Edit" "Write" "Glob" "Grep" 2> $errTmp | Out-File $logTmp -Append -Encoding utf8
   }
