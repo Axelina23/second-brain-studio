@@ -21,6 +21,17 @@ import canali  # noqa: E402
 
 canali.sistema()  # prima di ogni subprocess: vedi canali.py
 
+# Il controllo manuale non carica ponte, notifiche o componenti grafici.
+if __name__ == "__main__" and "--verifica-appunti-manuali" in sys.argv:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "motore"))
+    try:
+        from verifica_manuale import esegui_file
+        posizione = sys.argv.index("--verifica-appunti-manuali")
+        esegui_file(Path(sys.argv[posizione + 1]))
+    except Exception:
+        pass  # Il worker non riceve una conferma e conserva il percorso normale.
+    raise SystemExit(0)
+
 from github import GitHub  # noqa: E402
 from ponte import CACHE, RADICE, Ponte  # noqa: E402
 import aggiornamenti  # noqa: E402
