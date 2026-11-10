@@ -97,11 +97,15 @@ try {
   } else {
     $prompt | & $SB_CLAUDE -p --model $SB_MODELLO --add-dir $env:TEMP --allowedTools "Read" "Edit" "Write" "Glob" "Grep" 2> $errTmp | Out-File $logTmp -Append -Encoding utf8
   }
-  if ($LASTEXITCODE -eq 0) { Segna-Salvata }
+  if ($LASTEXITCODE -eq 0) { Segna-Salvata } else { throw "Assistente terminato con codice $LASTEXITCODE" }
   try { Move-Item -Force $logTmp $log -ErrorAction SilentlyContinue } catch {}
   try { Move-Item -Force $errTmp $err -ErrorAction SilentlyContinue } catch {}
   Remove-Item $riassunto, $logTmp, $errTmp -ErrorAction SilentlyContinue
 } catch {
+  try {
+    New-Item -ItemType Directory -Force -Path (Join-Path $SB_CACHE "segni") | Out-Null
+    Set-Content -Path (Join-Path $SB_CACHE "segni\$Id.errore") -Value (Get-Date -Format o)
+  } catch {}
   try { $_ | Out-String | Out-File $err -Encoding utf8 } catch {}
 }
 Remove-Item (Join-Path $SB_CACHE "segni\$Id.in-corso") -ErrorAction SilentlyContinue

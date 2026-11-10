@@ -287,7 +287,18 @@ class Ponte:
             return "aperta"
         stato = salvataggio.stato_salvataggio(s, self.segni)
         # attiva da poco (e non gia' chiusa/salvata): probabilmente e' aperta in un altro terminale
-        if stato == "non_salvata" and s.ultima > self.adesso() - RECENTE:
+        try:
+            chiusa = (self.segni / f"{s.id}.chiusa").stat().st_mtime >= s.ultima.timestamp()
+        except OSError:
+            chiusa = False
+        if chiusa and stato in ("non_salvata", "breve"):
+            imp = self._impostazioni()
+            if imp.get("appunti_auto") is False:
+                return "auto_disattivati"
+            soglia = imp.get("soglia_kb", 30)
+            if isinstance(soglia, (int, float)) and s.dimensione < soglia * 1024:
+                return "breve"
+        if stato == "non_salvata" and not chiusa and s.ultima > self.adesso() - RECENTE:
             return "aperta"
         return stato
 
@@ -314,6 +325,11 @@ class Ponte:
 
     def _lavoro_parole(self, elenco) -> None:
         for s in elenco:
+            if s.id in self._meta()["titoli"]:
+                continue
+            aperta = any(t.sessione == s.id for t in (self.terminali.attive() if self.terminali else []))
+            if aperta and parole.parole_chiave(s, self.cache / "parole.json"):
+                continue
             prima = self._etichetta(s)
             parole.aggiorna_parole([s], self.cache / "parole.json", chiedi=self._chiedi_per(s.assistente))
             dopo = self._etichetta(s)
@@ -683,6 +699,22 @@ class Ponte:
             return {"errore": f"Non riesco ad avviare Claude: {e}"}
         return self._voce_scheda(t)
 
+    def accedi_codex(self) -> dict:
+        argv = self._comando_assistente("codex")
+        if not argv:
+            return {"errore": "Codex non è installato su questo PC"}
+        if self.terminali is None:
+            return {"errore": "Terminale non disponibile"}
+        try:
+            t = self.terminali.apri(argv + ["login"], str(self.radice), "Accesso a Codex", assistente="codex", accesso=True)
+            t.accesso = True
+            voce = self._voce_scheda(t)
+            self.emetti("accesso-assistente", voce)
+            return {"ok": True}
+        except Exception:
+            self._log()
+            return {"errore": "Non riesco ad avviare l'accesso a Codex"}
+
     def _apri_altro(self, assistente: str, tipo: str, s, prompt: str | None, dove: Path, titolo: str | None,
                     modello: str | None = None) -> dict:
         # linguetta con Codex o Antigravity: chat nuova, ripresa (anche con un messaggio, per
@@ -919,6 +951,24 @@ class Ponte:
         self.emetti("chat", {"id": sessione, "etichetta": etichetta, "rinominata": bool(titolo)})
         return {"ok": True, "etichetta": etichetta}
 
+    def rigenera_titolo(self, sessione: str) -> dict:
+        s = self._sessione(sessione)
+        if s is None:
+            return {"errore": "Chat non trovata"}
+        if sessione in self._meta()["titoli"]:
+            return {"errore": "Il nome è stato scelto manualmente"}
+        def lavoro():
+            risposta = self._chiedi_per(s.assistente)(parole.PROMPT + s.testo_utente)
+            titolo = parole._formatta(risposta) if risposta else ""
+            if titolo and sessione not in self._meta()["titoli"]:
+                with parole._blocco:
+                    dati = parole._carica(self.cache / "parole.json")
+                    dati[sessione] = {"dimensione": s.dimensione, "parole": titolo}
+                    parole._salva(self.cache / "parole.json", dati)
+                self.emetti("chat", {"id": sessione, "etichetta": titolo})
+        self._in_thread(f"titolo-{sessione}", lavoro)
+        return {"ok": True}
+
     def rinomina_scheda(self, sid: str, titolo: str) -> dict:
         # linguetta aperta: se conosce gia' la sua chat il nome vale anche per la chat,
         # altrimenti lo riceve appena la chat nuova ha il suo id (_risolvi_schede)
@@ -1077,6 +1127,9 @@ class Ponte:
         return {"ok": True, "percorso": _rel(dest, self.radice), "progetto": stato.parent.name}
 
     def _voce_scheda(self, t) -> dict:
+        s = self._sessione(t.sessione) if t.sessione else None
+        if s:
+            t.titolo = self._etichetta(s)
         return {"id": t.id, "titolo": t.titolo, "sessione": t.sessione, "url": self.terminali.url(t.id),
                 "chiusa": t.codice is not None, "assistente": getattr(t, "assistente", "claude")}
 
@@ -1092,7 +1145,7 @@ class Ponte:
     def _risolvi_schede(self) -> None:
         # una chat nuova non sa ancora il suo id: lo deduce dal trascritto nato dopo l'apertura
         # della scheda; poi il titolo diventa le parole chiave (se la scheda non ha un comando)
-        senza = sorted((t for t in self.terminali.schede.values() if t.sessione is None),
+        senza = sorted((t for t in self.terminali.schede.values() if t.sessione is None and not getattr(t, "accesso", False)),
                        key=lambda t: t.aperta_il)
         if not senza:
             return
@@ -1118,6 +1171,9 @@ class Ponte:
         return {"ok": True}
 
     def scheda_chiusa(self, scheda) -> None:
+        if getattr(scheda, "accesso", False):
+            self.emetti("scheda", {"id": scheda.id, "chiusa": True})
+            return
         # chiamata dal thread del terminale quando claude esce: individua la sessione e,
         # dopo l'attesa dello hook, dice all'interfaccia se gli appunti risultano non salvati
         def lavoro():
@@ -1131,6 +1187,8 @@ class Ponte:
             self.emetti("scheda", {"id": scheda.id, "chiusa": True, "sessione": sid})
             if not sid:
                 return
+            self.segni.mkdir(parents=True, exist_ok=True)
+            (self.segni / f"{sid}.chiusa").touch()
             if assistente == "claude":
                 time.sleep(4)  # il suo hook di fine sessione lascia il segno "in corso"
             else:
@@ -1139,6 +1197,15 @@ class Ponte:
             s = next((x for x in self._sessioni() if x.id == sid), None)
             stato = salvataggio.stato_salvataggio(s, self.segni) if s else "breve"
             self.emetti("scheda", {"id": scheda.id, "chiusa": True, "sessione": sid, "stato": stato})
+            self._in_thread("parole", self._lavoro_parole, [s] if s else [])
+            # Segue i segni del worker fino al completamento o alla scadenza.
+            while stato == "in_corso":
+                time.sleep(2)
+                s = self._sessione(sid)
+                nuovo = salvataggio.stato_salvataggio(s, self.segni) if s else "breve"
+                if nuovo != stato:
+                    stato = nuovo
+                    self.emetti("scheda", {"id": scheda.id, "chiusa": True, "sessione": sid, "stato": stato})
         self._in_thread(f"chiusa-{scheda.id}", lavoro)
 
     def _appunti_di(self, s) -> bool:

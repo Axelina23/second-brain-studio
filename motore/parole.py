@@ -66,7 +66,7 @@ def _valida(voce, s: Sessione) -> bool:
 
 def parole_chiave(s: Sessione, cache: Path, chiedi=chiedi_haiku) -> str | None:
     voce = _carica(cache).get(s.id)
-    return _formatta(voce["parole"].replace(" · ", ",")) if _valida(voce, s) else None
+    return _formatta(voce["parole"].replace(" · ", ",")) if isinstance(voce, dict) and voce.get("parole") else None
 
 
 def aggiorna_parole(sessioni: list[Sessione], cache: Path, chiedi=chiedi_haiku) -> None:

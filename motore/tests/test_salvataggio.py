@@ -55,3 +55,15 @@ def test_in_corso_vecchio_con_sessione_ripresa(tmp_path):
     vecchio = time.time() - 5 * 60  # giovane (< 15 min) ma anteriore all'ultima attivita'
     os.utime(tmp_path / "abc.in-corso", (vecchio, vecchio))
     assert salvataggio.stato_salvataggio(_sess(40000, datetime.now()), tmp_path) == "non_salvata"
+
+
+def test_fallimento_e_nuovo_tentativo(tmp_path):
+    s = _s(40000)
+    errore = tmp_path / "abc.errore"
+    errore.touch()
+    os.utime(errore, (time.time() - 5, time.time() - 5))
+    assert salvataggio.stato_salvataggio(s, tmp_path) == "errore_salvataggio"
+    (tmp_path / "abc.in-corso").touch()
+    assert salvataggio.stato_salvataggio(s, tmp_path) == "in_corso"
+    (tmp_path / "abc.salvata").touch()
+    assert salvataggio.stato_salvataggio(s, tmp_path) == "salvata"

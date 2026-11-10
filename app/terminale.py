@@ -150,9 +150,10 @@ class Terminali:
 
     # --- schede ---
     def apri(self, argv: list[str], cwd: str, titolo: str, sessione: str | None = None,
-             cols: int = 120, rows: int = 32, assistente: str = "claude") -> Scheda:
+             cols: int = 120, rows: int = 32, assistente: str = "claude", accesso: bool = False) -> Scheda:
         sid = secrets.token_hex(6)
         scheda = Scheda(sid, argv, cwd, titolo, sessione, assistente=assistente)
+        scheda.accesso = accesso
         scheda.pty = self._crea_pty(argv, cwd, cols, rows, ambiente_pulito())
         with self._blocco:
             self.schede[sid] = scheda

@@ -31,7 +31,7 @@ export function applicaAspetto(imp) {
 }
 
 const SEZIONI = [["generale", "Generale", "oggi"], ["aspetto", "Aspetto", "mappa"], ["notifiche", "Notifiche", "chat"],
-  ["account", "Account Claude", "briefing"], ["terminale", "Terminale", "allarga"], ["appunti", "Appunti automatici", "appunti"],
+  ["account", "Account assistenti", "briefing"], ["terminale", "Terminale", "allarga"], ["appunti", "Appunti automatici", "appunti"],
   ["github", "GitHub", "github"], ["scorciatoie", "Scorciatoie", "riprendi"], ["dati", "Dati e manutenzione", "cartella"],
   ["info", "Informazioni", "esterno"]];
 
@@ -120,7 +120,7 @@ export function Impostazioni({ api, chiudi, avvisa, gh, accediGh, sincronizzaGh,
       <${Voce} titolo="Lingua" testo="Lingua dell'interfaccia. Quella delle risposte di Claude sta nelle tue Regole.">
         <${Segmenti} valore=${imp.lingua} cambia=${(v) => metti("lingua", v)} opzioni=${[["it", "Italiano"], ["en", "English"]]} /></${Voce}>
       <${Voce} titolo="Pagina all'apertura">
-        <select class="campo imp-sel" value=${imp.pagina_iniziale} onChange=${(e) => metti("pagina_iniziale", e.target.value)}>
+        <select data-traduci class="campo imp-sel" value=${imp.pagina_iniziale} onChange=${(e) => metti("pagina_iniziale", e.target.value)}>
           ${[["oggi", "Oggi"], ["chat", "Chat"], ["appunti", "Appunti"], ["mappa", "Mappa"], ["inbox", "Inbox"]].map(([v, n]) => html`<option value=${v}>${n}</option>`)}</select></${Voce}>
       <${Interruttore} titolo="Avvia con Windows" testo="Parte nascosta vicino all'orologio, pronta per notifiche e scorciatoia."
         valore=${d.avvio} disabilitato=${!d.installata} cambia=${(v) => azione("imposta_avvio", v ? "Partirà con Windows" : "Non partirà più con Windows", v)} />
@@ -164,12 +164,16 @@ export function Impostazioni({ api, chiudi, avvisa, gh, accediGh, sincronizzaGh,
         <span>–</span><input type="time" class="campo" value=${imp.silenzio_a} onChange=${(e) => metti("silenzio_a", e.target.value)} /></span></${Voce}>`}`,
 
     account: html`
+      <div class="imp-gruppo">Claude</div>
       <div class="imp-riquadro"><b>${acc.testo || "Non collegato"}</b>
         ${acc.email && html`<span>${acc.email}${acc.organizzazione ? ` · ${acc.organizzazione}` : ""}</span>`}
         <span>L'accesso è quello di Claude Code: vale nell'app, nel terminale e in VS Code.</span>
         <button class="btn piccolo" onClick=${() => { chiudi(); api("accedi_claude_terminale"); }}>Accedi o cambia account</button></div>
       <div class="imp-gruppo">Chiave API o Bedrock/Vertex</div>
-      <p class="imp-nota">Se usi una chiave API, impostala nelle variabili d'ambiente di Windows (Impostazioni di sistema → "Modifica le variabili d'ambiente per l'account" → nuova variabile <code>ANTHROPIC_API_KEY</code>). L'app la legge da sola, anche senza riavviarla. Per Amazon Bedrock o Google Vertex vale lo stesso con le loro variabili (<code>CLAUDE_CODE_USE_BEDROCK</code>, <code>CLAUDE_CODE_USE_VERTEX</code>).</p>`,
+      <p class="imp-nota">Se usi una chiave API, impostala nelle variabili d'ambiente di Windows (Impostazioni di sistema → "Modifica le variabili d'ambiente per l'account" → nuova variabile <code>ANTHROPIC_API_KEY</code>). L'app la legge da sola, anche senza riavviarla. Per Amazon Bedrock o Google Vertex vale lo stesso con le loro variabili (<code>CLAUDE_CODE_USE_BEDROCK</code>, <code>CLAUDE_CODE_USE_VERTEX</code>).</p>
+      <div class="imp-gruppo">Codex</div>
+      <div class="imp-riquadro"><span>Accedi a Codex con il tuo account ChatGPT nel browser. L'accesso viene gestito da Codex.</span>
+        <button class="btn piccolo" onClick=${async () => { const r = await api("accedi_codex"); if (r.errore) avvisa(r.errore, "errore"); else chiudi(); }}>Accedi a Codex</button></div>`,
 
     terminale: html`
       <${Voce} titolo="Carattere">

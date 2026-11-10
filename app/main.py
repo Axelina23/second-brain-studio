@@ -102,6 +102,7 @@ class Api:
     def cestino_chat(self): return self._p.cestino_chat()
     def elimina_per_sempre(self, sessione): return self._p.elimina_per_sempre(sessione)
     def svuota_cestino_chat(self): return self._p.svuota_cestino_chat()
+    def rigenera_titolo(self, sessione): return self._p.rigenera_titolo(sessione)
     def rinomina_chat(self, sessione, titolo): return self._p.rinomina_chat(sessione, titolo)
     def rinomina_scheda(self, sid, titolo): return self._p.rinomina_scheda(sid, titolo)
     def fissa_chat(self, sessione, fissa=True): return self._p.fissa_chat(sessione, fissa)
@@ -183,6 +184,7 @@ class Api:
     def svuota_cache(self): return imp_mod.svuota_cache()
     def apri_registri(self): os.startfile(str(CACHE)); return {"ok": True}  # type: ignore[attr-defined]
     def rifai_primo_avvio(self): return self._app.rifai_primo_avvio()
+    def accedi_codex(self): return self._p.accedi_codex()
     def accedi_claude_terminale(self): return self._p.apri_chat("nuova", None, "/login", None, "Accesso a Claude")
     def visibile(self, in_primo_piano, sessione=None):
         # l'interfaccia dice se la finestra e' in primo piano e quale chat si sta guardando

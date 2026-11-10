@@ -28,6 +28,16 @@ def stato_salvataggio(s: Sessione, segni: Path) -> str:
         return "salvata"
     # un segno vale solo se non e' anteriore all'ultima attivita' della chat (ripresa dopo il salvataggio)
     minimo = s.ultima.timestamp() - MARGINE
+    def tempo(tipo):
+        try:
+            return (segni / f"{s.id}.{tipo}").stat().st_mtime
+        except OSError:
+            return 0
+    errore, corso, salvata = tempo("errore"), tempo("in-corso"), tempo("salvata")
+    if errore >= minimo and errore > max(corso, salvata):
+        return "errore_salvataggio"
+    if corso >= minimo and corso > salvata:
+        return "in_corso" if time.time() - corso <= ATTESA_MAX else "errore_salvataggio"
     try:
         if (segni / f"{s.id}.salvata").stat().st_mtime >= minimo:
             return "salvata"

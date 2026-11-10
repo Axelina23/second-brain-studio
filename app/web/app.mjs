@@ -64,7 +64,7 @@ function gruppoGiorno(iso) {
 }
 const etaTesto = (g) => g < 1 ? "oggi" : g < 2 ? "ieri" : `${Math.floor(g)} g`;
 const etaClasse = (g) => g < 3 ? "" : g < 8 ? "e1" : g <= 14 ? "e2" : "e3";
-const STATI = { salvata: "salvata", non_salvata: "non salvata", in_corso: "salvataggio…", aperta: "aperta", breve: "breve" };
+const STATI = { errore_salvataggio: "Salvataggio non riuscito", auto_disattivati: "Appunti automatici disattivati", salvata: "salvata", non_salvata: "non salvata", in_corso: "salvataggio…", aperta: "aperta", breve: "breve" };
 const SYNC = {
   verde: "Sincronizzato con GitHub", giallo: "Modifiche da caricare su GitHub",
   rosso: "Ci sono appunti nuovi da scaricare", grigio: "Stato di GitHub sconosciuto",
@@ -169,8 +169,9 @@ function App({ primaChat, impIniziali, primoAvvio }) {
     }
     apriMenu(e, [
       { testo: "Riprendi", icona: Icona.riprendi, fai: () => apriChat("riprendi", c.id) },
-      c.stato === "non_salvata" && { testo: "Salva gli appunti", icona: Icona.salva, fai: () => salvaChat(c.id) },
+      ["non_salvata", "errore_salvataggio"].includes(c.stato) && { testo: c.stato === "errore_salvataggio" ? "Riprova" : "Salva gli appunti", icona: Icona.salva, fai: () => salvaChat(c.id) },
       { testo: "Rinomina…", icona: Icona.matita, fai: () => rinominaChat(c) },
+      ...(!c.rinominata ? [{ testo: "Rigenera titolo", icona: Icona.ricarica, fai: async () => { if (ok(await api("rigenera_titolo", c.id))) avvisa("Rigenerazione titolo avviata"); } }] : []),
       { testo: c.fissata ? "Togli dall'alto" : "Fissa in alto", icona: Icona.puntina, fai: async () => { if (ok(await api("fissa_chat", c.id, !c.fissata))) caricaHome(); } },
       diClaude(c) && { testo: "Apri in un'altra cartella…", icona: Icona.cartella, fai: () => apriInCartella(c) },
       "-",
@@ -187,7 +188,7 @@ function App({ primaChat, impIniziali, primoAvvio }) {
       const r = await api("rinomina_scheda", s.id, t);
       if (ok(r)) { setSchede((v) => v.map((x) => x.id === s.id ? { ...x, titolo: r.etichetta } : x)); caricaHome(); }
     }, s.sessione ? "Vale anche per la chat nell'elenco. Lascia vuoto per il titolo automatico." : "") },
-    s.sessione && { testo: "Duplica (copia della conversazione)", icona: Icona.copia, fai: async () => {
+    s.sessione && diClaude(s) && { testo: "Duplica (copia della conversazione)", icona: Icona.copia, fai: async () => {
       const r = await api("duplica_chat", s.sessione);
       if (ok(r)) { setSchede((v) => [...v, r]); setAttiva(r.id); }
     } },
@@ -314,8 +315,9 @@ function App({ primaChat, impIniziali, primoAvvio }) {
   useEvento((nome, d) => {
     if (nome === "sync") setHome((h) => h && { ...h, sync: d.stato });
     else if (nome === "oggi") setHome((h) => h && { ...h, oggi: d });
-    else if (nome === "chat") setHome((h) => h && { ...h, chat: h.chat.map((c) => c.id === d.id ? { ...c, etichetta: d.etichetta } : c) });
+    else if (nome === "chat") { setSchede((v) => v.map((s) => s.sessione === d.id ? { ...s, titolo: d.etichetta } : s)); setHome((h) => h && { ...h, chat: h.chat.map((c) => c.id === d.id ? { ...c, etichetta: d.etichetta } : c) }); }
     else if (nome === "nota") avvisa(`Nota rinominata: ${d.nome}`);
+    else if (nome === "accesso-assistente") { setSceltaNuova(false); setSchede((s) => [...s, d]); setAttiva(d.id); setModoTerm((m) => m === "nascosto" ? "normale" : m); }
     else if (nome === "scheda") {
       setSchede((s) => s.map((x) => x.id === d.id ? { ...x, chiusa: true, sessione: d.sessione || x.sessione, stato: d.stato || x.stato } : x));
       setTimeout(caricaHome, 500);
@@ -508,7 +510,7 @@ function PaginaOggi({ home, apriChat, salvaChat, vaiAppunto, avvisa, caricaHome,
   };
   const azioneAvviso = (a) => {
     if (a.tipo === "non_salvate") return a.chat.length === 1
-      ? html`<button class="btn piccolo" onClick=${() => salvaChat(a.chat[0].id)}>${Icona.salva()}Salva</button>`
+      ? html`<button class="btn piccolo" onClick=${() => salvaChat(a.chat[0].id)}>${Icona.salva()}${c.stato === "errore_salvataggio" ? "Riprova" : "Salva"}</button>`
       : a.chat.length <= 3
         ? html`<button class="btn piccolo" onClick=${() => a.chat.forEach((c) => salvaChat(c.id))} title="Apre una linguetta per ogni chat e ci fa salvare gli appunti">${Icona.salva()}Salva tutte</button>`
         : html`<button class="btn piccolo" onClick=${() => setPagina("chat")}>Vedi</button>`;
@@ -626,7 +628,7 @@ function PaginaChat({ apriChat, salvaChat, remoti, menuChat, eliminaChat }) {
     return () => clearTimeout(t);
   }, [q]);
   const visibili = useMemo(() => (elenco || []).filter((c) => {
-    if (filtro === "non_salvate" && c.stato !== "non_salvata") return false;
+    if (filtro === "non_salvate" && !["non_salvata", "errore_salvataggio"].includes(c.stato)) return false;
     if (filtro === "aperte" && c.stato !== "aperta") return false;
     if (!q.trim()) return true;
     const t = `${c.etichetta} ${c.primo}`.toLowerCase();
@@ -655,9 +657,9 @@ function PaginaChat({ apriChat, salvaChat, remoti, menuChat, eliminaChat }) {
   const altri = (remoti && remoti.attivo && remoti.pc) || [];
   const [chiusi, setChiusi] = useState(() => { try { return JSON.parse(localStorage.getItem("pcChiusi") || "[]"); } catch (_) { return []; } });
   const apriChiudi = (pc) => { const n = chiusi.includes(pc) ? chiusi.filter((x) => x !== pc) : [...chiusi, pc]; setChiusi(n); localStorage.setItem("pcChiusi", JSON.stringify(n)); };
-  const filtra = (c) => (filtro !== "non_salvate" || c.stato === "non_salvata") && (filtro !== "aperte" || c.stato === "aperta")
+  const filtra = (c) => (filtro !== "non_salvate" || ["non_salvata", "errore_salvataggio"].includes(c.stato)) && (filtro !== "aperte" || c.stato === "aperta")
     && (!q.trim() || q.toLowerCase().split(/\s+/).every((w) => (c.etichetta || "").toLowerCase().includes(w)));
-  const nNon = (elenco || []).filter((c) => c.stato === "non_salvata").length + altri.reduce((n, p) => n + p.chat.filter((c) => c.stato === "non_salvata").length, 0);
+  const nNon = (elenco || []).filter((c) => ["non_salvata", "errore_salvataggio"].includes(c.stato)).length + altri.reduce((n, p) => n + p.chat.filter((c) => ["non_salvata", "errore_salvataggio"].includes(c.stato)).length, 0);
   return html`<div class="pagina">
     <header class="testata"><div><h1 class="piccolo">Chat</h1></div>
       <div class="azioni"><button class="btn primario" onClick=${() => apriChat()}>${Icona.piu()}Nuova chat</button></div></header>
@@ -684,8 +686,8 @@ function PaginaChat({ apriChat, salvaChat, remoti, menuChat, eliminaChat }) {
             <span style="min-width:0"><div class="titolo" title=${c.etichetta}>${c.fissata ? html`<span class="segno-fissata" title="Fissata in alto">${Icona.puntina()}</span>` : ""}<${Assistente} c=${c} />${c.etichetta}</div>
               <div class="primo">${trovate && trovate.has(c.id) ? html`<span class="estratto">${trovate.get(c.id)}</span>` : c.primo}</div></span>
             <span class="quando num">${quando(c.ultima)}</span><${Timbro} stato=${c.stato} />
-            <span class="azione-riga" style="justify-self:end">${c.stato === "non_salvata"
-              ? html`<button class="btn piccolo" onClick=${(e) => { e.stopPropagation(); salvaChat(c.id); }}>${Icona.salva()}Salva</button>` : ""}</span>
+            <span class="azione-riga" style="justify-self:end">${["non_salvata", "errore_salvataggio"].includes(c.stato)
+              ? html`<button class="btn piccolo" onClick=${(e) => { e.stopPropagation(); salvaChat(c.id); }}>${Icona.salva()}${c.stato === "errore_salvataggio" ? "Riprova" : "Salva"}</button>` : ""}</span>
           </div>`)}</div></div>`)}
     ${altri.map((p) => { const cs = p.chat.filter(filtra); const chiuso = chiusi.includes(p.pc);
       return html`<section class=${`pc-sezione ${p.acceso ? "" : "spento"}`}>
@@ -796,7 +798,7 @@ function PaginaAppunti({ apri, avvisa, apriChat }) {
           <button class="btn piccolo" onClick=${() => setModifica(doc.testo)}>${Icona.matita()}Modifica</button>
           <button class="btn piccolo fantasma" onClick=${() => api("apri_esterno", doc.percorso)}>${Icona.esterno()}Apri fuori</button>`
         : html`<button class="btn piccolo fantasma" onClick=${() => { setModifica(null); setConflitto(false); }}>Annulla</button>
-          <button class="btn piccolo primario" onClick=${salva}>${Icona.salva()}Salva</button>`}
+          <button class="btn piccolo primario" onClick=${salva}>${Icona.salva()}${c.stato === "errore_salvataggio" ? "Riprova" : "Salva"}</button>`}
       </div>
       ${conflitto && html`<div class="messaggio">Il file è cambiato su disco mentre lo modificavi (forse l'ha aggiornato Claude).
         <button class="btn piccolo" onClick=${() => { setModifica(null); leggi(doc.percorso); }}>Ricarica</button></div>`}
@@ -864,18 +866,18 @@ function Schermo({ scheda, attiva, salvaChat, apriChat, chiudi }) {
   const chiusa = scheda.chiusa || uscita !== null;
   return html`<div class=${`schermo ${attiva ? "attivo" : ""}`} ref=${el}>
     ${chiusa && html`<div class="fine-chat">
-      <p>${scheda.stato === "non_salvata" ? "Chat chiusa senza salvare gli appunti." : scheda.stato === "in_corso" ? "Chat chiusa: sto salvando gli appunti in background." : "Chat chiusa."}</p>
-      ${scheda.sessione && scheda.stato === "non_salvata" && html`<button class="btn piccolo primario" onClick=${() => { chiudi(scheda.id); salvaChat(scheda.sessione); }}>${Icona.salva()}Salva appunti</button>`}
+      <p>${scheda.stato === "errore_salvataggio" ? "Salvataggio non riuscito" : ["non_salvata", "errore_salvataggio"].includes(scheda.stato) ? "Chat chiusa senza salvare gli appunti." : scheda.stato === "in_corso" ? "Chat chiusa: sto salvando gli appunti in background." : "Chat chiusa."}</p>
+      ${scheda.sessione && ["non_salvata", "errore_salvataggio"].includes(scheda.stato) && html`<button class="btn piccolo primario" onClick=${() => { chiudi(scheda.id); salvaChat(scheda.sessione); }}>${Icona.salva()}${scheda.stato === "errore_salvataggio" ? "Riprova" : "Salva appunti"}</button>`}
       ${scheda.sessione && html`<button class="btn piccolo" onClick=${() => { chiudi(scheda.id); apriChat("riprendi", scheda.sessione); }}>${Icona.riprendi()}Riapri</button>`}
       <button class="btn piccolo fantasma" onClick=${() => chiudi(scheda.id)}>Chiudi</button></div>`}
   </div>`;
 }
 
-// le chat di Codex e Antigravity portano il nome dell'assistente accanto al titolo; alcune
+// Le chat portano il nome dell'assistente accanto al titolo; alcune
 // azioni (eliminare, aprire in un'altra cartella, duplicare) esistono solo per quelle di Claude
-const NOMI_ASSISTENTI = { codex: "Codex", agy: "Antigravity" };
+const NOMI_ASSISTENTI = { claude: "Claude", codex: "Codex", agy: "Antigravity" };
 const diClaude = (c) => !c.assistente || c.assistente === "claude";
-const Assistente = ({ c }) => NOMI_ASSISTENTI[c.assistente] ? html`<span class="etichetta-assistente">${NOMI_ASSISTENTI[c.assistente]}</span>` : null;
+const Assistente = ({ c }) => NOMI_ASSISTENTI[c.assistente || "claude"] ? html`<span class="etichetta-assistente">${NOMI_ASSISTENTI[c.assistente || "claude"]}</span>` : null;
 
 // con quale assistente e modello parte una chat nuova: stesse impostazioni di Impostazioni > Terminale
 const MODELLI_PER = {
@@ -954,7 +956,7 @@ function Uso({ nome, w, settimana }) {
 }
 
 function BarraStato({ git, home, schede, attiva, sceltaNuova, imp, orologio, modo, setModo, uso, aggiornamento, aggiorna, versione, remoti }) {
-  const altrove = ((remoti && remoti.attivo && remoti.pc) || []).map((p) => [p.pc, p.chat.filter((c) => c.stato === "non_salvata").length]).filter(([, n]) => n);
+  const altrove = ((remoti && remoti.attivo && remoti.pc) || []).map((p) => [p.pc, p.chat.filter((c) => ["non_salvata", "errore_salvataggio"].includes(c.stato)).length]).filter(([, n]) => n);
   const aperte = schede.filter((s) => !s.chiusa).length;
   const schedaAttiva = !sceltaNuova && schede.find((s) => s.id === attiva && !s.chiusa);
   const assAttivo = (schedaAttiva && schedaAttiva.assistente) || (imp && imp.assistente_chat) || "claude";

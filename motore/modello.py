@@ -245,7 +245,7 @@ def blocco_claude(radice: Path) -> str:
     return (f"{INIZIO}\n{t[0]}\n"
             f"@{i}/{st['regole']}\n@{i}/{st['indice']}\n\n"
             f"{t[1]}\n{t[2]}"
-            f"`powershell -NoProfile -ExecutionPolicy Bypass -File \"{CARTELLA_HOOK.as_posix()}/apri-chat.ps1\" "
+            f"`powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File \"{CARTELLA_HOOK.as_posix()}/apri-chat.ps1\" "
             f"{t[3]}\n"
             f"{t[4].format(registro=f'{r}/' + st['registro'])}\n{FINE}\n")
 
@@ -280,7 +280,7 @@ def prompt_iniziale(r: dict) -> str:
 
 
 def _comando(script: Path, *arg: str) -> str:
-    return " ".join(["powershell -NoProfile -ExecutionPolicy Bypass -File", f'"{script.as_posix()}"', *arg])
+    return " ".join(["powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File", f'"{script.as_posix()}"', *arg])
 
 
 def collega_hook(sorgente: Path, destinazione: Path, settings: Path | None = None,
@@ -376,7 +376,7 @@ def _comando_senza_virgolette(script: Path, *arg: str) -> str:
     # Antigravity passa il comando a cmd.exe trasformando le virgolette doppie in \" (che
     # PowerShell poi prende alla lettera): qui il percorso sta tra apici singoli, dentro -Command
     percorso = script.as_posix().replace("'", "''")
-    return " ".join(["powershell -NoProfile -ExecutionPolicy Bypass -Command .", f"'{percorso}'", *arg])
+    return " ".join(["powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command .", f"'{percorso}'", *arg])
 
 
 def collega_hook_assistente(assistente: str, hook: Path, base: Path) -> dict:

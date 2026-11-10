@@ -99,3 +99,14 @@ def test_salvataggio_fallito_pulisce_tmp(tmp_path, monkeypatch):
     monkeypatch.setattr(parole.time, "sleep", lambda s: None)
     aggiorna_parole([sess("a"), sess("b")], cache, Finto())
     assert list(tmp_path.glob("*.tmp")) == []
+
+
+def test_titolo_precedente_restante_durante_crescita(tmp_path):
+    cache = tmp_path / "parole.json"
+    aggiorna_parole([sess()], cache, Finto("Rete wifi"))
+    cresciuta = sess(dim=60_000)
+    assert parole_chiave(cresciuta, cache) == "rete wifi"
+    aggiorna_parole([cresciuta], cache, Finto(None))
+    assert parole_chiave(cresciuta, cache) == "rete wifi"
+    aggiorna_parole([cresciuta], cache, Finto("Rete e stampante"))
+    assert parole_chiave(cresciuta, cache) == "rete e stampante"

@@ -4,42 +4,17 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 `app\build.ps1 -Stabile` uses the first section below as the release notes, so the newest version goes on top.
 "Next version" collects what is in `main` but not released yet: rename it when it ships.
 
-## Next version (not released yet)
+## 2026.11.10.0346 - Multi-assistant stable release
 
-- **New chat with tabs already open asks which assistant and model to use**, instead of reopening the last one.
-  Model choice now also for Codex (Luna, Terra, Sol and Astra, with a version toggle between 5.6 and 6/6.1) and
-  Antigravity (Settings → Terminal).
-- **Each assistant does its own background work.** Notes at the end of a Codex or Antigravity chat, chat keywords
-  and quick-note titles are written by the chat's own assistant, so Claude's plan is not used. Settings → Automatic
-  notes lets you pick who writes the notes ("Chat's own", Claude, Codex, Antigravity) and the model for each.
-- **Delete and restore also for Codex and Antigravity chats** (bin kept 30 days, Settings → Data).
-- **Windows notification when Antigravity asks you a question.**
-- **Status bar usage follows the assistant in use**: Claude plan bars, Codex limits when available, otherwise
-  messages in the last 5 hours and 7 days.
-
-- **Choose the assistant and the model for a new chat.** When no chat is open, the terminal panel lets you pick
-  Claude, Codex or Antigravity (`agy`), and for Claude the model (Default, Fable, Opus, Sonnet, Haiku). The same
-  choice is in Settings → Terminal and is used by every "New chat" button, Briefing and Review included. Codex and
-  Antigravity must already be installed and signed in; they run with their own model and subscription.
-- **Codex and Antigravity chats work like Claude's.** Chats started in your second brain folder are listed in Chats
-  and Today with the assistant's name, and you can resume, rename, pin, search and export them. When you close
-  their tab the notes are updated automatically (same background step as for Claude) and the second brain is
-  synced. On first use the app adds its hooks to Codex (`~/.codex/hooks.json`) and Antigravity
-  (`~/.gemini/config/hooks.json`) for the "has finished" notification and the sync at chat start, and creates an
-  `AGENTS.md` in the second brain that points them to your rules and index. Codex asks you to approve hooks once:
-  type `/hooks` in a Codex chat. Not available for these chats: delete, duplicate, open in another folder, and the
-  "waiting for permission" notification for Antigravity. Chats started outside the app are listed, but their notes
-  are saved only with "Save notes".
-- **Fix: the "Claude has finished" notification never arrived.** The hook wrote an empty event (a PowerShell
-  variable name clash), so the app ignored it.
-
-- **Fix: GitHub no longer asks you to reconnect every day.** A single "401" answer from GitHub made the app throw away
-  a perfectly valid key. Now the app checks the key again on `/user` first and removes it only if GitHub refuses it
-  twice; every 401 is written to `app-errori.log` with the call, the URL and GitHub's answer (never the key).
-- The Inbox counter follows the folder within 10 seconds, also when the Inbox is emptied from a terminal.
-
-- Plan usage bars also for people who already had their own Claude Code status line: the app keeps it and runs it
-  after saving the usage numbers, so the line looks exactly as before.
+- Choose Claude, Codex or Antigravity for new chats, with assistant-specific model selectors and usage indicators.
+- Resume, rename, pin, search, export, delete and restore chats across assistants. Show an assistant label for every chat.
+- Each assistant can generate its own background notes and titles. Configure the assistant and model used for automatic notes.
+- Keep chat titles stable while open and consistent across tabs, sidebar and lists; regenerate automatic titles from the context menu.
+- Refresh saving status when background notes finish. Keep closed chats closed, report failed saves and offer retry.
+- Sign in to Codex from Assistant accounts settings. Complete English translations for the startup-page selector and account controls.
+- Hide background PowerShell hook windows. Hide Claude's native conversation fork action for other assistants.
+- Notify when assistants finish or request input; preserve existing user hooks and status lines.
+- Avoid discarding valid GitHub credentials after a transient authentication error. Refresh the Inbox count within ten seconds.
 
 ## 2026.11.8.1805 — First public release
 

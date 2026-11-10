@@ -1,6 +1,17 @@
 // Dizionario italiano -> inglese dell'interfaccia (vedi lingua.mjs). Chiave = testo esatto
 // mostrato in italiano (senza spazi ai bordi). REGOLE: testi con numeri, date e nomi.
 export const EN = {
+  "Salvataggio non riuscito": "Saving failed", "Appunti automatici disattivati": "Automatic notes disabled", "Riprova": "Retry",
+  "Account assistenti": "Assistant accounts",
+  "Accedi a Codex": "Sign in to Codex",
+  "Accesso a Codex": "Codex sign-in",
+  "Accedi a Codex con il tuo account ChatGPT nel browser. L'accesso viene gestito da Codex.": "Sign in to Codex with your ChatGPT account in the browser. Codex manages the sign-in.",
+  "Chiave API di Anthropic": "Anthropic API key",
+  "Il nome è stato scelto manualmente": "The name was chosen manually",
+  "Codex non è installato su questo PC": "Codex is not installed on this PC",
+  "Non riesco ad avviare l'accesso a Codex": "Unable to start Codex sign-in",
+
+  "Rigenera titolo": "Regenerate title", "Rigenerazione titolo avviata": "Title regeneration started",
   // barra laterale e navigazione
   "Oggi": "Today", "Chat": "Chats", "Appunti": "Notes", "Mappa": "Map", "Inbox": "Inbox",
   "7g": "7d",  // barra di stato: uso settimanale del piano

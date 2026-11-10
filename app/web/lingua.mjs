@@ -6,7 +6,7 @@
 // campi di testo, titoli e anteprime delle chat, e tutto cio' che sta in [data-no-trad].
 import { EN, REGOLE } from "./lingua-en.mjs";
 
-const SALTA = ".xterm, .md, .editor, textarea, input, select, code, .chat-riga .titolo, .chat-riga .primo:not(.conteggio), .lat-chat span:last-child, .linguetta-titolo, [data-no-trad]";
+const SALTA = ".xterm, .md, .editor, textarea, input, select:not([data-traduci]), code, .chat-riga .titolo, .chat-riga .primo:not(.conteggio), .lat-chat span:last-child, .linguetta-titolo, [data-no-trad]";
 const ATTRIBUTI = ["title", "placeholder", "aria-label"];
 let lingua = "it";
 let osservatore = null;

@@ -517,3 +517,60 @@ def test_uso_per_assistente(tmp_path):
     assert u["assistenti"]["codex"]["five_hour"]["percentuale"] == 22
     assert u["assistenti"]["codex"]["seven_day"]["percentuale"] == 15
     assert u["assistenti"]["codex"]["cinque_ore"] == 1 and u["assistenti"]["agy"]["cinque_ore"] == 1
+
+
+def test_titolo_aperta_stabile_e_finale_aggiornato(tmp_path):
+    from types import SimpleNamespace
+    p, _ = _ponte(tmp_path)
+    s = SimpleNamespace(id="abc", dimensione=50000, n_messaggi=4, testo_utente="Rete", assistente="claude")
+    p._sessioni = lambda: [s]
+    t = SimpleNamespace(sessione="abc")
+    p.terminali = SimpleNamespace(attive=lambda: [t])
+    chiamate = []
+    p._chiedi_per = lambda a: lambda prompt: chiamate.append(prompt) or "Rete nuova"
+    ponte.parole._salva(p.cache / "parole.json", {"abc": {"dimensione": 40000, "parole": "rete precedente"}})
+    p._lavoro_parole([s])
+    assert chiamate == []
+    assert p._etichetta(s) == "rete precedente"
+    p.terminali.attive = lambda: []
+    p._lavoro_parole([s])
+    assert len(chiamate) == 1
+    assert p._etichetta(s) == "rete nuova"
+
+
+def test_accesso_codex_apre_login_senza_chat(tmp_path):
+    from types import SimpleNamespace
+    p, _ = _ponte(tmp_path)
+    chiamate = []
+    t = SimpleNamespace(id="login", titolo="Accesso a Codex", sessione=None, codice=None, assistente="codex")
+    def apri(*args, **kwargs):
+        chiamate.append((args, kwargs))
+        return t
+    p.terminali = SimpleNamespace(apri=apri, url=lambda sid: "ws://test")
+    p._comando_assistente = lambda nome: ["node", "codex.js"]
+    eventi = []
+    p.emetti = lambda nome, dati: eventi.append((nome, dati))
+    assert p.accedi_codex() == {"ok": True}
+    assert chiamate[0][0][0] == ["node", "codex.js", "login"]
+    assert t.accesso
+    p.scheda_chiusa(t)
+    assert eventi[-1] == ("scheda", {"id": "login", "chiusa": True})
+
+
+def test_accesso_codex_non_installato(tmp_path):
+    p, _ = _ponte(tmp_path)
+    p._comando_assistente = lambda nome: None
+    assert "errore" in p.accedi_codex()
+
+
+def test_chiusa_recente_non_risulta_aperta(tmp_path):
+    from types import SimpleNamespace
+    p, _ = _ponte(tmp_path)
+    s = SimpleNamespace(id="abc", dimensione=40000, ultima=datetime.now().astimezone())
+    p._impostazioni = lambda: {}
+    assert p._stato(s) == "aperta"
+    p.segni.mkdir()
+    (p.segni / "abc.chiusa").touch()
+    assert p._stato(s) == "non_salvata"
+    p._impostazioni = lambda: {"appunti_auto": False}
+    assert p._stato(s) == "auto_disattivati"

@@ -120,3 +120,14 @@ def test_solo_avvisi(tmp_path):
     d = json.loads(s.read_text(encoding="utf-8"))
     assert r["cambiato"] and set(d["hooks"]) == {"Stop", "Notification"} and d["statusLine"]["command"] == "mia"
     assert "-Evento attesa" in d["hooks"]["Notification"][0]["hooks"][0]["command"]
+
+
+def test_hook_codex_non_riscritti_se_invariati(tmp_path):
+    hook, base = tmp_path / "hook", tmp_path / "codex"
+    hook.mkdir()
+    assert modello.collega_hook_assistente("codex", hook, base)["cambiato"]
+    file = base / "hooks.json"
+    prima = (file.read_bytes(), file.stat().st_mtime_ns)
+    for _ in range(2):
+        assert not modello.collega_hook_assistente("codex", hook, base)["cambiato"]
+        assert (file.read_bytes(), file.stat().st_mtime_ns) == prima

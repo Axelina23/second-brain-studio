@@ -546,3 +546,5 @@ button.pc-testa { cursor: pointer; }
 .stato .altrove { color: var(--terracotta-chiaro); }
 .pc-testa > * { flex: none; white-space: nowrap; }
 .pc-testa > .pc-sotto { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+.timbro.errore_salvataggio { color: var(--rosso, #e8906a); border-color: currentColor; }
