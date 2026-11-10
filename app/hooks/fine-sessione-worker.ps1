@@ -85,6 +85,42 @@ try {
   Set-Location $SB_RADICE
   $origine = if ($Assistente -in @("claude", "codex", "agy")) { $Assistente } elseif ($Strumento -eq "Codex") { "codex" } elseif ($Strumento -eq "Antigravity") { "agy" } else { "claude" }
   $chi = if ($SB_ASSISTENTE_APPUNTI -in @("claude", "codex", "agy")) { $SB_ASSISTENTE_APPUNTI } else { $origine }
+  # Solo una richiesta esplicita di salvataggio manuale apre il percorso breve.
+  # Negli altri casi il salvataggio normale qui sotto resta identico.
+  if ($testo -match '(?im)^UTENTE:\s*(?:(?:ok|perfetto|bene|ora|adesso|puoi|potresti|per favore|prima di chiudere|please|can you)[,:\s]+)*(?:salva|salvare|aggiorna|aggiornare|save|update)\b[^\r\n]{0,140}\b(?:appunti|registro|notes|log)\b') {
+    try {
+      $configManuale = Get-Content -LiteralPath (Join-Path $SB_CACHE 'config.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+      if ($configManuale.app_exe -and (Test-Path -LiteralPath $configManuale.app_exe)) {
+        $richiestaManuale = Join-Path $env:TEMP "appunti-manuali-$PID.json"
+        $risultatoManuale = Join-Path $env:TEMP "appunti-manuali-esito-$PID.json"
+        $datiManuale = @{ testo = $testo; radice = $SB_RADICE; assistente = $chi; ricevuta = (Join-Path $SB_CACHE "segni\$Id.manuale.json"); risultato = $risultatoManuale } | ConvertTo-Json -Depth 4
+        [IO.File]::WriteAllText($richiestaManuale, $datiManuale, (New-Object Text.UTF8Encoding($false)))
+        $processoManuale = Start-Process -FilePath $configManuale.app_exe -WindowStyle Hidden -ArgumentList @('--verifica-appunti-manuali', "`"$richiestaManuale`"") -PassThru
+        $completatoManuale = $processoManuale.WaitForExit(16000)
+        if (-not $completatoManuale) {
+          $killInfo = New-Object Diagnostics.ProcessStartInfo
+          $killInfo.FileName = Join-Path $env:WINDIR 'System32\taskkill.exe'
+          $killInfo.Arguments = "/PID $($processoManuale.Id) /T /F"
+          $killInfo.UseShellExecute = $false; $killInfo.CreateNoWindow = $true
+          $kill = [Diagnostics.Process]::Start($killInfo)
+          $null = $kill.WaitForExit(3000)
+        }
+        if ($completatoManuale -and (Test-Path -LiteralPath $risultatoManuale)) {
+          $esitoManuale = Get-Content -LiteralPath $risultatoManuale -Raw -Encoding UTF8 | ConvertFrom-Json
+          if ($esitoManuale.confermato -eq $true) {
+            "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Salvataggio manuale confermato: $($esitoManuale.motivo) - chat $Id" | Out-File $log -Encoding utf8
+            New-Item -ItemType Directory -Force -Path (Join-Path $SB_CACHE 'salvataggi') | Out-Null
+            Copy-Item -LiteralPath $log -Destination (Join-Path $SB_CACHE "salvataggi\$Id.log") -Force
+            Segna-Salvata
+            Remove-Item (Join-Path $SB_CACHE "segni\$Id.in-corso"), $richiestaManuale, $risultatoManuale, $riassunto -ErrorAction SilentlyContinue
+            & (Join-Path $PSScriptRoot 'sync.ps1') -Modo push
+            exit 0
+          }
+        }
+        Remove-Item $richiestaManuale, $risultatoManuale -ErrorAction SilentlyContinue
+      }
+    } catch { } # Nessuna conferma: prosegue il salvataggio normale.
+  }
   $modUsato = if ($chi -eq "agy") { $SB_MODELLO_AGY } elseif ($chi -eq "codex") { $SB_MODELLO_CODEX } else { $SB_MODELLO }
   $logTmp = Join-Path $env:TEMP "appunti-log-$PID.txt"
   $errTmp = Join-Path $env:TEMP "appunti-err-$PID.txt"

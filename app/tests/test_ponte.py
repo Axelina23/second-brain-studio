@@ -605,6 +605,7 @@ def test_accesso_codex_non_installato(tmp_path):
 
 
 def test_chiusa_recente_non_risulta_aperta(tmp_path):
+    import os
     from types import SimpleNamespace
     p, _ = _ponte(tmp_path)
     s = SimpleNamespace(id="abc", dimensione=40000, ultima=datetime.now().astimezone())
@@ -612,6 +613,7 @@ def test_chiusa_recente_non_risulta_aperta(tmp_path):
     assert p._stato(s) == "aperta"
     p.segni.mkdir()
     (p.segni / "abc.chiusa").touch()
+    os.utime(p.segni / "abc.chiusa", (s.ultima.timestamp() + 1, s.ultima.timestamp() + 1))
     assert p._stato(s) == "non_salvata"
     p._impostazioni = lambda: {"appunti_auto": False}
     assert p._stato(s) == "auto_disattivati"

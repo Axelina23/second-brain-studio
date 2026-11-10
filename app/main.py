@@ -224,6 +224,11 @@ class App:
                 shutil.copy2(f, dest / f.name)
             import modello
             modello.migra_hook_appunti_legacy(dest)
+            if getattr(sys, "frozen", False):
+                import percorsi
+                cfg = percorsi.leggi_config()
+                if cfg.get("app_exe") != sys.executable:
+                    percorsi.scrivi_config({**cfg, "app_exe": sys.executable})
         except OSError:
             self.ponte._log()
 
@@ -775,7 +780,15 @@ def main() -> None:
     parser.add_argument("--cartella", help="cartella di lavoro della chat di --chat")
     parser.add_argument("--titolo", help="nome della scheda di --chat")
     parser.add_argument("--link", help="collegamento secondbrainstudio:// (clic su una notifica)")
+    parser.add_argument("--verifica-appunti-manuali", help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.verifica_appunti_manuali:
+        from verifica_manuale import esegui_file
+        try:
+            esegui_file(Path(args.verifica_appunti_manuali))
+        except Exception:
+            pass  # Verifica opzionale: il worker continua il salvataggio normale.
+        return
     if args.link:
         tipo, sessione = notifiche_win.leggi_link(args.link)
         comando = f"vai {sessione}".encode() if tipo == "chat" else b"mostra"
