@@ -4,7 +4,7 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 `app\build.ps1 -Stabile` uses the first section below as the release notes, so the newest version goes on top.
 "Next version" collects what is in `main` but not released yet: rename it when it ships.
 
-## 2026.11.10.0346 - Multi-assistant stable release
+## 2026.11.10.0352 - Multi-assistant stable release
 
 - Choose Claude, Codex or Antigravity for new chats, with assistant-specific model selectors and usage indicators.
 - Resume, rename, pin, search, export, delete and restore chats across assistants. Show an assistant label for every chat.
