@@ -4,7 +4,7 @@
 $SB_CACHE = Join-Path $env:USERPROFILE ".claude\second-brain"
 $SB_RADICE = $null
 $SB_APPUNTI = $true; $SB_ASSISTENTE_APPUNTI = "chat"
-$SB_MODELLO = "sonnet"; $SB_MODELLO_CODEX = "gpt-5.6-luna"; $SB_MODELLO_AGY = "gemini-3.8-flash-high"
+$SB_MODELLO = "sonnet"; $SB_MODELLO_CODEX = "gpt-6-luna"; $SB_MODELLO_AGY = "gemini-3.8-flash-high"
 $SB_SOGLIA = 30KB
 $SB_CLAUDE = Join-Path $env:USERPROFILE ".local\bin\claude.exe"
 $SB_CODEX_SENZA_CONFERME = $false
@@ -29,6 +29,8 @@ try {
     if ($imp.soglia_kb -gt 0) { $SB_SOGLIA = [int]$imp.soglia_kb * 1KB }
   }
 } catch {}
+$ultimiCodex = @{ "gpt-5.6-luna" = "gpt-6-luna"; "gpt-5.6-terra" = "gpt-6.1-terra"; "gpt-5.6-sol" = "gpt-6.1-sol"; "gpt-6-sol" = "gpt-6.1-sol" }
+if ($ultimiCodex.ContainsKey($SB_MODELLO_CODEX)) { $SB_MODELLO_CODEX = $ultimiCodex[$SB_MODELLO_CODEX] }
 if (-not (Test-Path $SB_CLAUDE)) {
   $c = Get-Command claude -ErrorAction SilentlyContinue
   if ($c) { $SB_CLAUDE = $c.Source }

@@ -16,8 +16,16 @@ const TEMA = {
 const FAMIGLIE = { "JetBrains Mono": '"JetBrainsMono Nerd Font", "JetBrains Mono"', "Cascadia Mono": '"Cascadia Mono"', "Consolas": "Consolas" };
 const famiglia = () => `${FAMIGLIE[(window.sbTerminale || {}).carattere] || FAMIGLIE["JetBrains Mono"]}, "Cascadia Mono", Consolas, monospace`;
 const tutte = new Set();
+const opzioni = () => {
+  const p = window.sbTerminale || {};
+  const tema = p.tema === "chiaro" ? { ...TEMA, background: "#f5f2e9", foreground: "#17232b", cursor: "#1f4fa3", cursorAccent: "#ffffff", selectionBackground: "#1f4fa333", selectionForeground: "#17232b", black: "#17232b", white: "#485b66", brightWhite: "#17232b", yellow: "#8a6500", green: "#24733a", cyan: "#176a75" }
+    : p.tema === "contrasto" ? { ...TEMA, background: "#000000", foreground: "#ffffff", cursor: "#ffffff", cursorAccent: "#000000" } : TEMA;
+  return { fontSize: p.testo || 13.5, fontFamily: famiglia(), lineHeight: p.interlinea || 1.15,
+    cursorStyle: p.cursore || "block", cursorBlink: p.lampeggio !== false,
+    scrollback: p.righe || 10000, smoothScrollDuration: p.fluido ? 120 : 0, theme: tema };
+};
 window.addEventListener("sb-terminale", () => tutte.forEach((c) => {
-  c.term.options.fontSize = (window.sbTerminale || {}).testo || 13.5; c.term.options.fontFamily = famiglia(); c.adatta(true);
+  Object.entries(opzioni()).forEach(([k, v]) => { c.term.options[k] = v; }); c.adatta(true);
 }));
 
 export class Console {
@@ -27,8 +35,7 @@ export class Console {
     this.chiusa = false;
     tutte.add(this);
     this.term = new window.Terminal({
-      fontFamily: famiglia(), fontSize: (window.sbTerminale || {}).testo || 13.5, lineHeight: 1.15, cursorBlink: true, allowProposedApi: true,
-      scrollback: 10000, theme: TEMA, macOptionIsMeta: true,
+      ...opzioni(), allowProposedApi: true, macOptionIsMeta: true,
     });
     this.fit = new window.FitAddon.FitAddon();
     this.term.loadAddon(this.fit);
@@ -51,7 +58,7 @@ export class Console {
       if (e.ctrlKey && e.key.toLowerCase() === "v") { this.incolla(); e.preventDefault(); return false; }
       return true;
     });
-    contenitore.addEventListener("contextmenu", (e) => { e.preventDefault(); this.incolla(); });
+    contenitore.addEventListener("contextmenu", (e) => { if ((window.sbTerminale || {}).incollaDestro !== false) { e.preventDefault(); this.incolla(); } });
     this.term.onData((d) => this.invia(d));
     this.collega();
     // durante un'animazione (allarga, ridimensiona finestra) arrivano molte misure:

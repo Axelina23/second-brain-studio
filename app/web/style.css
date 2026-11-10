@@ -411,7 +411,7 @@ body { width: calc(100vw / var(--ui-zoom, 1)); height: calc(100dvh / var(--ui-zo
 /* ---------- colonna terminale ---------- */
 .maniglia { grid-row: 1; cursor: col-resize; background: var(--notte-2); border-left: 1px solid var(--cucitura); position: relative; touch-action: none; user-select: none; }
 .maniglia:hover, .maniglia.attiva { background: var(--cobalto); }
-.colonna-term { grid-row: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--term); }
+.colonna-term { grid-row: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--terminale-bg, var(--term)); }
 .linguette { display: flex; align-items: stretch; height: 40px; border-bottom: 1px solid var(--cucitura); background: var(--notte-2); flex: none; }
 .linguette-scorri { display: flex; align-items: stretch; overflow-x: auto; flex: 1; min-width: 0; scrollbar-width: none; }
 .linguette-scorri::-webkit-scrollbar { display: none; }
@@ -550,17 +550,14 @@ body { width: calc(100vw / var(--ui-zoom, 1)); height: calc(100dvh / var(--ui-zo
   .pagina { padding: 18px 20px 24px; }
   .panchina { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); }
 }
-@container schermata (max-width: 1100px) {
-  .app { --nav-w: 176px; }
-  .app { grid-template-columns: var(--nav-w) minmax(0, 1fr); grid-template-rows: minmax(180px, 1fr) 8px minmax(170px, var(--term-h)) 28px; }
-  .app > .laterale { grid-column: 1; grid-row: 1 / 4; }
-  .app > .principale { grid-column: 2; grid-row: 1; }
-  .app > .maniglia { grid-column: 2; grid-row: 2; cursor: row-resize; }
-  .app > .colonna-term { grid-column: 2; grid-row: 3; }
-  .app > .stato { grid-column: 1 / -1; grid-row: 4; }
-  .app.term-nascosto { grid-template-columns: var(--nav-w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 0 0 28px; }
-  .app.term-ampio { grid-template-columns: var(--nav-w) minmax(0, 1fr); grid-template-rows: 0 0 minmax(0, 1fr) 28px; }
-}
+.app.term-verticale { --nav-w: 176px; grid-template-columns: var(--nav-w) minmax(0, 1fr); grid-template-rows: minmax(180px, 1fr) 8px minmax(170px, var(--term-h)) 28px; }
+.app.term-verticale > .laterale { grid-column: 1; grid-row: 1 / 4; }
+.app.term-verticale > .principale { grid-column: 2; grid-row: 1; }
+.app.term-verticale > .maniglia { grid-column: 2; grid-row: 2; cursor: row-resize; }
+.app.term-verticale > .colonna-term { grid-column: 2; grid-row: 3; }
+.app.term-verticale > .stato { grid-column: 1 / -1; grid-row: 4; }
+.app.term-verticale.term-nascosto { grid-template-columns: var(--nav-w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 0 0 28px; }
+.app.term-verticale.term-ampio { grid-template-columns: var(--nav-w) minmax(0, 1fr); grid-template-rows: 0 0 minmax(0, 1fr) 28px; }
 @media (max-height: 700px) {
   .laterale { padding-top: 10px; }
   .marchio { padding-bottom: 10px; }

@@ -35,13 +35,16 @@ PREDEFINITE = {
     "silenzio_attivo": False, "silenzio_da": "23:00", "silenzio_a": "08:00", "silenzio_gioco": True,
     # terminale
     "terminale_testo": 13.5, "terminale_carattere": "JetBrains Mono", "modello_chat": "predefinito",
+    "terminale_interlinea": 1.15, "terminale_cursore": "block", "terminale_lampeggio": True,
+    "terminale_righe": 10000, "terminale_scorrimento_fluido": False, "terminale_incolla_destro": True,
+    "terminale_posizione": "auto", "terminale_tema": "notte",
     "modello_codex": "predefinito", "modello_agy": "predefinito", "assistente_chat": "claude",
     "codex_senza_conferme": False,
     "modalita_claude": "predefinito", "modalita_codex": "predefinito", "modalita_agy": "predefinito",
     "impegno_claude": "predefinito", "impegno_codex": "predefinito", "impegno_agy": "predefinito",
     # appunti automatici (letti dagli hook)
     "appunti_auto": True, "assistente_appunti": "chat", "modello_appunti": "sonnet",
-    "modello_appunti_codex": "gpt-5.6-luna", "modello_appunti_agy": "gemini-3.8-flash-high", "soglia_kb": 30,
+    "modello_appunti_codex": "gpt-6-luna", "modello_appunti_agy": "gemini-3.8-flash-high", "soglia_kb": 30,
     # GitHub
     "sync_minuti": 0,
     # scorciatoie
@@ -52,6 +55,9 @@ PREDEFINITE = {
     "chat_altri_pc": True,
 }
 SCELTE = {
+    "terminale_cursore": ("block", "bar", "underline"),
+    "terminale_posizione": ("auto", "destra", "sotto"),
+    "terminale_tema": ("notte", "contrasto", "chiaro"),
     "modalita_claude": ("predefinito", "manual", "auto", "acceptEdits", "plan", "bypassPermissions"),
     "modalita_codex": ("predefinito", "standard", "auto", "lettura", "completa"),
     "modalita_agy": ("predefinito", "auto", "accept-edits", "plan", "completa"),
@@ -75,7 +81,8 @@ SCELTE = {
                             "gemini-4-argon-medium", "gemini-4-argon-high"),
     "terminale_carattere": ("JetBrains Mono", "Cascadia Mono", "Consolas"),
 }
-LIMITI = {"testo": (85, 130), "terminale_testo": (10, 20), "soglia_kb": (5, 500), "sync_minuti": (0, 240)}
+LIMITI = {"testo": (85, 130), "terminale_testo": (10, 20), "terminale_interlinea": (1, 1.8),
+          "terminale_righe": (1000, 50000), "soglia_kb": (5, 500), "sync_minuti": (0, 240)}
 _ORA = __import__("re").compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 COLLEGAMENTO_AVVIO = Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup" / "Second Brain Studio.lnk"
 _FLAGS = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -83,6 +90,8 @@ _FLAGS = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 def leggi() -> dict:
     salvate = percorsi.leggi_config().get("impostazioni") or {}
+    import assistenti
+    salvate = {**salvate, **{k: assistenti.ultimo_modello_codex(salvate[k]) for k in ("modello_codex", "modello_appunti_codex") if k in salvate and isinstance(salvate[k], str)}}
     if salvate.get("codex_senza_conferme") and "modalita_codex" not in salvate:
         salvate = {**salvate, "modalita_codex": "completa"}
     return {k: salvate.get(k, v) if _valido(k, salvate.get(k)) else v for k, v in PREDEFINITE.items()}
@@ -90,6 +99,8 @@ def leggi() -> dict:
 
 def _valido(k: str, v) -> bool:
     if v is None:
+        return False
+    if k == "terminale_righe" and not isinstance(v, int):
         return False
     base = PREDEFINITE[k]
     if isinstance(base, bool):

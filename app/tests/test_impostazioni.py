@@ -24,7 +24,7 @@ def test_predefinite_e_salvataggio():
     assert r["ok"] and set(r["scartate"]) == {"colore", "sconosciuta", "appunti_auto", "modello_appunti_codex"}
     letto = imp.leggi()
     assert letto["tema"] == "chiaro" and letto["testo"] == 110 and letto["colore"] == "limone"
-    assert letto["modello_codex"] == "gpt-6-astra" and letto["modello_appunti_codex"] == "gpt-5.6-luna"
+    assert letto["modello_codex"] == "gpt-6-astra" and letto["modello_appunti_codex"] == "gpt-6-luna"
     assert percorsi.leggi_config()["impostazioni"]["tema"] == "chiaro"
 
 
@@ -36,6 +36,23 @@ def test_modalita_indipendenti_e_migrazione_codex():
     assert (lette["modalita_codex"], lette["modalita_claude"], lette["modalita_agy"]) == ("lettura", "plan", "auto")
     assert lette["impegno_codex"] == "high"
     assert set(imp.salva({"modalita_codex": "plan", "impegno_codex": "max"})["scartate"]) == {"modalita_codex", "impegno_codex"}
+
+
+def test_personalizzazioni_terminale_salvate_e_validate():
+    dati = {"terminale_interlinea": 1.4, "terminale_cursore": "bar", "terminale_lampeggio": False,
+            "terminale_righe": 25000, "terminale_scorrimento_fluido": True, "terminale_incolla_destro": False,
+            "terminale_posizione": "sotto", "terminale_tema": "contrasto"}
+    assert imp.salva(dati)["ok"]
+    assert all(imp.leggi()[k] == v for k, v in dati.items())
+    non_validi = {"terminale_interlinea": 4, "terminale_righe": 2.5, "terminale_cursore": "cerchio", "terminale_posizione": "fuori"}
+    assert set(imp.salva(non_validi)["scartate"]) == set(non_validi)
+    assert all(imp.leggi()[k] == v for k, v in dati.items())
+
+
+def test_vecchie_versioni_codex_diventano_ultime_della_famiglia():
+    imp.salva({"modello_codex": "gpt-5.6-terra", "modello_appunti_codex": "gpt-5.6-sol"})
+    assert imp.leggi()["modello_codex"] == "gpt-6.1-terra"
+    assert imp.leggi()["modello_appunti_codex"] == "gpt-6.1-sol"
 
 
 def test_limiti_numerici():

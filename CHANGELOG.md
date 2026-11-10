@@ -6,6 +6,8 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 
 ## Next version
 
+- Simplify Codex model choices to the latest verified Luna, Terra, Sol and Astra versions; migrate older chat and notes defaults and remove the separate version selector.
+- Customize terminal line spacing, colors, cursor shape and blinking, scrollback, smooth scrolling, right-click paste and panel position, with live updates.
 - Keep Codex detectable after Windows installer restarts: avoid inheriting the installer's junction restrictions and fall back to the real standalone executable path.
 - Add separate Claude, Codex and Antigravity settings for model, permission mode and reasoning effort. Keep notes models in Automatic notes.
 - Adapt the window to the screen, retain proportional panel sizes, stack the terminal in narrow windows and allow resizing the notes list with mouse or keyboard.

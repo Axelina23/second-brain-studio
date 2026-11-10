@@ -321,6 +321,11 @@ def passa_da_cmd(argv: list[str]) -> bool:
     return len(argv) > 1 and argv[1] == "/c"
 
 
+def ultimo_modello_codex(modello: str) -> str:
+    return {"gpt-5.6-luna": "gpt-6-luna", "gpt-5.6-terra": "gpt-6.1-terra",
+            "gpt-5.6-sol": "gpt-6.1-sol", "gpt-6-sol": "gpt-6.1-sol"}.get(modello, modello)
+
+
 def opzioni_chat(nome: str, modalita: str = "predefinito", impegno: str = "predefinito") -> list[str]:
     modi = {
         "claude": {m: ["--permission-mode", m] for m in ("manual", "auto", "acceptEdits", "plan", "bypassPermissions")},
@@ -346,6 +351,7 @@ def argomenti(nome: str, sessione: str | None = None, prompt: str | None = None,
     # nuova chat, ripresa di una chat, modello e primo messaggio, per ciascun assistente
     valido = modello if not sessione and modello in MODELLI.get(nome, ()) and modello != "predefinito" else None
     if nome == "codex":
+        valido = ultimo_modello_codex(valido) if valido else None
         permessi = opzioni_chat(nome, modalita or ("completa" if senza_conferme else "predefinito"), impegno)
         return (["-m", valido] if valido else []) + (["resume", sessione] if sessione else []) + permessi + ([prompt] if prompt else [])
     return (["--model", valido] if valido else []) + (["--conversation", sessione] if sessione else []) + opzioni_chat(nome, modalita or "predefinito", impegno) + (["-i", prompt] if prompt else [])

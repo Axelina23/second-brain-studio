@@ -27,7 +27,10 @@ export function applicaAspetto(imp) {
   document.body.style.zoom = String((imp.testo || 100) / 100);
   r.style.setProperty("--ui-zoom", String((imp.testo || 100) / 100));
   r.dataset.animazioni = imp.animazioni ? "si" : "no";
-  window.sbTerminale = { testo: imp.terminale_testo, carattere: imp.terminale_carattere };
+  window.sbTerminale = { testo: imp.terminale_testo, carattere: imp.terminale_carattere,
+    interlinea: imp.terminale_interlinea, cursore: imp.terminale_cursore, lampeggio: imp.terminale_lampeggio,
+    righe: imp.terminale_righe, fluido: imp.terminale_scorrimento_fluido, incollaDestro: imp.terminale_incolla_destro, tema: imp.terminale_tema };
+  r.style.setProperty("--terminale-bg", imp.terminale_tema === "chiaro" ? "#f5f2e9" : imp.terminale_tema === "contrasto" ? "#000000" : "#081016");
   window.dispatchEvent(new Event("sb-terminale"));
 }
 
@@ -70,26 +73,16 @@ function Segmenti({ valore, cambia, opzioni }) {
     class=${valore === v ? "scelto" : ""} disabled=${off} title=${off ? "In arrivo" : ""} onClick=${() => cambia(v)}>${n}</button>`)}</span>`;
 }
 
-// Modelli di Codex per famiglia (Luna, Terra, Sol, Astra); se una famiglia ha sia la serie 5.6
-// sia la 6/6.1 compare un secondo selettore per la versione specifica.
+// Ogni famiglia usa l'ultima versione verificata, senza un secondo selettore.
 export const FAMIGLIE_CODEX = [
-  ["predefinito", "Predefinito", [["predefinito", "Predefinito"]]],
-  ["luna", "Luna", [["gpt-5.6-luna", "5.6"], ["gpt-6-luna", "6"]]],
-  ["terra", "Terra", [["gpt-5.6-terra", "5.6"], ["gpt-6.1-terra", "6.1"]]],
-  ["sol", "Sol", [["gpt-5.6-sol", "5.6"], ["gpt-6-sol", "6"], ["gpt-6.1-sol", "6.1"]]],
-  ["astra", "Astra", [["gpt-6-astra", "6"]]],
+  ["predefinito", "Predefinito"], ["gpt-6-luna", "Luna"], ["gpt-6.1-terra", "Terra"],
+  ["gpt-6.1-sol", "Sol"], ["gpt-6-astra", "Astra"],
 ];
 
 export function SceltaCodex({ valore, cambia }) {
-  const fam = FAMIGLIE_CODEX.find(([, , v]) => v.some(([id]) => id === valore)) || FAMIGLIE_CODEX[0];
-  const [, , versioni] = fam;
-  const serie5 = String(valore || "").startsWith("gpt-5.");
-  const scegliFamiglia = ([, , v]) => cambia((serie5 ? v[0] : v[v.length - 1])[0]);
-  return html`
-    <span class="imp-seg" role="radiogroup" aria-label="Modello">${FAMIGLIE_CODEX.map((f) => html`<button role="radio"
-      aria-checked=${f[0] === fam[0]} class=${f[0] === fam[0] ? "scelto" : ""} onClick=${() => scegliFamiglia(f)}>${f[1]}</button>`)}</span>
-    ${versioni.length > 1 && html`<span class="imp-seg" role="radiogroup" aria-label="Versione">${versioni.map(([v, n]) => html`<button role="radio"
-      aria-checked=${valore === v} class=${valore === v ? "scelto" : ""} onClick=${() => cambia(v)}>${n}</button>`)}</span>`}`;
+  const scelto = FAMIGLIE_CODEX.find(([id]) => id === valore || (id !== "predefinito" && String(valore || "").endsWith("-" + id.split("-").at(-1))))?.[0] || "predefinito";
+  return html`<span class="imp-seg" role="radiogroup" aria-label="Modello">${FAMIGLIE_CODEX.map(([id, nome]) => html`<button role="radio"
+      aria-checked=${id === scelto} class=${id === scelto ? "scelto" : ""} onClick=${() => cambia(id)}>${nome}</button>`)}</span>`;
 }
 
 // chat eliminate (tasto destro > Elimina): restano qui per un mese, poi spariscono da sole
@@ -201,13 +194,31 @@ export function Impostazioni({ api, chiudi, avvisa, gh, accediGh, sincronizzaGh,
         <button class="btn piccolo" onClick=${async () => { const r = await api("accedi_codex"); if (r.errore) avvisa(r.errore, "errore"); else chiudi(); }}>Accedi a Codex</button></div>`,
 
     terminale: html`
+      <div class="imp-gruppo">Disposizione</div>
+      <${Voce} titolo="Posizione del terminale" testo="Automatico lo sposta sotto il contenuto quando la finestra è stretta.">
+        <${Segmenti} valore=${imp.terminale_posizione || "auto"} cambia=${(v) => metti("terminale_posizione", v)} opzioni=${[["auto", "Automatico"], ["destra", "A destra"], ["sotto", "In basso"]]} /></${Voce}>
       <${Voce} titolo="Dimensioni dei pannelli" testo="Trascina i divisori per ridimensionare. Un doppio clic ripristina le proporzioni iniziali.">
         <button class="btn piccolo" onClick=${() => { ["termRatio", "termRatioH", "appuntiRatio", "appuntiRatioH", "termW"].forEach((k) => localStorage.removeItem(k)); window.dispatchEvent(new Event("resize")); }}>Ripristina dimensioni</button></${Voce}>
+      <div class="imp-gruppo">Leggibilità</div>
       <${Voce} titolo="Carattere">
         <select class="campo imp-sel" value=${imp.terminale_carattere} onChange=${(e) => metti("terminale_carattere", e.target.value)}>
           ${["JetBrains Mono", "Cascadia Mono", "Consolas"].map((v) => html`<option value=${v}>${v}</option>`)}</select></${Voce}>
       <${Voce} titolo="Dimensione" testo=${`${imp.terminale_testo} pt`}>
         <input type="range" min="10" max="20" step="0.5" value=${imp.terminale_testo} onChange=${(e) => metti("terminale_testo", +e.target.value)} /></${Voce}>
+      <${Voce} titolo="Interlinea" testo=${`${Number(imp.terminale_interlinea || 1.15).toFixed(2)}×`}>
+        <input type="range" min="1" max="1.8" step="0.05" value=${imp.terminale_interlinea || 1.15} onChange=${(e) => metti("terminale_interlinea", +e.target.value)} /></${Voce}>
+      <${Voce} titolo="Colori del terminale">
+        <${Segmenti} valore=${imp.terminale_tema || "notte"} cambia=${(v) => metti("terminale_tema", v)} opzioni=${[["notte", "Notte"], ["contrasto", "Contrasto alto"], ["chiaro", "Chiaro"]]} /></${Voce}>
+      <div class="imp-gruppo">Cursore</div>
+      <${Voce} titolo="Forma del cursore">
+        <${Segmenti} valore=${imp.terminale_cursore || "block"} cambia=${(v) => metti("terminale_cursore", v)} opzioni=${[["block", "Blocco"], ["bar", "Barra"], ["underline", "Sottolineato"]]} /></${Voce}>
+      <${Interruttore} titolo="Cursore lampeggiante" valore=${imp.terminale_lampeggio !== false} cambia=${(v) => metti("terminale_lampeggio", v)} />
+      <div class="imp-gruppo">Scorrimento e appunti di Windows</div>
+      <${Voce} titolo="Righe conservate" testo="Quante righe precedenti puoi ritrovare scorrendo verso l'alto.">
+        <select class="campo imp-sel" value=${imp.terminale_righe || 10000} onChange=${(e) => metti("terminale_righe", +e.target.value)}>
+          ${[1000, 5000, 10000, 25000, 50000].map((n) => html`<option value=${n}>${n.toLocaleString()}</option>`)}</select></${Voce}>
+      <${Interruttore} titolo="Scorrimento fluido" valore=${imp.terminale_scorrimento_fluido} cambia=${(v) => metti("terminale_scorrimento_fluido", v)} />
+      <${Interruttore} titolo="Incolla con il tasto destro" testo="Puoi usare Ctrl+V anche quando questa opzione è disattivata." valore=${imp.terminale_incolla_destro !== false} cambia=${(v) => metti("terminale_incolla_destro", v)} />
       <p class="imp-nota">Modello, modalità e ragionamento si configurano nella pagina Agenti.</p>`,
 
     appunti: html`

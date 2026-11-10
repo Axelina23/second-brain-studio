@@ -11,7 +11,7 @@ from percorsi import CACHE, CLAUDE
 
 MODELLI_BREVI = {
     "claude": "haiku",
-    "codex": "gpt-5.6-luna",
+    "codex": "gpt-6-luna",
     "agy": "gemini-3.8-flash-low",
 }
 
@@ -19,6 +19,8 @@ MODELLI_BREVI = {
 def _comando_breve(assistente: str | None, modello: str | None, prompt: str = "") -> tuple[list[str], str | None]:
     nome = assistente if assistente in ("claude", "codex", "agy") else "claude"
     mod = modello if modello and modello != "predefinito" else MODELLI_BREVI[nome]
+    if nome == "codex":
+        mod = assistenti.ultimo_modello_codex(mod)
     if nome in ("codex", "agy"):
         base = assistenti.comando(nome)
         if base:

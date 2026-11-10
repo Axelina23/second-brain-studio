@@ -81,6 +81,15 @@ function App({ primaChat, impIniziali, primoAvvio }) {
   const [attiva, setAttiva] = useState(null);
   const [sceltaNuova, setSceltaNuova] = useState(false);
   const [modoTerm, setModoTerm] = useState(() => localStorage.getItem("modoTerm") || "normale");
+  const [larghezzaLayout, setLarghezzaLayout] = useState(() => document.body.clientWidth);
+  useEffect(() => {
+    const observer = new ResizeObserver(() => setLarghezzaLayout(document.body.clientWidth));
+    observer.observe(document.body);
+    return () => observer.disconnect();
+  }, []);
+  const posizioneTerm = imp && imp.terminale_posizione || "auto";
+  const terminaleSotto = posizioneTerm === "sotto" || larghezzaLayout < 840 || (posizioneTerm === "auto" && larghezzaLayout <= 1100);
+  useEffect(() => { window.dispatchEvent(new Event("resize")); }, [terminaleSotto]);
   const [toasts, setToasts] = useState([]);
   const [dialogo, setDialogo] = useState(null);
   const [git, setGit] = useState(null);
@@ -394,7 +403,7 @@ function App({ primaChat, impIniziali, primoAvvio }) {
   const progettoDialogo = (progetto = null) => setDialogo({ tipo: "progetto", progetto });
   const contesto = { home, apriChat, salvaChat, vaiAppunto, avvisa, caricaHome, setPagina, api, progettoDialogo, remoti, menuChat, menuInbox, eliminaChat };
   const Pagina = { oggi: PaginaOggi, chat: PaginaChat, appunti: PaginaAppunti, mappa: PaginaMappa, inbox: PaginaInbox }[pagina] || PaginaOggi;
-  const classe = `app ${modoTerm === "ampio" ? "term-ampio" : modoTerm === "nascosto" ? "term-nascosto" : ""} ${schede.length ? "" : "term-libero"}`;
+  const classe = `app ${terminaleSotto ? "term-verticale" : ""} ${modoTerm === "ampio" ? "term-ampio" : modoTerm === "nascosto" ? "term-nascosto" : ""} ${schede.length ? "" : "term-libero"}`;
 
   return html`<div class=${classe}>
     <${Laterale} pagina=${pagina} setPagina=${setPagina} home=${home} schede=${schede} attiva=${sceltaNuova ? null : attiva}
@@ -853,7 +862,7 @@ function Maniglia({ tipo = "terminale" }) {
   const misure = () => {
     const box = el.current && el.current.closest(note ? ".appunti" : ".app");
     if (!box) return null;
-    const verticale = note ? box.clientWidth < 600 : box.clientWidth <= 1100;
+    const verticale = note ? box.clientWidth < 600 : box.classList.contains("term-verticale");
     const lato = note || verticale ? 0 : (box.querySelector(".laterale")?.offsetWidth || 0);
     const totale = verticale ? box.clientHeight - (note ? 6 : 36) : box.clientWidth - lato - (note ? 6 : 8);
     return { box, verticale, totale, key: `${note ? "appunti" : "term"}Ratio${verticale ? "H" : ""}` };

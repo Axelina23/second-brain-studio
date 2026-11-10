@@ -374,7 +374,7 @@ def test_chat_nuova_con_modello_e_assistente(tmp_path, monkeypatch):
     v = p.apri_chat("nuova", modello="opus", assistente="codex")
     assert v["assistente"] == "codex" and v["titolo"] == "Codex" and p.terminali.avviate[-1] == ["C:/bin/codex.exe"]
     p.apri_chat("nuova", modello="gpt-5.6-luna", assistente="codex")
-    assert p.terminali.avviate[-1] == ["C:/bin/codex.exe", "-m", "gpt-5.6-luna"]
+    assert p.terminali.avviate[-1] == ["C:/bin/codex.exe", "-m", "gpt-6-luna"]
     # assistente non installato: errore chiaro, niente scheda
     assert "non è installato" in p.apri_chat("nuova", assistente="agy")["errore"]
     # i comandi dell'app (con un prompt) vanno all'assistente scelto, come primo messaggio

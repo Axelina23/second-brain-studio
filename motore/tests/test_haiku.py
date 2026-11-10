@@ -54,7 +54,7 @@ def test_assistente_codex_e_agy_e_ripiego_su_claude(monkeypatch):
     _run(monkeypatch, f)
     monkeypatch.setattr(haiku.assistenti, "comando", lambda n: [f"C:/bin/{n}.exe"])
     assert haiku.chiedi_haiku("x", assistente="codex") == "ok"
-    assert visti[-1] == ["C:/bin/codex.exe", "exec", "--ephemeral", "--skip-git-repo-check", "-s", "read-only", "-m", "gpt-5.6-luna", "-"]
+    assert visti[-1] == ["C:/bin/codex.exe", "exec", "--ephemeral", "--skip-git-repo-check", "-s", "read-only", "-m", "gpt-6-luna", "-"]
     assert haiku.chiedi_haiku("x", assistente="agy") == "ok"
     assert visti[-1] == ["C:/bin/agy.exe", "--model", "gemini-3.8-flash-low", "--disable-slash-commands", "-p", "x"]
     monkeypatch.setattr(haiku.assistenti, "comando", lambda n: None)

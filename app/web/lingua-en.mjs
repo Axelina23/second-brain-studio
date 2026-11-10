@@ -1,6 +1,14 @@
 // Dizionario italiano -> inglese dell'interfaccia (vedi lingua.mjs). Chiave = testo esatto
 // mostrato in italiano (senza spazi ai bordi). REGOLE: testi con numeri, date e nomi.
 export const EN = {
+  "Disposizione": "Layout", "Posizione del terminale": "Terminal position", "Automatico": "Automatic", "A destra": "On the right", "In basso": "Below",
+  "Automatico lo sposta sotto il contenuto quando la finestra è stretta.": "Automatic places it below the content in narrow windows.",
+  "Leggibilità": "Readability", "Interlinea": "Line spacing", "Colori del terminale": "Terminal colors", "Notte": "Night", "Contrasto alto": "High contrast",
+  "Cursore": "Cursor", "Forma del cursore": "Cursor shape", "Blocco": "Block", "Barra": "Bar", "Sottolineato": "Underline", "Cursore lampeggiante": "Blinking cursor",
+  "Scorrimento e appunti di Windows": "Scrolling and clipboard", "Righe conservate": "Scrollback lines",
+  "Quante righe precedenti puoi ritrovare scorrendo verso l'alto.": "How many previous lines remain available when scrolling up.",
+  "Scorrimento fluido": "Smooth scrolling", "Incolla con il tasto destro": "Paste on right-click",
+  "Puoi usare Ctrl+V anche quando questa opzione è disattivata.": "Ctrl+V remains available when this option is off.",
   "Agenti": "Agents",
   "Modello, modalità e ragionamento si configurano nella pagina Agenti.": "Configure model, mode and reasoning on the Agents page.",
   "Dimensioni dei pannelli": "Panel sizes", "Ripristina dimensioni": "Reset sizes",
