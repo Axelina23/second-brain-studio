@@ -7,7 +7,8 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 ## Next version (not released yet)
 
 - **New chat with tabs already open asks which assistant and model to use**, instead of reopening the last one.
-  Model choice now also for Codex and Antigravity (Settings → Terminal).
+  Model choice now also for Codex (Luna, Terra, Sol and Astra, with a version toggle between 5.6 and 6/6.1) and
+  Antigravity (Settings → Terminal).
 - **Each assistant does its own background work.** Notes at the end of a Codex or Antigravity chat, chat keywords
   and quick-note titles are written by the chat's own assistant, so Claude's plan is not used. Settings → Automatic
   notes lets you pick who writes the notes ("Chat's own", Claude, Codex, Antigravity) and the model for each.

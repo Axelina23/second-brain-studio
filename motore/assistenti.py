@@ -21,7 +21,8 @@ NOMI = {"claude": "Claude", "codex": "Codex", "agy": "Antigravity"}
 STRUMENTI = {"claude": "Claude Code", "codex": "Codex", "agy": "Antigravity"}
 MODELLI = {
     "claude": ("predefinito", "fable", "opus", "sonnet", "haiku"),
-    "codex": ("predefinito", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5"),
+    "codex": ("predefinito", "gpt-5.6-luna", "gpt-6-luna", "gpt-5.6-terra", "gpt-6.1-terra",
+              "gpt-5.6-sol", "gpt-6-sol", "gpt-6.1-sol", "gpt-6-astra"),
     "agy": ("predefinito", "gemini-4-argon-high", "gemini-4-argon-medium", "gemini-4-argon-low",
             "gemini-3.8-flash-high", "gemini-3.8-flash-low"),
 }

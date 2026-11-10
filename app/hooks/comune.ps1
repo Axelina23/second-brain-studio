@@ -17,7 +17,7 @@ try {
     if ($imp.appunti_auto -eq $false) { $SB_APPUNTI = $false }
     if ($imp.assistente_appunti -in @("chat", "claude", "codex", "agy")) { $SB_ASSISTENTE_APPUNTI = $imp.assistente_appunti }
     if ($imp.modello_appunti -in @("sonnet", "haiku", "opus")) { $SB_MODELLO = $imp.modello_appunti }
-    if ($imp.modello_appunti_codex -in @("predefinito", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5")) { $SB_MODELLO_CODEX = $imp.modello_appunti_codex }
+    if ($imp.modello_appunti_codex -in @("predefinito", "gpt-5.6-luna", "gpt-6-luna", "gpt-5.6-terra", "gpt-6.1-terra", "gpt-5.6-sol", "gpt-6-sol", "gpt-6.1-sol", "gpt-6-astra")) { $SB_MODELLO_CODEX = $imp.modello_appunti_codex }
     if ($imp.modello_appunti_agy -in @("gemini-3.8-flash-high", "gemini-3.8-flash-low", "gemini-4-argon-low", "gemini-4-argon-medium", "gemini-4-argon-high")) { $SB_MODELLO_AGY = $imp.modello_appunti_agy }
     if ($imp.soglia_kb -gt 0) { $SB_SOGLIA = [int]$imp.soglia_kb * 1KB }
   }

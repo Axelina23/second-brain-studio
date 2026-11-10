@@ -12,7 +12,7 @@ import { PaginaMappa, ordinaGruppi } from "./mappa.mjs";
 import { linguaAttiva } from "./lingua.mjs";
 import { DialogoProgetto } from "./progetto.mjs";
 import { PrimoAvvio } from "./primo-avvio.mjs";
-import { Impostazioni, applicaAspetto } from "./impostazioni.mjs";
+import { Impostazioni, applicaAspetto, SceltaCodex } from "./impostazioni.mjs";
 
 // ---------- ponte ----------
 const pronto = new Promise((ok) => {
@@ -880,7 +880,6 @@ const Assistente = ({ c }) => NOMI_ASSISTENTI[c.assistente] ? html`<span class="
 // con quale assistente e modello parte una chat nuova: stesse impostazioni di Impostazioni > Terminale
 const MODELLI_PER = {
   claude: [["predefinito", "Predefinito"], ["fable", "Fable"], ["opus", "Opus"], ["sonnet", "Sonnet"], ["haiku", "Haiku"]],
-  codex: [["predefinito", "Predefinito"], ["gpt-5.6-terra", "5.6 Terra"], ["gpt-5.6-luna", "5.6 Luna"], ["gpt-5.5", "5.5"]],
   agy: [["predefinito", "Predefinito"], ["gemini-4-argon-high", "Argon High"], ["gemini-4-argon-medium", "Argon Med"], ["gemini-4-argon-low", "Argon Low"], ["gemini-3.8-flash-high", "Flash High"], ["gemini-3.8-flash-low", "Flash Low"]],
 };
 const CHIAVE_MODELLO = { claude: "modello_chat", codex: "modello_codex", agy: "modello_agy" };
@@ -895,8 +894,10 @@ function SceltaChat({ imp, mettiImp, assistenti }) {
     ${assistenti.length > 1 && html`<span class="imp-seg" role="radiogroup" aria-label="Assistente">${assistenti.map((a) => html`<button role="radio"
       aria-checked=${scelto === a.id} class=${scelto === a.id ? "scelto" : ""} disabled=${!a.installato}
       title=${a.installato ? "" : "Non installato su questo PC"} onClick=${() => mettiImp("assistente_chat", a.id)}>${a.nome}</button>`)}</span>`}
-    <span class="imp-seg" role="radiogroup" aria-label="Modello">${modelli.map(([v, n]) => html`<button role="radio"
-      aria-checked=${mod === v} class=${mod === v ? "scelto" : ""} onClick=${() => mettiImp(chiave, v)}>${n}</button>`)}</span>
+    ${scelto === "codex"
+      ? html`<${SceltaCodex} valore=${mod} cambia=${(v) => mettiImp(chiave, v)} />`
+      : html`<span class="imp-seg" role="radiogroup" aria-label="Modello">${modelli.map(([v, n]) => html`<button role="radio"
+          aria-checked=${mod === v} class=${mod === v ? "scelto" : ""} onClick=${() => mettiImp(chiave, v)}>${n}</button>`)}</span>`}
   </div>`;
 }
 

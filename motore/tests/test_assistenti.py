@@ -94,6 +94,9 @@ def test_argomenti_per_nuova_ripresa_e_messaggio():
     assert assistenti.argomenti("agy", "id1", "salva") == ["--conversation", "id1", "-i", "salva"]
     assert assistenti.argomenti("codex", prompt="briefing") == ["briefing"]
     assert assistenti.argomenti("codex", prompt="briefing", modello="gpt-5.6-luna") == ["-m", "gpt-5.6-luna", "briefing"]
+    assert assistenti.argomenti("codex", modello="gpt-6.1-sol") == ["-m", "gpt-6.1-sol"]
+    assert assistenti.argomenti("codex", modello="gpt-6-astra") == ["-m", "gpt-6-astra"]
+    assert assistenti.argomenti("codex", modello="gpt-5.5") == []
     assert assistenti.argomenti("agy", modello="gemini-4-argon-high") == ["--model", "gemini-4-argon-high"]
     # predefinito, modello di un altro assistente o chat ripresa: nessuna opzione di modello
     assert assistenti.argomenti("codex", modello="predefinito") == []

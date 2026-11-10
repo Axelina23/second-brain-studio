@@ -19,10 +19,12 @@ def cache(tmp_path, monkeypatch):
 
 def test_predefinite_e_salvataggio():
     assert imp.leggi()["tema"] == "scuro"
-    r = imp.salva({"tema": "chiaro", "testo": 110, "colore": "nero", "sconosciuta": 1, "appunti_auto": "no"})
-    assert r["ok"] and set(r["scartate"]) == {"colore", "sconosciuta", "appunti_auto"}
+    r = imp.salva({"tema": "chiaro", "testo": 110, "colore": "nero", "sconosciuta": 1, "appunti_auto": "no",
+                   "modello_codex": "gpt-6-astra", "modello_appunti_codex": "gpt-5.5"})
+    assert r["ok"] and set(r["scartate"]) == {"colore", "sconosciuta", "appunti_auto", "modello_appunti_codex"}
     letto = imp.leggi()
     assert letto["tema"] == "chiaro" and letto["testo"] == 110 and letto["colore"] == "limone"
+    assert letto["modello_codex"] == "gpt-6-astra" and letto["modello_appunti_codex"] == "gpt-5.6-luna"
     assert percorsi.leggi_config()["impostazioni"]["tema"] == "chiaro"
 
 

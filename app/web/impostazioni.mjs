@@ -52,6 +52,28 @@ function Segmenti({ valore, cambia, opzioni }) {
     class=${valore === v ? "scelto" : ""} disabled=${off} title=${off ? "In arrivo" : ""} onClick=${() => cambia(v)}>${n}</button>`)}</span>`;
 }
 
+// Modelli di Codex per famiglia (Luna, Terra, Sol, Astra); se una famiglia ha sia la serie 5.6
+// sia la 6/6.1 compare un secondo selettore per la versione specifica.
+export const FAMIGLIE_CODEX = [
+  ["predefinito", "Predefinito", [["predefinito", "Predefinito"]]],
+  ["luna", "Luna", [["gpt-5.6-luna", "5.6"], ["gpt-6-luna", "6"]]],
+  ["terra", "Terra", [["gpt-5.6-terra", "5.6"], ["gpt-6.1-terra", "6.1"]]],
+  ["sol", "Sol", [["gpt-5.6-sol", "5.6"], ["gpt-6-sol", "6"], ["gpt-6.1-sol", "6.1"]]],
+  ["astra", "Astra", [["gpt-6-astra", "6"]]],
+];
+
+export function SceltaCodex({ valore, cambia }) {
+  const fam = FAMIGLIE_CODEX.find(([, , v]) => v.some(([id]) => id === valore)) || FAMIGLIE_CODEX[0];
+  const [, , versioni] = fam;
+  const serie5 = String(valore || "").startsWith("gpt-5.");
+  const scegliFamiglia = ([, , v]) => cambia((serie5 ? v[0] : v[v.length - 1])[0]);
+  return html`
+    <span class="imp-seg" role="radiogroup" aria-label="Modello">${FAMIGLIE_CODEX.map((f) => html`<button role="radio"
+      aria-checked=${f[0] === fam[0]} class=${f[0] === fam[0] ? "scelto" : ""} onClick=${() => scegliFamiglia(f)}>${f[1]}</button>`)}</span>
+    ${versioni.length > 1 && html`<span class="imp-seg" role="radiogroup" aria-label="Versione">${versioni.map(([v, n]) => html`<button role="radio"
+      aria-checked=${valore === v} class=${valore === v ? "scelto" : ""} onClick=${() => cambia(v)}>${n}</button>`)}</span>`}`;
+}
+
 // chat eliminate (tasto destro > Elimina): restano qui per un mese, poi spariscono da sole
 function CestinoChat({ api, avvisa }) {
   const [d, setD] = useState(null);
@@ -160,7 +182,7 @@ export function Impostazioni({ api, chiudi, avvisa, gh, accediGh, sincronizzaGh,
       <${Voce} titolo="Modello di Claude" testo="Predefinito = quello scelto in Claude Code.">
         <${Segmenti} valore=${imp.modello_chat} cambia=${(v) => metti("modello_chat", v)} opzioni=${[["predefinito", "Predefinito"], ["fable", "Fable"], ["opus", "Opus"], ["sonnet", "Sonnet"], ["haiku", "Haiku"]]} /></${Voce}>
       <${Voce} titolo="Modello di Codex" testo="Predefinito = quello in config.toml di Codex.">
-        <${Segmenti} valore=${imp.modello_codex} cambia=${(v) => metti("modello_codex", v)} opzioni=${[["predefinito", "Predefinito"], ["gpt-5.6-terra", "5.6 Terra"], ["gpt-5.6-luna", "5.6 Luna"], ["gpt-5.5", "5.5"]]} /></${Voce}>
+        <${SceltaCodex} valore=${imp.modello_codex} cambia=${(v) => metti("modello_codex", v)} /></${Voce}>
       <${Voce} titolo="Modello di Antigravity" testo="Predefinito = quello scelto in Antigravity.">
         <${Segmenti} valore=${imp.modello_agy} cambia=${(v) => metti("modello_agy", v)} opzioni=${[["predefinito", "Predefinito"], ["gemini-4-argon-high", "Argon High"], ["gemini-4-argon-medium", "Argon Med"], ["gemini-4-argon-low", "Argon Low"], ["gemini-3.8-flash-high", "Flash High"], ["gemini-3.8-flash-low", "Flash Low"]]} /></${Voce}>`,
 
@@ -171,7 +193,7 @@ export function Impostazioni({ api, chiudi, avvisa, gh, accediGh, sincronizzaGh,
       <${Voce} titolo="Modello appunti di Claude" testo="Sonnet è il più accurato, Haiku consuma meno.">
         <${Segmenti} valore=${imp.modello_appunti} cambia=${(v) => metti("modello_appunti", v)} opzioni=${[["sonnet", "Sonnet"], ["haiku", "Haiku"], ["opus", "Opus"]]} /></${Voce}>
       <${Voce} titolo="Modello appunti di Codex" testo="Predefinito = quello configurato in Codex.">
-        <${Segmenti} valore=${imp.modello_appunti_codex} cambia=${(v) => metti("modello_appunti_codex", v)} opzioni=${[["predefinito", "Predefinito"], ["gpt-5.6-terra", "5.6 Terra"], ["gpt-5.6-luna", "5.6 Luna"], ["gpt-5.5", "5.5"]]} /></${Voce}>
+        <${SceltaCodex} valore=${imp.modello_appunti_codex} cambia=${(v) => metti("modello_appunti_codex", v)} /></${Voce}>
       <${Voce} titolo="Modello appunti di Antigravity" testo="Flash è veloce e leggero; Argon è più approfondito.">
         <${Segmenti} valore=${imp.modello_appunti_agy} cambia=${(v) => metti("modello_appunti_agy", v)} opzioni=${[["gemini-3.8-flash-high", "Flash High"], ["gemini-3.8-flash-low", "Flash Low"], ["gemini-4-argon-low", "Argon Low"], ["gemini-4-argon-medium", "Argon Med"], ["gemini-4-argon-high", "Argon High"]]} /></${Voce}>
       <${Voce} titolo="Chat troppo corte" testo=${`Sotto ${imp.soglia_kb} KB di trascrizione non si aggiornano gli appunti.`}>
