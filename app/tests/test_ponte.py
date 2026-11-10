@@ -469,6 +469,21 @@ def test_ripresa_torna_al_suo_assistente_salvataggio_usa_worker(tmp_path, monkey
         assert sid in {c["id"] for c in p.chat()["chat"]}
 
 
+def test_codex_permessi_correnti_anche_ripresa(tmp_path, monkeypatch):
+    p, r = _ponte_con_altri(tmp_path)
+    monkeypatch.setattr(ponte.Ponte, "_comando_assistente", staticmethod(lambda n: [f"C:/bin/{n}.exe"]))
+    scelta = {"codex_senza_conferme": True}
+    monkeypatch.setattr(ponte.Ponte, "_impostazioni", staticmethod(lambda: scelta))
+    _chat_codex(p.cartella_codex, ID_CODEX, r)
+    p.apri_chat("riprendi", ID_CODEX)
+    assert p.terminali.avviate[-1] == ["C:/bin/codex.exe", "resume", ID_CODEX,
+                                      "--ask-for-approval", "never", "--sandbox", "danger-full-access"]
+    p.terminali.schede.clear()
+    scelta["codex_senza_conferme"] = False
+    p.apri_chat("riprendi", ID_CODEX)
+    assert p.terminali.avviate[-1] == ["C:/bin/codex.exe", "resume", ID_CODEX]
+
+
 def test_linguetta_di_codex_prende_la_sua_chat_e_il_titolo(tmp_path, monkeypatch):
     p, r = _ponte_con_altri(tmp_path)
     monkeypatch.setattr(ponte.Ponte, "_comando_assistente", staticmethod(lambda n: [f"C:/bin/{n}.exe"]))

@@ -39,6 +39,14 @@ def test_path_windows_riletto_a_ogni_ricerca(tmp_path, monkeypatch):
     assert corrente[0] in assistenti._percorsi_comandi()
 
 
+def test_codex_senza_conferme_chat_nuove_e_riprese():
+    flags = ["--ask-for-approval", "never", "--sandbox", "danger-full-access"]
+    assert assistenti.argomenti("codex", senza_conferme=True) == flags
+    assert assistenti.argomenti("codex", "vecchia", "continua", senza_conferme=True) == ["resume", "vecchia", *flags, "continua"]
+    assert assistenti.argomenti("codex", "vecchia") == ["resume", "vecchia"]
+    assert assistenti.argomenti("agy", senza_conferme=True) == []
+
+
 def riga_codex(tipo, carico, quando="2026-11-09T20:00:00.000Z"):
     return json.dumps({"timestamp": quando, "type": tipo, "payload": carico})
 

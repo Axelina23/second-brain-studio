@@ -36,6 +36,7 @@ PREDEFINITE = {
     # terminale
     "terminale_testo": 13.5, "terminale_carattere": "JetBrains Mono", "modello_chat": "predefinito",
     "modello_codex": "predefinito", "modello_agy": "predefinito", "assistente_chat": "claude",
+    "codex_senza_conferme": False,
     # appunti automatici (letti dagli hook)
     "appunti_auto": True, "assistente_appunti": "chat", "modello_appunti": "sonnet",
     "modello_appunti_codex": "gpt-5.6-luna", "modello_appunti_agy": "gemini-3.8-flash-high", "soglia_kb": 30,

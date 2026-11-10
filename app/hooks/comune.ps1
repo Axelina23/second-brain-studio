@@ -7,6 +7,7 @@ $SB_APPUNTI = $true; $SB_ASSISTENTE_APPUNTI = "chat"
 $SB_MODELLO = "sonnet"; $SB_MODELLO_CODEX = "gpt-5.6-luna"; $SB_MODELLO_AGY = "gemini-3.8-flash-high"
 $SB_SOGLIA = 30KB
 $SB_CLAUDE = Join-Path $env:USERPROFILE ".local\bin\claude.exe"
+$SB_CODEX_SENZA_CONFERME = $false
 # Explorer e l'avvio automatico possono avere ancora il PATH precedente all'installazione.
 $percorsiCli = @([Environment]::GetEnvironmentVariable('Path', 'Machine'), [Environment]::GetEnvironmentVariable('Path', 'User'), $env:Path)
 $percorsiCli += @("$env:USERPROFILE\.local\bin", "$env:USERPROFILE\.cargo\bin", "$env:LOCALAPPDATA\Programs\OpenAI\Codex\bin", "$env:APPDATA\npm", "$env:LOCALAPPDATA\Microsoft\WinGet\Links", "$env:LOCALAPPDATA\Programs\nodejs", "$env:ProgramFiles\nodejs")
@@ -18,6 +19,7 @@ try {
   # impostazioni dell'app (Impostazioni > Appunti automatici)
   $imp = $cfg.impostazioni
   if ($imp) {
+    $SB_CODEX_SENZA_CONFERME = $imp.codex_senza_conferme -eq $true
     if ($imp.appunti_auto -eq $false) { $SB_APPUNTI = $false }
     if ($imp.assistente_appunti -in @("chat", "claude", "codex", "agy")) { $SB_ASSISTENTE_APPUNTI = $imp.assistente_appunti }
     if ($imp.modello_appunti -in @("sonnet", "haiku", "opus")) { $SB_MODELLO = $imp.modello_appunti }

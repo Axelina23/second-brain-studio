@@ -313,9 +313,10 @@ def passa_da_cmd(argv: list[str]) -> bool:
 
 
 def argomenti(nome: str, sessione: str | None = None, prompt: str | None = None,
-              modello: str | None = None) -> list[str]:
+              modello: str | None = None, senza_conferme: bool = False) -> list[str]:
     # nuova chat, ripresa di una chat, modello e primo messaggio, per ciascun assistente
     valido = modello if not sessione and modello in MODELLI.get(nome, ()) and modello != "predefinito" else None
     if nome == "codex":
-        return (["-m", valido] if valido else []) + (["resume", sessione] if sessione else []) + ([prompt] if prompt else [])
+        permessi = ["--ask-for-approval", "never", "--sandbox", "danger-full-access"] if senza_conferme else []
+        return (["-m", valido] if valido else []) + (["resume", sessione] if sessione else []) + permessi + ([prompt] if prompt else [])
     return (["--model", valido] if valido else []) + (["--conversation", sessione] if sessione else []) + (["-i", prompt] if prompt else [])

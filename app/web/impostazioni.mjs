@@ -176,6 +176,8 @@ export function Impostazioni({ api, chiudi, avvisa, gh, accediGh, sincronizzaGh,
         <button class="btn piccolo" onClick=${async () => { const r = await api("accedi_codex"); if (r.errore) avvisa(r.errore, "errore"); else chiudi(); }}>Accedi a Codex</button></div>`,
 
     terminale: html`
+      <${Interruttore} titolo="Codex senza conferme" testo="Accesso completo a file e rete, senza richieste di approvazione dei comandi. Vale per le chat nuove e riprese dopo la modifica."
+        valore=${imp.codex_senza_conferme} cambia=${(v) => metti("codex_senza_conferme", v)} />
       <${Voce} titolo="Carattere">
         <select class="campo imp-sel" value=${imp.terminale_carattere} onChange=${(e) => metti("terminale_carattere", e.target.value)}>
           ${["JetBrains Mono", "Cascadia Mono", "Consolas"].map((v) => html`<option value=${v}>${v}</option>`)}</select></${Voce}>

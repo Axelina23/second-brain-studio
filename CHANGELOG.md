@@ -4,6 +4,10 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 `app\build.ps1 -Stabile` uses the first section below as the release notes, so the newest version goes on top.
 "Next version" collects what is in `main` but not released yet: rename it when it ships.
 
+## Next version
+
+- Add an opt-in setting for Codex full access without command approval prompts, applied to new chats, resumed chats and background notes.
+
 ## 2026.11.10.1247 - Reliable notes across assistants
 
 - Detect assistants installed after the app starts: refresh the Windows executable search paths and installed-assistant list without requiring a restart.

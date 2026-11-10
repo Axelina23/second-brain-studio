@@ -1,6 +1,8 @@
 // Dizionario italiano -> inglese dell'interfaccia (vedi lingua.mjs). Chiave = testo esatto
 // mostrato in italiano (senza spazi ai bordi). REGOLE: testi con numeri, date e nomi.
 export const EN = {
+  "Codex senza conferme": "Codex without approval prompts",
+  "Accesso completo a file e rete, senza richieste di approvazione dei comandi. Vale per le chat nuove e riprese dopo la modifica.": "Full file and network access without command approval prompts. Applies to chats started or resumed after this change.",
   "Salvataggio non riuscito": "Saving failed", "Appunti automatici disattivati": "Automatic notes disabled", "Riprova": "Retry",
   "Account assistenti": "Assistant accounts",
   "Accedi a Codex": "Sign in to Codex",

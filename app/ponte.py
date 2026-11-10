@@ -728,7 +728,8 @@ class Ponte:
         if prompt and mod_assistenti.passa_da_cmd(argv):
             prompt = re.sub(r'[&|<>^%"]', " ", prompt)  # cmd.exe li interpreterebbe
         argv = argv + mod_assistenti.argomenti(assistente, s.id if s else None, prompt,
-                                               modello if tipo != "riprendi" else None)
+                                               modello if tipo != "riprendi" else None,
+                                               senza_conferme=self._impostazioni().get("codex_senza_conferme") is True)
         nota = self._prepara_assistente(assistente)
         etichetta = (titolo or "").strip()[:60] or (self._etichetta(s) if s else (prompt.capitalize() if prompt else nome))
         try:
