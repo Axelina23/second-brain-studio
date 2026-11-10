@@ -32,6 +32,8 @@ SolidCompression=yes
 CloseApplications=force
 UsePreviousAppDir=no
 RestartApplications=no
+; Non trasmettere all'app il blocco delle junction utente usate da Codex.
+RedirectionGuard=no
 ArchitecturesInstallIn64BitMode=x64compatible
 
 [Languages]

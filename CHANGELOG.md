@@ -6,6 +6,7 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 
 ## Next version
 
+- Keep Codex detectable after Windows installer restarts: avoid inheriting the installer's junction restrictions and fall back to the real standalone executable path.
 - Add separate Claude, Codex and Antigravity settings for model, permission mode and reasoning effort. Keep notes models in Automatic notes.
 - Adapt the window to the screen, retain proportional panel sizes, stack the terminal in narrow windows and allow resizing the notes list with mouse or keyboard.
 - Fit terminal rows and columns during resizing and after fonts load; improve settings and chat layouts in small windows and with enlarged text.

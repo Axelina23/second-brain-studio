@@ -297,6 +297,15 @@ def comando(nome: str) -> list[str] | None:
     # script, cosi' il testo del prompt non passa da cmd.exe (che interpreta & | % e virgolette)
     percorsi = _percorsi_comandi()
     trovato = shutil.which(nome, path=percorsi)
+    if not trovato and nome == "codex" and sys.platform == "win32":
+        # Fallback senza junction: funziona anche nelle app riaperte dai vecchi installer.
+        releases = Path.home() / ".codex" / "packages" / "standalone" / "releases"
+        try:
+            candidati = sorted(releases.glob("*/bin/codex.exe"),
+                               key=lambda p: p.stat().st_mtime, reverse=True)
+            trovato = next((str(p) for p in candidati if p.is_file()), None)
+        except OSError:
+            pass
     if not trovato:
         return None
     if trovato.lower().endswith((".cmd", ".bat")):

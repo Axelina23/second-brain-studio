@@ -39,6 +39,28 @@ def test_path_windows_riletto_a_ogni_ricerca(tmp_path, monkeypatch):
     assert corrente[0] in assistenti._percorsi_comandi()
 
 
+def test_codex_junction_bloccata_usa_release_reale(tmp_path, monkeypatch):
+    monkeypatch.setattr(assistenti.sys, "platform", "win32")
+    monkeypatch.setattr(assistenti.Path, "home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr(assistenti, "_percorsi_comandi", lambda: "junction-bloccata")
+    monkeypatch.setattr(assistenti.shutil, "which", lambda *a, **k: None)
+    releases = tmp_path / ".codex/packages/standalone/releases"
+    vecchio = releases / "0.166.0/bin/codex.exe"
+    nuovo = releases / "0.167.0/bin/codex.exe"
+    for p in (vecchio, nuovo):
+        p.parent.mkdir(parents=True)
+        p.touch()
+    import os
+    os.utime(vecchio, (100, 100))
+    os.utime(nuovo, (200, 200))
+    assert assistenti.comando("codex") == [str(nuovo)]
+    assert assistenti.comando("claude") is None
+    nuovo.unlink()
+    assert assistenti.comando("codex") == [str(vecchio)]
+    vecchio.unlink()
+    assert assistenti.comando("codex") is None
+
+
 def test_codex_senza_conferme_chat_nuove_e_riprese():
     flags = ["--ask-for-approval", "never", "--sandbox", "danger-full-access"]
     assert assistenti.argomenti("codex", senza_conferme=True) == flags
