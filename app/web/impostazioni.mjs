@@ -33,7 +33,7 @@ export function applicaAspetto(imp) {
 
 const SEZIONI = [["generale", "Generale", "oggi"], ["aspetto", "Aspetto", "mappa"], ["notifiche", "Notifiche", "chat"],
   ["account", "Account assistenti", "briefing"], ["terminale", "Terminale", "allarga"], ["appunti", "Appunti automatici", "appunti"],
-  ["claude", "Claude", "chat"], ["codex", "Codex", "chat"], ["agy", "Antigravity", "chat"],
+  ["agenti", "Agenti", "chat"],
   ["github", "GitHub", "github"], ["scorciatoie", "Scorciatoie", "riprendi"], ["dati", "Dati e manutenzione", "cartella"],
   ["info", "Informazioni", "esterno"]];
 
@@ -60,8 +60,7 @@ function SezioneAgente({ agente, imp, metti }) {
     : [["predefinito", "Predefinito"], ["gemini-4-argon-high", "Argon High"], ["gemini-4-argon-medium", "Argon Medium"], ["gemini-4-argon-low", "Argon Low"], ["gemini-3.8-flash-high", "Flash High"], ["gemini-3.8-flash-low", "Flash Low"]];
   const scegli = (key, opzioni) => html`<select class="campo imp-sel" value=${imp[key] || "predefinito"} onChange=${(e) => metti(key, e.target.value)}>${opzioni.map(([v, n]) => html`<option value=${v}>${n}</option>`)}</select>`;
   const livelli = [["predefinito", "Predefinito"], ["low", "Basso"], ["medium", "Medio"], ["high", "Alto"], ["xhigh", "Molto alto"], ...(agente === "codex" ? [] : [["max", "Massimo"]])];
-  return html`<p class="imp-nota">Si applicano alle chat nuove e alle chat riprese. Le chat già aperte mantengono la modalità in uso.</p>
-    <${Voce} titolo="Modello">${agente === "codex" ? html`<${SceltaCodex} valore=${imp[chiave] || "predefinito"} cambia=${(v) => metti(chiave, v)} />` : scegli(chiave, modelli)}</${Voce}>
+  return html`<${Voce} titolo="Modello">${agente === "codex" ? html`<${SceltaCodex} valore=${imp[chiave] || "predefinito"} cambia=${(v) => metti(chiave, v)} />` : scegli(chiave, modelli)}</${Voce}>
     <${Voce} titolo="Modalità permessi">${scegli(`modalita_${agente}`, modi[agente])}</${Voce}>
     <${Voce} titolo="Livello di ragionamento" testo="I livelli disponibili dipendono dal modello. Predefinito usa la scelta dell'assistente.">${scegli(`impegno_${agente}`, livelli)}</${Voce}>`;
 }
@@ -116,7 +115,7 @@ function CestinoChat({ api, avvisa }) {
 }
 
 export function Impostazioni({ api, chiudi, avvisa, gh, accediGh, sincronizzaGh, aggiornaGh, cambiate, primoAvvio }) {
-  const [sez, setSez] = useState(() => localStorage.getItem("impSezione") || "generale");
+  const [sez, setSez] = useState(() => { const s = localStorage.getItem("impSezione"); return ["claude", "codex", "agy"].includes(s) ? "agenti" : SEZIONI.some(([k]) => k === s) ? s : "generale"; });
   const [d, setD] = useState(null);
   const [cerco, setCerco] = useState(false);
   const carica = async () => { const x = await api("impostazioni"); if (!x.errore) setD(x); };
@@ -135,9 +134,13 @@ export function Impostazioni({ api, chiudi, avvisa, gh, accediGh, sincronizzaGh,
   const acc = d.account || {};
 
   const corpo = {
-    claude: html`<${SezioneAgente} agente="claude" imp=${imp} metti=${metti} />`,
-    codex: html`<${SezioneAgente} agente="codex" imp=${imp} metti=${metti} />`,
-    agy: html`<${SezioneAgente} agente="agy" imp=${imp} metti=${metti} />`,
+    agenti: html`
+      <${Voce} titolo="Assistente delle chat nuove" testo="Codex e Antigravity devono essere installati; usano il loro modello e il loro abbonamento.">
+        <${Segmenti} valore=${imp.assistente_chat} cambia=${(v) => metti("assistente_chat", v)} opzioni=${[["claude", "Claude"], ["codex", "Codex"], ["agy", "Antigravity"]]} /></${Voce}>
+      <p class="imp-nota">Si applicano alle chat nuove e alle chat riprese. Le chat già aperte mantengono la modalità in uso.</p>
+      ${[["claude", "Claude"], ["codex", "Codex"], ["agy", "Antigravity"]].map(([id, nome]) => html`
+        <section class="imp-agente" data-agente=${id} aria-label=${nome}><h3>${nome}</h3>
+          <${SezioneAgente} agente=${id} imp=${imp} metti=${metti} /></section>`)}`,
     generale: html`
       <${Voce} titolo="Lingua" testo="Lingua dell'interfaccia. Quella delle risposte di Claude sta nelle tue Regole.">
         <${Segmenti} valore=${imp.lingua} cambia=${(v) => metti("lingua", v)} opzioni=${[["it", "Italiano"], ["en", "English"]]} /></${Voce}>
@@ -205,9 +208,7 @@ export function Impostazioni({ api, chiudi, avvisa, gh, accediGh, sincronizzaGh,
           ${["JetBrains Mono", "Cascadia Mono", "Consolas"].map((v) => html`<option value=${v}>${v}</option>`)}</select></${Voce}>
       <${Voce} titolo="Dimensione" testo=${`${imp.terminale_testo} pt`}>
         <input type="range" min="10" max="20" step="0.5" value=${imp.terminale_testo} onChange=${(e) => metti("terminale_testo", +e.target.value)} /></${Voce}>
-      <${Voce} titolo="Assistente delle chat nuove" testo="Codex e Antigravity devono essere installati; usano il loro modello e il loro abbonamento.">
-        <${Segmenti} valore=${imp.assistente_chat} cambia=${(v) => metti("assistente_chat", v)} opzioni=${[["claude", "Claude"], ["codex", "Codex"], ["agy", "Antigravity"]]} /></${Voce}>
-      <p class="imp-nota">Modello, modalità e ragionamento si configurano nelle sezioni Claude, Codex e Antigravity.</p>`,
+      <p class="imp-nota">Modello, modalità e ragionamento si configurano nella pagina Agenti.</p>`,
 
     appunti: html`
       <${Interruttore} titolo="Aggiorna gli appunti a fine chat" testo="L'assistente riassume la chat e aggiorna Registro e file di stato in background." valore=${imp.appunti_auto} cambia=${(v) => metti("appunti_auto", v)} />

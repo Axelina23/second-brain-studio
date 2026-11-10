@@ -1,6 +1,8 @@
 // Dizionario italiano -> inglese dell'interfaccia (vedi lingua.mjs). Chiave = testo esatto
 // mostrato in italiano (senza spazi ai bordi). REGOLE: testi con numeri, date e nomi.
 export const EN = {
+  "Agenti": "Agents",
+  "Modello, modalità e ragionamento si configurano nella pagina Agenti.": "Configure model, mode and reasoning on the Agents page.",
   "Dimensioni dei pannelli": "Panel sizes", "Ripristina dimensioni": "Reset sizes",
   "Trascina i divisori per ridimensionare. Un doppio clic ripristina le proporzioni iniziali.": "Drag the dividers to resize. Double-click to restore the initial proportions.",
   "Modalità permessi": "Permission mode", "Livello di ragionamento": "Reasoning effort",
