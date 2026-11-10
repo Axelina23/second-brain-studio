@@ -765,7 +765,26 @@ class Ponte:
                                for k, n in ASSISTENTI.items()]}
 
     def salva_chat(self, sessione: str) -> dict:
-        return self.apri_chat("riprendi", sessione, PROMPT_SALVA[mod_struttura.rileva(self.radice)])
+        s = self._sessione(sessione)
+        if s is None:
+            return {"errore": "Chat non trovata"}
+        if any(t.sessione == sessione for t in (self.terminali.attive() if self.terminali else [])):
+            return {"errore": "Chiudi la chat prima di salvare gli appunti"}
+        if salvataggio.stato_salvataggio(s, self.segni) == "in_corso":
+            return {"avviato": True, "sessione": sessione}
+        if not self._appunti_di(s, manuale=True):
+            return {"errore": "Impossibile avviare il salvataggio degli appunti"}
+        self._in_thread(f"appunti-{sessione}", self._segui_appunti, sessione)
+        return {"avviato": True, "sessione": sessione}
+
+    def _segui_appunti(self, sessione: str) -> None:
+        self.emetti("chat-cambiate", {})
+        while True:
+            s = self._sessione(sessione)
+            if s is None or salvataggio.stato_salvataggio(s, self.segni) != "in_corso":
+                self.emetti("chat-cambiate", {})
+                return
+            time.sleep(2)
 
     # Eliminare una chat (tasto destro): il trascritto <id>.jsonl e la sua cartella <id>/
     # (sotto-agenti, file temporanei) non si cancellano subito ma vanno nel cestino dell'app,
@@ -1208,17 +1227,17 @@ class Ponte:
                     self.emetti("scheda", {"id": scheda.id, "chiusa": True, "sessione": sid, "stato": stato})
         self._in_thread(f"chiusa-{scheda.id}", lavoro)
 
-    def _appunti_di(self, s) -> bool:
+    def _appunti_di(self, s, manuale: bool = False) -> bool:
         # stesso passaggio che per Claude fa l'hook fine-sessione.ps1: se gli appunti automatici
         # sono accesi e la chat e' abbastanza lunga parte il worker che li aggiorna (e poi
         # sincronizza), altrimenti si salvano e si caricano soltanto le modifiche ai file
-        if s is None or s.assistente == "claude":
+        if s is None:
             return False
         imp = self._impostazioni()
         soglia = imp.get("soglia_kb") if isinstance(imp.get("soglia_kb"), (int, float)) else 30
         ps = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]
         try:
-            if imp.get("appunti_auto") is False or s.dimensione < soglia * 1024:
+            if not manuale and (imp.get("appunti_auto") is False or s.dimensione < soglia * 1024):
                 if (self.cartella_hook / "sync.ps1").is_file():
                     self._avvia(ps + [str(self.cartella_hook / "sync.ps1"), "-Modo", "push"])
                 return False
@@ -1227,15 +1246,20 @@ class Ponte:
                 return False
             import tempfile
             riassunto = Path(tempfile.gettempdir()) / f"appunti-sessione-{s.id}.txt"
-            riassunto.write_text(mod_assistenti.testo_per_appunti(s.percorso, s.assistente), encoding="utf-8")
+            if s.assistente != "claude":
+                riassunto.write_text(mod_assistenti.testo_per_appunti(s.percorso, s.assistente), encoding="utf-8")
             self.segni.mkdir(parents=True, exist_ok=True)
             (self.segni / f"{s.id}.in-corso").write_text(datetime.now().isoformat(), encoding="utf-8")
-            self._avvia(ps + [str(worker), "-Testo", str(riassunto), "-Id", s.id,
+            sorgente = ["-Transcript", str(s.percorso)] if s.assistente == "claude" else ["-Testo", str(riassunto)]
+            self._avvia(ps + [str(worker), *sorgente, "-Id", s.id,
                               "-Strumento", mod_assistenti.STRUMENTI[s.assistente], "-Progetto", str(self.radice),
                               "-Data", f"{s.ultima:%Y-%m-%d}", "-Assistente", s.assistente])
             return True
         except Exception:
             self._log()
+            if (self.segni / f"{s.id}.in-corso").exists():
+                (self.segni / f"{s.id}.errore").touch()
+                (self.segni / f"{s.id}.in-corso").unlink(missing_ok=True)
             return False
 
     def _chiedi_per(self, assistente: str | None = None):
@@ -1254,7 +1278,8 @@ class Ponte:
 
     @staticmethod
     def _avvia(argv: list[str]) -> None:
-        subprocess.Popen(argv, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
     # ---------- varie ----------
     def apri_esterno(self, rel: str) -> dict:

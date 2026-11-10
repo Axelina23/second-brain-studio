@@ -68,7 +68,7 @@ try {
     "2) If there are lasting facts (a project changing status, decisions, deadlines, preferences) that are missing or outdated in the files listed in the index, update them with minimal edits, replacing outdated information. " +
     "Every status file must stay under ~80 lines: if it goes over, move the old part to a history.md file in the same folder. " +
     "3) Change INDEX.md only if a project is new or finished. " +
-    "Follow the rules in Me/Rules.md. Do not run shell or git commands: only read and edit files. Don't save temporary details. Never write passwords, API keys, tokens or access codes in the notes, not even partially. Don't make things up. If there is nothing relevant, don't touch anything. " +
+    "Follow the rules in Me/Rules.md. You may use local shell commands to read files and apply_patch to edit them. Do not use git, network access or other programs; only update the requested notes. Don't save temporary details. Never write passwords, API keys, tokens or access codes in the notes, not even partially. Don't make things up. If there is nothing relevant, don't touch anything. " +
     "At the end write in one line what you changed."
   } else {
   $prompt = "Sei il passaggio automatico che aggiorna gli appunti di questo second brain. " +
@@ -78,7 +78,7 @@ try {
     "2) Se ci sono fatti durevoli (cambi di stato di un progetto, decisioni, scadenze, preferenze) che mancano o sono superati nei file indicati dall'indice, aggiornali con modifiche minime, sostituendo le informazioni superate. " +
     "Ogni file di stato deve restare sotto le ~80 righe: se lo superi, sposta la parte vecchia in un file storico.md nella stessa cartella. " +
     "3) Modifica INDICE.md solo se un progetto e' nuovo o concluso. " +
-    "Rispetta le regole di Io/Regole.md. Non eseguire comandi da terminale o git: usa solo lettura e modifica dei file. Non salvare dettagli temporanei. Mai scrivere negli appunti password, chiavi API, token o codici di accesso, nemmeno in parte. Non inventare. Se non c'e' niente di rilevante, non toccare nulla. " +
+    "Rispetta le regole di Io/Regole.md. Puoi usare comandi locali per leggere i file e apply_patch per modificarli. Non usare git, rete o altri programmi; limita le modifiche agli appunti richiesti. Non salvare dettagli temporanei. Mai scrivere negli appunti password, chiavi API, token o codici di accesso, nemmeno in parte. Non inventare. Se non c'e' niente di rilevante, non toccare nulla. " +
     "Alla fine scrivi in una riga cosa hai modificato."
   }
 
@@ -92,12 +92,23 @@ try {
   if ($chi -eq "agy" -and (Get-Command agy -ErrorAction SilentlyContinue)) {
     & agy --model $SB_MODELLO_AGY --add-dir $env:TEMP -p $prompt 2> $errTmp | Out-File $logTmp -Append -Encoding utf8
   } elseif ($chi -eq "codex" -and (Get-Command codex -ErrorAction SilentlyContinue)) {
+    $prompt += " Al termine, solo se hai letto i file e completato l'aggiornamento (o verificato che non serve), scrivi su una riga separata SB_NOTES_OK. Se non riesci, non scrivere questo segnale."
     $modArg = if ($SB_MODELLO_CODEX -and $SB_MODELLO_CODEX -ne "predefinito") { @("-m", $SB_MODELLO_CODEX) } else { @() }
     $prompt | & codex exec --ephemeral -s workspace-write --add-dir $env:TEMP @modArg - 2> $errTmp | Out-File $logTmp -Append -Encoding utf8
   } else {
     $prompt | & $SB_CLAUDE -p --model $SB_MODELLO --add-dir $env:TEMP --allowedTools "Read" "Edit" "Write" "Glob" "Grep" 2> $errTmp | Out-File $logTmp -Append -Encoding utf8
   }
-  if ($LASTEXITCODE -eq 0) { Segna-Salvata } else { throw "Assistente terminato con codice $LASTEXITCODE" }
+  $codice = $LASTEXITCODE
+  if ($codice -ne 0) { throw "Assistente terminato con codice $codice; dettagli in $errTmp" }
+  if ($chi -eq "codex") {
+    $risposta = [IO.File]::ReadAllText($logTmp)
+    if ($risposta -notmatch '(?m)^SB_NOTES_OK\s*$') { throw "Codex non ha confermato il completamento; dettagli in $logTmp e $errTmp" }
+  }
+  Segna-Salvata
+  $archivioLog = Join-Path $SB_CACHE "salvataggi"
+  New-Item -ItemType Directory -Force -Path $archivioLog | Out-Null
+  Copy-Item -LiteralPath $logTmp -Destination (Join-Path $archivioLog "$Id.log") -Force
+  if (Test-Path $errTmp) { Copy-Item -LiteralPath $errTmp -Destination (Join-Path $archivioLog "$Id.errori.log") -Force }
   try { Move-Item -Force $logTmp $log -ErrorAction SilentlyContinue } catch {}
   try { Move-Item -Force $errTmp $err -ErrorAction SilentlyContinue } catch {}
   Remove-Item $riassunto, $logTmp, $errTmp -ErrorAction SilentlyContinue

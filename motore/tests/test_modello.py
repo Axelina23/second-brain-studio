@@ -97,6 +97,22 @@ def test_collega_hook(tmp_path):
     assert len(json.loads(s.read_text(encoding="utf-8"))["hooks"]["SessionEnd"]) == 2
 
 
+def test_migrazione_hook_appunti_legacy_preserva_hook_personali(tmp_path):
+    base, dest = tmp_path / ".claude", tmp_path / "nuovi-hook"
+    (base / "hooks").mkdir(parents=True)
+    dest.mkdir()
+    (dest / "fine-sessione.ps1").write_text("# worker", encoding="utf-8")
+    legacy = base / "hooks" / "aggiorna-appunti.ps1"
+    legacy.write_text("# Hook SessionEnd di Claude Code\n# aggiorna-appunti-worker.ps1\nif ($env:CLAUDE_NOTES_PASS) { exit 0 }", encoding="utf-8")
+    assert modello.migra_hook_appunti_legacy(dest, base)
+    assert "fine-sessione.ps1" in legacy.read_text(encoding="utf-8")
+    assert list(legacy.parent.glob("*.prima-di-second-brain-*"))
+    assert not modello.migra_hook_appunti_legacy(dest, base)
+    legacy.write_text("# hook personale", encoding="utf-8")
+    assert not modello.migra_hook_appunti_legacy(dest, base)
+    assert legacy.read_text(encoding="utf-8") == "# hook personale"
+
+
 def test_collega_hook_senza_settings(tmp_path):
     src = tmp_path / "src"
     src.mkdir()

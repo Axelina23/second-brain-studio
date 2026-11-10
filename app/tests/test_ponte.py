@@ -442,7 +442,7 @@ def test_chat_di_codex_e_antigravity_in_elenco_solo_del_second_brain(tmp_path):
     assert "Chat di Antigravity" in esportata and "## Antigravity" in esportata and "collegati alla tv" in esportata
 
 
-def test_ripresa_e_salvataggio_tornano_dal_loro_assistente(tmp_path, monkeypatch):
+def test_ripresa_torna_al_suo_assistente_salvataggio_usa_worker(tmp_path, monkeypatch):
     p, r = _ponte_con_altri(tmp_path)
     monkeypatch.setattr(ponte.Ponte, "_comando_assistente", staticmethod(lambda n: [f"C:/bin/{n}.exe"]))
     _chat_codex(p.cartella_codex, ID_CODEX, r)
@@ -451,8 +451,10 @@ def test_ripresa_e_salvataggio_tornano_dal_loro_assistente(tmp_path, monkeypatch
     assert v["assistente"] == "codex" and v["sessione"] == ID_CODEX
     assert p.terminali.avviate[-1] == ["C:/bin/codex.exe", "resume", ID_CODEX]
     p.terminali.schede.clear()
-    p.salva_chat(ID_AGY)
-    assert p.terminali.avviate[-1][:4] == ["C:/bin/agy.exe", "--conversation", ID_AGY, "-i"]
+    salvate = []
+    monkeypatch.setattr(p, "_appunti_di", lambda s, manuale=False: salvate.append((s.id, manuale)) or True)
+    assert p.salva_chat(ID_AGY) == {"avviato": True, "sessione": ID_AGY}
+    assert salvate == [(ID_AGY, True)]
     # azioni che esistono solo per Claude: errore chiaro
     assert "non si possono duplicare" in p.apri_chat("duplica", ID_CODEX)["errore"]
     assert "Solo le chat di Claude" in p.apri_in_cartella(ID_AGY, str(tmp_path))["errore"]
@@ -475,6 +477,24 @@ def test_linguetta_di_codex_prende_la_sua_chat_e_il_titolo(tmp_path, monkeypatch
     _chat_codex(p.cartella_codex, ID_CODEX, r)
     scheda = p.schede()["schede"][0]
     assert scheda["sessione"] == ID_CODEX and scheda["titolo"] != "Codex"
+
+
+def test_vecchia_chat_claude_salvata_senza_riaprire_claude(tmp_path, monkeypatch):
+    p, r = _ponte(tmp_path)
+    _sessione(p.cartella_sessioni, "vecchia", "decisione del progetto", datetime.now().astimezone(), gonfia=40 * 1024)
+    p.cartella_hook.mkdir(parents=True)
+    (p.cartella_hook / "fine-sessione-worker.ps1").write_text("# worker", encoding="utf-8")
+    avviati = []
+    scelta = {"assistente_appunti": "codex", "appunti_auto": False}
+    monkeypatch.setattr(ponte.Ponte, "_avvia", staticmethod(avviati.append))
+    monkeypatch.setattr(ponte.Ponte, "_impostazioni", staticmethod(lambda: scelta))
+    assert p.salva_chat("vecchia")["avviato"]
+    comando = avviati[-1]
+    assert comando[comando.index("-Assistente") + 1] == "claude"
+    assert comando[comando.index("-Transcript") + 1].endswith("vecchia.jsonl")
+    assert "-Testo" not in comando  # il worker legge le impostazioni attuali, non la scelta della chat
+    assert p.salva_chat("vecchia")["avviato"] and len(avviati) == 1
+    assert "errore" in p.salva_chat("inesistente")
 
 
 def test_appunti_a_fine_chat_per_codex(tmp_path, monkeypatch):

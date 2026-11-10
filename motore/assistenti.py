@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 import sqlite3
+import sys
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import unquote, urlparse
@@ -266,15 +267,41 @@ def ultima_risposta(percorso, assistente: str, massimo: int = 180) -> str:
 
 
 # ---------- comando da avviare ----------
+def _percorsi_comandi() -> str:
+    percorsi = []
+    if sys.platform == "win32":
+        import winreg
+        for hive, key in ((winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"),
+                          (winreg.HKEY_CURRENT_USER, r"Environment")):
+            try:
+                with winreg.OpenKey(hive, key) as registro:
+                    percorsi.append(os.path.expandvars(winreg.QueryValueEx(registro, "Path")[0]))
+            except OSError:
+                pass
+    percorsi.append(os.environ.get("PATH", ""))
+    locali = Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local")
+    roaming = Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming")
+    noti = [Path.home() / ".local" / "bin", Path.home() / ".cargo" / "bin"]
+    if sys.platform == "win32":
+        noti += [locali / "Programs" / "OpenAI" / "Codex" / "bin", roaming / "npm",
+                 locali / "Microsoft" / "WinGet" / "Links", locali / "Programs" / "nodejs",
+                 Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "nodejs"]
+    else:
+        noti += [Path("/opt/homebrew/bin"), Path("/usr/local/bin")]
+    percorsi.extend(str(p) for p in noti if p.is_dir())
+    return os.pathsep.join(p for p in percorsi if p)
+
+
 def comando(nome: str) -> list[str] | None:
     # eseguibile nel PATH. Codex installato con npm e' un .cmd: lo si avvia con node sul suo
     # script, cosi' il testo del prompt non passa da cmd.exe (che interpreta & | % e virgolette)
-    trovato = shutil.which(nome)
+    percorsi = _percorsi_comandi()
+    trovato = shutil.which(nome, path=percorsi)
     if not trovato:
         return None
     if trovato.lower().endswith((".cmd", ".bat")):
         script = Path(trovato).parent / "node_modules" / "@openai" / "codex" / "bin" / "codex.js"
-        node = shutil.which("node")
+        node = shutil.which("node", path=percorsi)
         if nome == "codex" and node and script.is_file():
             return [node, str(script)]
         return [os.environ.get("COMSPEC", "cmd.exe"), "/c", trovato]

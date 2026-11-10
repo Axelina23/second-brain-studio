@@ -283,6 +283,25 @@ def _comando(script: Path, *arg: str) -> str:
     return " ".join(["powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File", f'"{script.as_posix()}"', *arg])
 
 
+def migra_hook_appunti_legacy(destinazione: Path, base: Path | None = None) -> bool:
+    # Anche le chat gia' aperte possono avere ancora il vecchio comando SessionEnd.
+    base = Path(base) if base else Path.home() / ".claude"
+    legacy = base / "hooks" / "aggiorna-appunti.ps1"
+    if not legacy.is_file():
+        return False
+    testo = legacy.read_text(encoding="utf-8-sig")
+    if not all(segno in testo for segno in ("Hook SessionEnd di Claude Code", "aggiorna-appunti-worker.ps1", "CLAUDE_NOTES_PASS")):
+        return False
+    worker = (Path(destinazione) / "fine-sessione.ps1").resolve()
+    if not worker.is_file():
+        return False
+    shutil.copy2(legacy, legacy.with_name(f"{legacy.name}.prima-di-second-brain-{datetime.now():%Y%m%d-%H%M%S}"))
+    percorso = worker.as_posix().replace("'", "''")
+    legacy.write_text("# Compatibilita con le vecchie chat: impostazioni lette al salvataggio.\n"
+                      f"& '{percorso}'\nexit $LASTEXITCODE\n", encoding="utf-8")
+    return True
+
+
 def collega_hook(sorgente: Path, destinazione: Path, settings: Path | None = None,
                  riga_stato: bool = True, solo_avvisi: bool = False) -> dict:
     # copia gli hook dell'app in una cartella stabile (non quella d'installazione, che
@@ -294,6 +313,7 @@ def collega_hook(sorgente: Path, destinazione: Path, settings: Path | None = Non
     destinazione.mkdir(parents=True, exist_ok=True)
     for f in Path(sorgente).glob("*.ps1"):
         shutil.copy2(f, destinazione / f.name)
+    migra_hook_appunti_legacy(destinazione, settings.parent)
     testo = settings.read_text(encoding="utf-8") if settings.is_file() else ""
     try:
         d = json.loads(testo) if testo.strip() else {}

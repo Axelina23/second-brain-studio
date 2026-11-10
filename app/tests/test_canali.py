@@ -16,7 +16,7 @@ k.SetStdHandle.argtypes = [ctypes.c_ulong, ctypes.c_void_p]
 k.SetStdHandle(ctypes.c_ulong(-10 & 0xFFFFFFFF).value, ctypes.c_void_p(0x7FF0))  # handle finto
 def prova():
     try:
-        subprocess.run(["cmd", "/c", "echo ok"], capture_output=True, text=True, timeout=20)
+        subprocess.run(["cmd", "/c", "echo ok"], capture_output=True, text=True, timeout=20, creationflags=0x08000000)
         return "ok"
     except OSError as e:
         return f"errore {getattr(e, 'winerror', '')}"
@@ -40,7 +40,7 @@ def test_canale_non_valido_viene_sistemato():
 def test_app_impacchettata_li_sostituisce_sempre():
     # come nell'app installata: tutti e tre su NUL, e i comandi funzionano
     codice = ("import sys, subprocess; sys.path.insert(0, sys.argv[1]); import canali; s = canali.sistema(sempre=True); "
-              "r = subprocess.run(['cmd', '/c', 'echo ok'], capture_output=True, text=True); print(s, r.stdout.strip())")
+              "r = subprocess.run(['cmd', '/c', 'echo ok'], capture_output=True, text=True, creationflags=0x08000000); print(s, r.stdout.strip())")
     r = subprocess.run([sys.executable, "-c", codice, str(APP)], capture_output=True, text=True, timeout=60)
     assert r.stdout.strip() == "[-10, -11, -12] ok", r.stdout + r.stderr
 

@@ -222,6 +222,8 @@ class App:
             dest.mkdir(parents=True, exist_ok=True)
             for f in (QUI / "hooks").glob("*.ps1"):
                 shutil.copy2(f, dest / f.name)
+            import modello
+            modello.migra_hook_appunti_legacy(dest)
         except OSError:
             self.ponte._log()
 

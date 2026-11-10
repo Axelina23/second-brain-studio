@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 APP = Path(__file__).resolve().parent.parent
+NASCOSTO = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 FIGLIO = r"""
 import ctypes, sys
@@ -35,9 +36,9 @@ def test_due_script_insieme_ne_parte_uno(tmp_path):
     script = tmp_path / "s.ps1"
     script.write_text(testo, encoding="utf-8")
     cmd = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script)]
-    a = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    a = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=NASCOSTO)
     time.sleep(1.5)
-    b = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, timeout=60)
+    b = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, timeout=60, creationflags=NASCOSTO)
     a.wait(timeout=60)
     log = (tmp_path / "aggiornamento.log").read_text(encoding="utf-8-sig")
     assert log.count("inizio:") == 1, log
@@ -60,11 +61,12 @@ def test_installer_che_riapre_l_app_non_blocca_lo_script(tmp_path):
     setup = tmp_path / "setup.cmd"
     setup.write_text('@start "" /b powershell -NoProfile -Command "Start-Sleep -Seconds 40"\r\n@exit /b 0\r\n', encoding="ascii")
     testo = _mutex_di_prova(aggiornamenti.script_aggiornamento(999999, str(setup), "1.0", False, None, tmp_path), tmp_path)
+    testo = testo.replace("Start-Process -FilePath $setup", "Start-Process -WindowStyle Hidden -FilePath $setup")
     script = tmp_path / "s.ps1"
     script.write_text(testo, encoding="utf-8")
     inizio = time.time()
     subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script)],
-                   stdin=subprocess.DEVNULL, capture_output=True, timeout=90)
+                   stdin=subprocess.DEVNULL, capture_output=True, timeout=90, creationflags=NASCOSTO)
     log = (tmp_path / "aggiornamento.log").read_text(encoding="utf-8-sig")
     assert "installer finito: codice 0" in log, log
     assert time.time() - inizio < 30, "lo script ha aspettato il processo figlio dell'installer"
@@ -77,7 +79,7 @@ def test_avvio_con_canali_non_validi(tmp_path):
     script.write_text(f"Set-Content -LiteralPath '{segno}' -Value 'si'", encoding="utf-8")
     esito = tmp_path / "esito.txt"
     subprocess.run([sys.executable, "-c", FIGLIO, str(APP), str(script), str(esito)],
-                   stdin=subprocess.DEVNULL, capture_output=True, timeout=90)
+                   stdin=subprocess.DEVNULL, capture_output=True, timeout=90, creationflags=NASCOSTO)
     assert esito.read_text() == "True"
     for _ in range(60):
         if segno.exists():

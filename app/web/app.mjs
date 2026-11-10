@@ -257,7 +257,15 @@ function App({ primaChat, impIniziali, primoAvvio }) {
   }, []);
 
   const [assistenti, setAssistenti] = useState([]);
-  useEffect(() => { api("assistenti").then((r) => setAssistenti((r && r.assistenti) || [])); }, []);
+  useEffect(() => {
+    const leggi = () => api("assistenti").then((r) => {
+      if (r && r.assistenti) setAssistenti((vecchi) => JSON.stringify(vecchi) === JSON.stringify(r.assistenti) ? vecchi : r.assistenti);
+    });
+    leggi();
+    const timer = setInterval(leggi, 15000);
+    window.addEventListener("focus", leggi);
+    return () => { clearInterval(timer); window.removeEventListener("focus", leggi); };
+  }, []);
   const mettiImp = useCallback(async (k, v) => {
     setImp((x) => ({ ...x, [k]: v }));
     const r = await api("salva_impostazioni", { [k]: v });
@@ -283,6 +291,7 @@ function App({ primaChat, impIniziali, primoAvvio }) {
   const salvaChat = useCallback(async (sessione) => {
     const r = await api("salva_chat", sessione);
     if (r.errore) { avvisa(r.errore, "errore"); return; }
+    if (r.avviato) { avvisa("Salvataggio degli appunti avviato"); caricaHome(); return; }
     setSchede((s) => s.some((x) => x.id === r.id) ? s : [...s, r]);
     setAttiva(r.id); setModoTerm((m) => m === "nascosto" ? "normale" : m);
   }, []);
@@ -510,7 +519,7 @@ function PaginaOggi({ home, apriChat, salvaChat, vaiAppunto, avvisa, caricaHome,
   };
   const azioneAvviso = (a) => {
     if (a.tipo === "non_salvate") return a.chat.length === 1
-      ? html`<button class="btn piccolo" onClick=${() => salvaChat(a.chat[0].id)}>${Icona.salva()}${c.stato === "errore_salvataggio" ? "Riprova" : "Salva"}</button>`
+      ? html`<button class="btn piccolo" onClick=${() => salvaChat(a.chat[0].id)}>${Icona.salva()}${a.chat[0].stato === "errore_salvataggio" ? "Riprova" : "Salva"}</button>`
       : a.chat.length <= 3
         ? html`<button class="btn piccolo" onClick=${() => a.chat.forEach((c) => salvaChat(c.id))} title="Apre una linguetta per ogni chat e ci fa salvare gli appunti">${Icona.salva()}Salva tutte</button>`
         : html`<button class="btn piccolo" onClick=${() => setPagina("chat")}>Vedi</button>`;
@@ -798,7 +807,7 @@ function PaginaAppunti({ apri, avvisa, apriChat }) {
           <button class="btn piccolo" onClick=${() => setModifica(doc.testo)}>${Icona.matita()}Modifica</button>
           <button class="btn piccolo fantasma" onClick=${() => api("apri_esterno", doc.percorso)}>${Icona.esterno()}Apri fuori</button>`
         : html`<button class="btn piccolo fantasma" onClick=${() => { setModifica(null); setConflitto(false); }}>Annulla</button>
-          <button class="btn piccolo primario" onClick=${salva}>${Icona.salva()}${c.stato === "errore_salvataggio" ? "Riprova" : "Salva"}</button>`}
+          <button class="btn piccolo primario" onClick=${salva}>${Icona.salva()}Salva</button>`}
       </div>
       ${conflitto && html`<div class="messaggio">Il file è cambiato su disco mentre lo modificavi (forse l'ha aggiornato Claude).
         <button class="btn piccolo" onClick=${() => { setModifica(null); leggi(doc.percorso); }}>Ricarica</button></div>`}

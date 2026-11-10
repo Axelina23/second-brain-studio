@@ -5,6 +5,40 @@ import assistenti
 import modello
 
 
+def test_codex_installato_dopo_avvio_senza_path_aggiornato(tmp_path, monkeypatch):
+    monkeypatch.setenv("PATH", str(tmp_path / "vecchio"))
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "Local"))
+    monkeypatch.setenv("APPDATA", str(tmp_path / "Roaming"))
+    monkeypatch.setattr(assistenti.sys, "platform", "win32")
+    from types import SimpleNamespace
+    import sys
+    def assente(*args):
+        raise OSError("non presente")
+    monkeypatch.setitem(sys.modules, "winreg", SimpleNamespace(HKEY_LOCAL_MACHINE=1, HKEY_CURRENT_USER=2, OpenKey=assente))
+    monkeypatch.setattr(assistenti.Path, "home", classmethod(lambda cls: tmp_path / "home"))
+    monkeypatch.setenv("ProgramFiles", str(tmp_path / "Program Files"))
+    assert assistenti.comando("codex") is None
+    exe = tmp_path / "Local" / "Programs" / "OpenAI" / "Codex" / "bin" / "codex.exe"
+    exe.parent.mkdir(parents=True)
+    exe.touch()
+    assert assistenti.Path(assistenti.comando("codex")[0]) == exe
+
+
+def test_path_windows_riletto_a_ogni_ricerca(tmp_path, monkeypatch):
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+    import sys
+    corrente = [str(tmp_path / "prima")]
+    registro = SimpleNamespace(HKEY_LOCAL_MACHINE=1, HKEY_CURRENT_USER=2,
+                               OpenKey=lambda *args: nullcontext("chiave"),
+                               QueryValueEx=lambda *args: (corrente[0], 1))
+    monkeypatch.setitem(sys.modules, "winreg", registro)
+    monkeypatch.setattr(assistenti.sys, "platform", "win32")
+    assert corrente[0] in assistenti._percorsi_comandi()
+    corrente[0] = str(tmp_path / "dopo-installazione")
+    assert corrente[0] in assistenti._percorsi_comandi()
+
+
 def riga_codex(tipo, carico, quando="2026-11-09T20:00:00.000Z"):
     return json.dumps({"timestamp": quando, "type": tipo, "payload": carico})
 
