@@ -39,7 +39,7 @@ titolo = carattere(750, 58)
 d.text((72, 250), "Second Brain", font=titolo, fill=CARTA)
 d.text((72, 316), "Studio", font=titolo, fill=LIMONE)
 frase = carattere(450, 27)
-for i, riga in enumerate(["Your second brain and Claude Code,", "in one window."]):
+for i, riga in enumerate(["Claude Code, Codex, Antigravity.", "Your second brain, in one window."]):
     d.text((72, 410 + i * 38), riga, font=frase, fill=NEBBIA)
 d.text((72, 526), "Windows  ·  free  ·  source available", font=carattere(600, 20), fill="#86c5a1")
 

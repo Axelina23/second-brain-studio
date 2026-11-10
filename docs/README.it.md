@@ -4,8 +4,8 @@
 
 # Second Brain Studio
 
-**Il tuo second brain e Claude Code, in una finestra sola.**
-Appunti in Markdown che Claude tiene aggiornati, il vero Claude Code in linguette accanto,
+**Il tuo second brain con Claude Code, Codex e Antigravity, in una finestra sola.**
+Appunti in Markdown aggiornati dai tuoi assistenti, le loro vere CLI in linguette accanto,
 e tutti i tuoi PC allineati tramite il tuo repository privato su GitHub.
 
 [![Scarica per Windows](https://img.shields.io/github/v/release/Axelina23/second-brain-studio?label=scarica&logo=windows&logoColor=white&color=1f4fa3)](https://github.com/Axelina23/second-brain-studio/releases/latest)
@@ -30,6 +30,23 @@ con le tue regole, i tuoi progetti e il registro di quello che è successo. Seco
 - Parli con Claude nel **vero Claude Code** (il tuo piano, i tuoi hook, i tuoi server MCP), non in un'imitazione.
 - Quando una chat finisce, Claude **aggiorna gli appunti da solo**: registro, stato dei progetti, indice.
 - Tutto è fatto di **file normali** sul tuo disco, con la cronologia di git e una copia in un **repository privato su GitHub**.
+
+## Claude Code, Codex e Antigravity
+
+Scegli assistente e modello per ogni nuova chat. Studio avvia le CLI installate con i loro account: ogni assistente mantiene abbonamento e permessi propri.
+
+- **Claude Code:** accesso esistente, fork nativo delle conversazioni e barre di utilizzo del piano.
+- **Codex:** accesso da **Impostazioni > Account assistenti**, selettore di famiglia e versione del modello. Approva gli hook con `/hooks` quando Codex lo richiede.
+- **Antigravity (`agy`):** installalo ed effettua l'accesso in Antigravity, poi selezionalo in Studio.
+- Per tutti: ripresa, rinomina, chat fissate, ricerca, esportazione, cestino e ripristino. Gli appunti automatici partono alla chiusura della linguetta in Studio; assistente e modello sono configurabili. Per le chat aperte fuori da Studio usa **Salva gli appunti**.
+- Gli indicatori di utilizzo dipendono dai dati disponibili per ogni assistente. Duplica usa il fork nativo di Claude ed appare solo per Claude.
+
+<table><tr>
+<td width="50%"><img src="immagini/assistenti-codex.png" alt="Dati di prova: selettore assistente e modelli Codex"><br>Codex con famiglia e versione del modello.</td>
+<td width="50%"><img src="immagini/assistenti-antigravity.png" alt="Dati di prova: selettore assistente e modelli Antigravity"><br>Antigravity con i suoi modelli.</td>
+</tr></table>
+
+Le immagini sono anteprime dell'interfaccia con dati inventati, senza account reali o conversazioni effettive con gli assistenti.
 
 ## Funzioni
 

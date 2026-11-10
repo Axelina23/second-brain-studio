@@ -13,10 +13,15 @@ if (-not $browser) { throw "Serve Chrome o Edge" }
 $server = Start-Process py -ArgumentList "-3.14", "-m", "http.server", $Porta, "-d", "`"$web`"" -PassThru -WindowStyle Hidden
 Start-Sleep -Seconds 2
 $profilo = Join-Path $env:TEMP "sbs-screenshot"
-Remove-Item -Recurse -Force $profilo -ErrorAction SilentlyContinue   # niente moduli vecchi dalla cache
+$profiloAssoluto = [IO.Path]::GetFullPath($profilo)
+$temporanea = [IO.Path]::GetFullPath($env:TEMP).TrimEnd('\') + '\'
+if (-not $profiloAssoluto.StartsWith($temporanea, [StringComparison]::OrdinalIgnoreCase)) { throw "Profilo fuori dalla cartella temporanea" }
+Remove-Item -LiteralPath $profiloAssoluto -Recurse -Force -ErrorAction SilentlyContinue   # niente moduli vecchi dalla cache
 
 # nome del file -> parametri della pagina di prova
 $scatti = [ordered]@{
+  "assistenti-codex" = "imp=terminale&assistente=codex"
+  "assistenti-antigravity" = "imp=terminale&assistente=agy"
   "oggi"              = "demo"
   "oggi-chiaro"       = "demo&tema=chiaro"
   "chat-pc"           = "demo&pagina=chat"

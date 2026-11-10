@@ -4,8 +4,8 @@
 
 # Second Brain Studio
 
-**Your second brain and Claude Code, in one window.**
-Plain Markdown notes that Claude keeps up to date, the real Claude Code in tabs next to them,
+**Your second brain with Claude Code, Codex and Antigravity, in one window.**
+Plain Markdown notes kept up to date by your assistants, their real command-line tools in tabs next to them,
 and every PC in sync through your own private GitHub repository.
 
 [![Download for Windows](https://img.shields.io/github/v/release/Axelina23/second-brain-studio?label=download&logo=windows&logoColor=white&color=1f4fa3)](https://github.com/Axelina23/second-brain-studio/releases/latest)
@@ -27,9 +27,26 @@ Claude Code is great at remembering things **if you give it a place to remember 
 with your rules, your projects and a log of what happened. Second Brain Studio is the home for that folder.
 
 - You open the app and see **what changed, what's stale and which chats you never saved**.
-- You talk to Claude in the **real Claude Code** (your plan, your hooks, your MCP servers), not a lookalike.
-- When a chat ends, Claude **updates the notes by itself**: the log, the project status, the index.
+- Work with **Claude Code, Codex or Antigravity in their real CLIs**, with their own accounts and permissions.
+- When a chat ends in Studio, your configured assistant **updates the notes in the background**: the log, project status and index.
 - Everything is **plain files** on your disk, versioned with git, backed up to a **private GitHub repo**.
+
+## Claude Code, Codex and Antigravity
+
+Choose the assistant and model for each new chat. Studio runs the installed CLI with its own account; it does not provide a subscription or replace the assistant's permissions.
+
+- **Claude Code:** existing sign-in, native conversation forks and plan usage bars.
+- **Codex:** sign in from **Settings > Assistant accounts**; choose the configured default or a model family and version. Review Studio's hooks with `/hooks` when Codex requests it.
+- **Antigravity (`agy`):** install and sign in using Antigravity, then choose it in Studio. Its account remains managed by Antigravity.
+- Across assistants: resume, rename, pin, search, export, delete and restore chats. Automatic notes run after closing a tab in Studio; choose their assistant and model in Settings. Chats opened outside Studio need **Save notes**.
+- Usage indicators depend on what each assistant exposes; they are not identical across providers. Conversation duplication uses Claude's native fork and is only offered for Claude.
+
+<table><tr>
+<td width="50%"><img src="docs/immagini/en/assistenti-codex.png" alt="Demo: Codex assistant and model settings"><br>Choose Codex and its model family.</td>
+<td width="50%"><img src="docs/immagini/en/assistenti-antigravity.png" alt="Demo: Antigravity assistant and model settings"><br>Choose Antigravity and its model.</td>
+</tr></table>
+
+Screenshots are interface previews using fictional data; they do not show real accounts or live assistant conversations.
 
 ## Features
 
@@ -205,7 +222,7 @@ docs/           images and maintainer notes
 ## FAQ
 
 **Does it use the API or my Claude subscription?**
-It runs the Claude Code you already have, with whatever sign-in it uses: subscription, API key, Bedrock or Vertex.
+It runs each installed CLI with its own authentication and billing. Claude Code supports its existing subscription, API key, Bedrock or Vertex setup; Codex and Antigravity use their own accounts.
 
 **Where are my notes?**
 In a normal folder you choose, as Markdown files. Uninstalling the app leaves them where they are.

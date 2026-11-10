@@ -4,7 +4,7 @@ from pathlib import Path
 from PIL import Image
 
 QUI = Path(__file__).parent
-PAGINE = ["oggi", "chat-pc", "appunti", "mappa-raggiera", "mappa-metro", "mappa-citta", "impostazioni", "oggi-chiaro"]
+PAGINE = ["oggi", "assistenti-codex", "assistenti-antigravity", "chat-pc", "appunti", "mappa-raggiera", "mappa-metro", "mappa-citta", "impostazioni", "oggi-chiaro"]
 LARGO, FERMO, PASSI = 960, 1700, 4   # px, ms su ogni pagina, fotogrammi di dissolvenza
 
 
