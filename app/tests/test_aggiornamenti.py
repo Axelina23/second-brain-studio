@@ -22,6 +22,17 @@ def test_numeri():
     assert agg.numeri("sviluppo") is None
 
 
+def test_release_pubbliche_disponibili_anche_con_token_scaduto(monkeypatch):
+    chiamate = []
+    def get(url, token, accetta, timeout=30):
+        chiamate.append(token)
+        if token:
+            raise agg.urllib.error.HTTPError(url, 401, 'Unauthorized', {}, None)
+        return _Risposta(b'[]')
+    monkeypatch.setattr(agg, '_get', get)
+    assert agg.leggi_release('scaduto') == [] and chiamate == ['scaduto', None]
+
+
 def test_sceglie_la_piu_nuova():
     r = [_rel("2026.11.7.2237"), _rel("2026.11.8.0317"), _rel("2026.11.8.0900", prerelease=True)]
     assert agg.scegli(r, "2026.11.7.2237", prove=True)["versione"] == "2026.11.8.0900"

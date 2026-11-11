@@ -6,6 +6,8 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 
 ## Next version
 
+- Renew expiring GitHub sign-ins automatically and preserve refresh credentials in the system vault across restarts and app updates. Keep public app updates available if GitHub sign-in expires.
+- Recover from Codex background-server startup failures by retrying the same terminal once without the daemon, preserving the chat, prompt and permission settings.
 - After an explicit in-chat manual save, use a bounded read-only verification instead of rewriting complete notes. Reuse confirmation only while chat and file hashes match; leave ordinary automatic saves unchanged.
 - Simplify Codex model choices to the latest verified Luna, Terra, Sol and Astra versions; migrate older chat and notes defaults and remove the separate version selector.
 - Customize terminal line spacing, colors, cursor shape and blinking, scrollback, smooth scrolling, right-click paste and panel position, with live updates.

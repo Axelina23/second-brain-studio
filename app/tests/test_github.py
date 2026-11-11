@@ -1,4 +1,7 @@
 import subprocess
+import json
+import time
+from concurrent.futures import ThreadPoolExecutor
 import sys
 from pathlib import Path
 
@@ -145,3 +148,66 @@ def test_stato_senza_chiave(tmp_path):
     git(tmp_path, "init", "-b", "main")
     s = github.GitHub(tmp_path, chiave=ChiaveFinta()).stato()
     assert s["collegato"] is False and s["repo"] is None
+
+
+def test_rinnovo_sopravvive_al_riavvio_e_serializza_i_thread(tmp_path, monkeypatch):
+    chiave = ChiaveFinta()
+    prima = github.GitHub(tmp_path, chiave=chiave)
+    prima._salva_accesso({"access_token": "vecchio", "refresh_token": "rinnovo", "expires_in": -1})
+    chiamate = []
+    def rinnova(url, dati=None, **kw):
+        chiamate.append(dati)
+        time.sleep(0.02)
+        return {"access_token": "nuovo", "refresh_token": "nuovo-rinnovo", "expires_in": 28800}
+    monkeypatch.setattr(github, "_richiesta", rinnova)
+    seconda = github.GitHub(tmp_path, chiave=chiave)
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        assert list(pool.map(lambda _: seconda._token(), range(6))) == ["nuovo"] * 6
+    assert len(chiamate) == 1 and chiamate[0]["grant_type"] == "refresh_token"
+    terza = github.GitHub(tmp_path, chiave=chiave)
+    assert terza._token() == "nuovo" and len(chiamate) == 1
+    assert json.loads(chiave.v)["refresh_token"] == "nuovo-rinnovo"
+
+
+def test_rinnovo_senza_rete_conserva_accesso_e_refresh(tmp_path, monkeypatch):
+    chiave = ChiaveFinta()
+    g = github.GitHub(tmp_path, chiave=chiave)
+    g._salva_accesso({"access_token": "vecchio", "refresh_token": "rinnovo", "expires_in": -1})
+    prima = chiave.v
+    def rete(*a, **k):
+        raise OSError("offline")
+    monkeypatch.setattr(github, "_richiesta", rete)
+    assert g._token() == "vecchio" and chiave.v == prima
+    assert not g.rifiutato() and chiave.v == prima
+
+
+def test_401_rinnova_anziche_scollegare(tmp_path, monkeypatch):
+    g = github.GitHub(tmp_path, chiave=ChiaveFinta())
+    g._salva_accesso({"access_token": "vecchio", "refresh_token": "rinnovo", "expires_in": 28800})
+    def richiesta(url, dati=None, **kw):
+        if dati:
+            return {"access_token": "nuovo", "refresh_token": "rinnovo2", "expires_in": 28800}
+        raise github.urllib.error.HTTPError(url, 401, "Unauthorized", {}, None)
+    monkeypatch.setattr(github, "_richiesta", richiesta)
+    assert not g.rifiutato() and g._token() == "nuovo" and not g.scaduto
+
+
+def test_risposta_401_vecchia_non_cancella_un_login_nuovo(tmp_path, monkeypatch):
+    chiave = ChiaveFinta("vecchio")
+    g = github.GitHub(tmp_path, chiave=chiave)
+    def richiesta(url, **kw):
+        chiave.set("nuovo")
+        raise github.urllib.error.HTTPError(url, 401, "Unauthorized", {}, None)
+    monkeypatch.setattr(github, "_richiesta", richiesta)
+    assert not g.rifiutato() and g._token() == "nuovo"
+
+
+def test_refresh_revocato_richiede_accesso_solo_se_anche_token_rifiutato(tmp_path, monkeypatch):
+    g = github.GitHub(tmp_path, chiave=ChiaveFinta())
+    g._salva_accesso({"access_token": "vecchio", "refresh_token": "rinnovo", "expires_in": 28800})
+    def richiesta(url, dati=None, **kw):
+        if dati:
+            return {"error": "bad_refresh_token"}
+        raise github.urllib.error.HTTPError(url, 401, "Unauthorized", {}, None)
+    monkeypatch.setattr(github, "_richiesta", richiesta)
+    assert g.rifiutato() and g._token() is None and g.scaduto

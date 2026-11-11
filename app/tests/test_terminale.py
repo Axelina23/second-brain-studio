@@ -48,6 +48,48 @@ class PtyFinto:
         return self.exitstatus
 
 
+def test_codex_recupera_daemon_senza_perdere_resume_prompt_e_permessi():
+    chiamate, chiuse = [], []
+    errore = 'Error: failed to open daemon process: Accesso negato. Rerun with --no-daemon'
+    class Finito(PtyFinto):
+        def __init__(self, testo, codice):
+            super().__init__()
+            self.uscite, self.exitstatus = [testo], codice
+        def read(self, n):
+            if self.uscite:
+                return self.uscite.pop()
+            raise EOFError
+    def crea(argv, cwd, cols, rows, env):
+        chiamate.append(list(argv))
+        return Finito(errore if len(chiamate) == 1 else 'Codex pronto', 1 if len(chiamate) == 1 else 0)
+    t = terminale.Terminali(crea_pty=crea, alla_chiusura=chiuse.append)
+    argv = ['codex.exe', 'resume', 'sessione', '--sandbox', 'workspace-write', 'continua']
+    s = t.apri(argv, '.', 'Codex', assistente='codex')
+    assert s.uscita.wait(2)
+    assert chiamate == [argv, ['codex.exe', '--no-daemon', *argv[1:]]]
+    assert s.codice == 0 and chiuse == [s]
+
+
+def test_codex_non_riprova_errori_generici_o_daemon_gia_escluso():
+    for argv, errore in ((['codex.exe'], 'Unknown model'),
+                         (['codex.exe', '--no-daemon'], 'background server --no-daemon')):
+        chiamate = []
+        class Fallito(PtyFinto):
+            def __init__(self):
+                super().__init__()
+                self.uscite, self.exitstatus = [errore], 1
+            def read(self, n):
+                if self.uscite:
+                    return self.uscite.pop()
+                raise EOFError
+        def crea(*a):
+            chiamate.append(a)
+            return Fallito()
+        t = terminale.Terminali(crea_pty=crea)
+        s = t.apri(argv, '.', 'Codex', assistente='codex')
+        assert s.uscita.wait(2) and len(chiamate) == 1 and s.codice == 1
+
+
 def test_ambiente_pulito_toglie_variabili_claude():
     env = terminale.ambiente_pulito({"CLAUDECODE": "1", "CLAUDE_CODE_ENTRYPOINT": "cli",
                                      "PATH": "x", "CLAUDE_NOTES_PASS": "1"}, utente={})

@@ -75,6 +75,9 @@ class Scheda:
     dim_storico: int = 0
     uscita: threading.Event = field(default_factory=threading.Event)  # claude e' uscito
     assistente: str = "claude"  # claude, codex o agy: solo le schede di Claude hanno sessione e appunti
+    cols: int = 120
+    rows: int = 32
+    chiusura_richiesta: bool = False
 
 
 class Terminali:
@@ -144,6 +147,7 @@ class Terminali:
             elif m.get("t") == "r":
                 cols, rows = int(m["cols"]), int(m["rows"])
                 if 2 <= cols <= 1000 and 2 <= rows <= 500:
+                    scheda.cols, scheda.rows = cols, rows
                     pty.setwinsize(rows, cols)
         except Exception:
             pass
@@ -153,6 +157,7 @@ class Terminali:
              cols: int = 120, rows: int = 32, assistente: str = "claude", accesso: bool = False) -> Scheda:
         sid = secrets.token_hex(6)
         scheda = Scheda(sid, argv, cwd, titolo, sessione, assistente=assistente)
+        scheda.cols, scheda.rows = cols, rows
         scheda.accesso = accesso
         scheda.pty = self._crea_pty(argv, cwd, cols, rows, ambiente_pulito())
         with self._blocco:
@@ -177,6 +182,24 @@ class Terminali:
             codice = pty.exitstatus if pty.exitstatus is not None else pty.wait()
         except Exception:
             codice = -1
+        testo = "".join(scheda.storico)
+        if (codice != 0 and scheda.assistente == "codex" and not scheda.chiusura_richiesta
+                and time.time() - scheda.aperta_il < 30
+                and "--no-daemon" not in scheda.argv and "--no-daemon" in testo
+                and ("failed to open daemon process" in testo
+                     or "To work without the background server, rerun the same command" in testo)):
+            # Stessa chat, prompt e permessi, una sola volta; nessun PID o file interno da toccare.
+            argv = list(scheda.argv)
+            posizione = 2 if len(argv) > 1 and argv[1].lower().endswith("codex.js") else 1
+            argv.insert(posizione, "--no-daemon")
+            try:
+                scheda.pty = self._crea_pty(argv, scheda.cwd, scheda.cols, scheda.rows, ambiente_pulito())
+                scheda.argv = argv
+            except Exception as e:
+                self._diffondi(scheda, f"\r\nCodex: {e}\r\n")
+            else:
+                self._leggi(scheda)
+                return
         scheda.codice = codice if isinstance(codice, int) else -1
         scheda.uscita.set()
         self._diffondi(scheda, json.dumps({"t": "x", "code": scheda.codice}), storico=False)
@@ -216,6 +239,7 @@ class Terminali:
         scheda = self.schede.pop(sid, None)
         if not scheda or scheda.pty is None or scheda.codice is not None:
             return None
+        scheda.chiusura_richiesta = True
         t = threading.Thread(target=self._chiudi_dolce, args=(scheda,), name=f"chiudi-{sid}", daemon=True)
         t.start()
         return t

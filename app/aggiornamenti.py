@@ -11,6 +11,7 @@ import re
 import subprocess
 import time
 import urllib.request
+import urllib.error
 from pathlib import Path
 
 REPO = "Axelina23/second-brain-studio"
@@ -82,8 +83,15 @@ def _get(url: str, token: str | None, accetta: str, timeout: int = 30):
 
 
 def leggi_release(token: str | None) -> list:
-    with _get(API, token, "application/vnd.github+json") as r:
-        return json.loads(r.read().decode("utf-8"))
+    try:
+        with _get(API, token, "application/vnd.github+json") as r:
+            return json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        if not token or e.code != 401:
+            raise
+        # Le release sono pubbliche: il login non deve bloccare gli aggiornamenti.
+        with _get(API, None, "application/vnd.github+json") as r:
+            return json.loads(r.read().decode("utf-8"))
 
 
 def scarica(scelta: dict, cartella: Path, token: str | None) -> Path:
@@ -96,7 +104,13 @@ def scarica(scelta: dict, cartella: Path, token: str | None) -> Path:
     # con la chiave si passa dall'API (funziona anche col repository privato)
     url, accetta = (scelta["url"], "application/octet-stream") if token and scelta.get("url") else (scelta["pubblico"], "*/*")
     h = hashlib.sha256()
-    with _get(url, token if url == scelta.get("url") else None, accetta, timeout=120) as r, open(parziale, "wb") as f:
+    try:
+        risposta = _get(url, token if url == scelta.get("url") else None, accetta, timeout=120)
+    except urllib.error.HTTPError as e:
+        if not token or e.code != 401 or not scelta.get("pubblico"):
+            raise
+        risposta = _get(scelta["pubblico"], None, "*/*", timeout=120)
+    with risposta as r, open(parziale, "wb") as f:
         while True:
             pezzo = r.read(1 << 16)
             if not pezzo:
