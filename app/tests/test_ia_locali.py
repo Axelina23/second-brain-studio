@@ -277,9 +277,16 @@ def test_ponte_apre_schede_locali_con_ambiente_separato(tmp_path, monkeypatch, a
         assert g.sessione(scheda.sessione)["assistente"] == "claude"
         assert terminali_finti.ambienti[0]["ANTHROPIC_BASE_URL"].endswith(":12345")
         scheda.codice = 0
+        eventi = []
+        p.emetti = lambda nome, dati: eventi.append((nome, dati))
         ripresa = p.apri_chat("riprendi", scheda.sessione)
-        assert ripresa["locale"]["modello"] == "alfa"
-        assert "--resume" in terminali_finti.schede[ripresa["id"]].argv
+        assert ripresa["in_avvio"]
+        fine = time.monotonic() + 2
+        while not eventi and time.monotonic() < fine:
+            time.sleep(.01)
+        voce_ripresa = next(d for nome, d in eventi if nome == "chat-locale-pronta")
+        assert voce_ripresa["locale"]["modello"] == "alfa"
+        assert "--resume" in terminali_finti.schede[voce_ripresa["id"]].argv
     else:
         assert "CODEX_HOME" in terminali_finti.ambienti[0]
     g.chiudi()
@@ -295,3 +302,55 @@ def test_parole_e_appunti_locali_non_chiamano_worker_cloud(tmp_path, monkeypatch
     monkeypatch.setattr(p, "_avvia", lambda *a: pytest.fail("worker cloud"))
     p._lavoro_parole([sessione])
     assert p._appunti_di(sessione) is False
+
+
+def test_catalogo_dinamico_non_carica_pesi_e_segue_rimozioni(tmp_path):
+    g = GestoreLocale(tmp_path / "cache")
+    cfg = configurazione(tmp_path)
+    g.configura(cfg)
+    modello = tmp_path / "Beta-7B-Q4.gguf"
+    modello.write_bytes(b'GGUF')
+    primo = g.catalogo()["modelli"]
+    beta = next(m for m in primo if m["file"] == str(modello))
+    assert beta["disponibile"] and beta["id"].startswith("gguf-")
+    assert not any(m["file"] == cfg["modelli"]["alfa"]["proiettore"] for m in primo)
+    modello.unlink()
+    assert not any(m["id"] == beta["id"] for m in g.catalogo()["modelli"])
+    assert g.stato()["pid"] is None
+
+
+def test_limiti_e_riposo_sono_passati_al_motore(tmp_path):
+    cfg = {**configurazione(tmp_path), "cache_ram_mib": 256, "checkpoint": 1, "cache_kv": "q4_0",
+           "layer_gpu": 20, "mmap": False, "inattivita_secondi": 60}
+    argv = argomenti_server(cfg, "alfa", contesto=32768, dflash=False)
+    for chiave, valore in (("--sleep-idle-seconds", "60"), ("--cache-ram", "256"), ("--ctx-checkpoints", "1"), ("-ngl", "20"), ("-ctk", "q4_0")):
+        assert argv[argv.index(chiave) + 1] == valore
+    assert argv[argv.index("--load-mode") + 1] == "none" and "-md" not in argv
+
+
+def test_riposo_non_impedisce_riutilizzo_del_client(tmp_path, monkeypatch):
+    g, _ = gestore(tmp_path, monkeypatch)
+    g.avvia("alfa")
+    g._stato["stato"] = "riposo"
+    _, env = g.prepara_client("codex")
+    assert env["CODEX_HOME"]
+    g.chiudi()
+
+
+def test_chiedi_funziona_anche_a_riposo(tmp_path, monkeypatch):
+    g, _ = gestore(tmp_path, monkeypatch)
+    g.avvia("alfa")
+    g._stato["stato"] = "riposo"
+    visti = []
+    class Risposta:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self, *a): return b'{"choices": [{"message": {"content": "391"}}]}'
+    class Apri:
+        def open(self, richiesta, timeout=None):
+            visti.append(timeout)
+            return Risposta()
+    monkeypatch.setattr("ia_locali.urllib.request.build_opener", lambda *a: Apri())
+    profilo = {k: g.stato()[k] for k in ("modello", "contesto", "dflash", "visione")}
+    assert g.chiedi("x", profilo, timeout=600) == "391" and visti == [600]
+    g.chiudi()

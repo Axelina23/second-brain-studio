@@ -1,6 +1,16 @@
 // Dizionario italiano -> inglese dell'interfaccia (vedi lingua.mjs). Chiave = testo esatto
 // mostrato in italiano (senza spazi ai bordi). REGOLE: testi con numeri, date e nomi.
 export const EN = {
+  "IA locale": "Local AI", "Claude locale": "Local Claude", "Codex locale": "Local Codex", "Il tuo assistente, qui accanto": "Your assistant, right here",
+  "Motore spento": "Engine stopped", "Caricamento del modello…": "Loading model…", "Modello pronto": "Model ready", "In riposo · modello scaricato": "Sleeping · model unloaded", "Errore del motore": "Engine error",
+  "Gestisci": "Manage", "Aggiorna elenco": "Refresh list", "Avvio in corso…": "Starting…", "Interrompi caricamento": "Cancel loading",
+  "Motore e modelli": "Engine and models", "Eseguibile llama-server": "llama-server executable", "Porta locale": "Local port", "Sfoglia": "Browse",
+  "Cartelle dei modelli GGUF": "GGUF model folders", "Aggiungi cartella": "Add folder", "Modello da gestire": "Model to manage", "Nome visualizzato": "Display name", "File del modello": "Model file",
+  "Drafter opzionale": "Optional drafter", "Proiettore immagini": "Image projector", "Profilo delle chat locali": "Local chat profile", "Contesto": "Context",
+  "Accelerazione DFlash": "DFlash acceleration", "Abilita immagini": "Enable images", "Riposo dopo inattività": "Sleep after inactivity", "Mai": "Never",
+  "Memoria e impostazioni avanzate": "Memory and advanced settings", "Cache conversazioni (MiB)": "Prompt cache (MiB)", "Checkpoint del contesto": "Context checkpoints",
+  "Precisione cache KV": "KV cache precision", "Layer sulla GPU": "GPU layers", "Mapping dei pesi in RAM": "Memory-map model weights", "Salva impostazioni": "Save settings",
+  "Carica modello": "Load model", "Arresta e libera memoria": "Stop and free memory", "Arresta comunque": "Stop anyway", "Attivo": "Enabled",
   "Disposizione": "Layout", "Posizione del terminale": "Terminal position", "Automatico": "Automatic", "A destra": "On the right", "In basso": "Below",
   "Automatico lo sposta sotto il contenuto quando la finestra è stretta.": "Automatic places it below the content in narrow windows.",
   "Leggibilità": "Readability", "Interlinea": "Line spacing", "Colori del terminale": "Terminal colors", "Notte": "Night", "Contrasto alto": "High contrast",

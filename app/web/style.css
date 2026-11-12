@@ -440,10 +440,15 @@ body { width: calc(100vw / var(--ui-zoom, 1)); height: calc(100dvh / var(--ui-zo
 .term-vuoto p { margin: 0; max-width: 34ch; justify-self: center; }
 .term-vuoto .azioni { justify-content: center; }
 .etichetta-assistente { margin-right: 7px; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--cucitura); color: var(--testo-2); font-size: 10.5px; font-weight: 500; vertical-align: 1px; white-space: nowrap; }
-.scelta-chat { display: grid; justify-items: center; gap: 8px; }
+.scelta-chat { display: grid; justify-items: center; gap: 8px; width: min(100%, 520px); min-width: 0; }
 .scelta-chat .nota { font-size: 12.5px; max-width: 38ch; }
-.scelta-chat .imp-seg { flex-wrap: wrap; justify-content: center; }
-.scelta-chat .imp-seg button { padding: 0 8px; font-size: 12px; white-space: nowrap; }
+.scelta-chat .imp-seg { flex-wrap: wrap; justify-content: center; max-width: 100%; min-width: 0; gap: 4px; }
+.scelta-chat .imp-seg button { padding: 0 8px; font-size: 12px; white-space: nowrap; min-width: 0; max-width: min(100%, 240px); overflow: hidden; text-overflow: ellipsis; }
+.term-vuoto { grid-template-columns: minmax(0, 1fr); justify-items: center; align-content: safe center; overflow-y: auto; min-width: 0; }
+.scelta-locale { display: grid; gap: 8px; width: 100%; min-width: 0; justify-items: center; }
+.modelli-locali { max-height: 164px; overflow-y: auto; }
+.locale-stato { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: var(--muto); }
+.locale-stato .btn { padding: 3px 6px; }
 
 /* ---------- barra di stato ---------- */
 .stato { grid-column: 1 / -1; grid-row: 2; display: flex; align-items: center; gap: 18px; padding: 0 14px;

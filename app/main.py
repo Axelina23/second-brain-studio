@@ -104,6 +104,9 @@ class Api:
     def nota(self, testo): return self._p.nota(testo)
     def apri_chat(self, tipo="nuova", sessione=None, prompt=None, cartella=None, titolo=None):
         imp = imp_mod.leggi()
+        if tipo == "nuova" and imp["assistente_chat"] in ("claude_locale", "codex_locale"):
+            return self._p.richiedi_chat_locale(imp["assistente_chat"].removesuffix("_locale"),
+                                               imp["modello_locale"], cartella, prompt, titolo)
         chiave_mod = {"codex": "modello_codex", "agy": "modello_agy"}.get(imp["assistente_chat"], "modello_chat")
         return self._p.apri_chat(tipo, sessione, prompt, cartella, titolo, imp[chiave_mod], imp["assistente_chat"])
     def assistenti(self): return self._p.assistenti()
@@ -113,6 +116,12 @@ class Api:
     def ia_locale_avvia(self, modello, contesto=8192, dflash=True, visione=False):
         return self._p.ia_locale_avvia(modello, contesto, dflash, visione)
     def ia_locale_arresta(self, forza=False): return self._p.ia_locale_arresta(forza)
+    def ia_locale_scegli_percorso(self, tipo="modello"):
+        import webview
+        if tipo not in ("modello", "draft", "proiettore", "eseguibile", "cartella"):
+            return {"errore": "Tipo di percorso non valido"}
+        scelta = self._app.finestra.create_file_dialog(webview.FileDialog.FOLDER if tipo == "cartella" else webview.FileDialog.OPEN)
+        return {"percorso": scelta[0] if scelta else None}
     def apri_chat_locale(self, assistente="claude", cartella=None, prompt=None, titolo=None, sessione=None):
         return self._p.apri_chat_locale(assistente, cartella, prompt, titolo, sessione)
     def salva_chat(self, sessione): return self._p.salva_chat(sessione)

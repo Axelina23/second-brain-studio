@@ -127,7 +127,7 @@
       scegli_cartella: async () => ({ percorso: null }),
       elimina_inbox: async () => ({ ok: true, chiave: "1-x.md" }), ripristina_inbox: async () => ({ ok: true }),
       conta_inbox: async () => ({ inbox: 1 }),
-      assistenti: async () => ({ assistenti: [{ id: "claude", nome: "Claude", installato: true }, { id: "codex", nome: "Codex", installato: true }, { id: "agy", nome: "Antigravity", installato: true }] }),
+      assistenti: async () => ({ assistenti: [{ id: "claude", nome: "Claude", installato: true }, { id: "codex", nome: "Codex", installato: true }, { id: "agy", nome: "Antigravity", installato: true }, { id: "claude_locale", nome: "Claude locale", installato: true }, { id: "codex_locale", nome: "Codex locale", installato: true }] }),
       rinomina_inbox: async (rel, n) => ({ ok: true, nome: n, percorso: `Inbox/${n}` }), sposta_inbox: async (rel, p) => ({ ok: true, percorso: p, progetto: p.split("/")[1] }),
       schede: async () => ({ schede: schedeDemo }), chiudi_scheda: async () => ({ ok: true }),
       apri_esterno: async () => ({ ok: true }), apri_cartella: async () => ({ ok: true }),
@@ -149,7 +149,20 @@
       silenzio_gioco: true, terminale_testo: 13.5, terminale_carattere: "JetBrains Mono", assistente_chat: par.get("assistente") || "claude", modello_codex: "gpt-6.1-sol", modello_agy: "gemini-3.8-flash-high", assistente_appunti: "chat", modello_appunti_codex: "predefinito", modello_appunti_agy: "gemini-3.8-flash-high", modello_chat: "predefinito",
       appunti_auto: true, modello_appunti: "sonnet", soglia_kb: 30, sync_minuti: 0, scorciatoia_globale: true,
       aggiornamenti_auto: true, aggiornamenti_prova: true, chat_altri_pc: true };
+    let localeCfg = { eseguibile: "C:/strumenti/llama-server.exe", porta: 8087, inattivita_secondi: 300,
+      cartelle_modelli: ["D:/modelli"], contesto: 16384, dflash: true, visione: false, cache_ram_mib: 512,
+      checkpoint: 2, cache_kv: "q8_0", mmap: false, layer_gpu: -1,
+      modelli: { alfa: { nome: "Qwen 27B · Q3_K_XL", file: "D:/modelli/qwen.gguf", draft: "D:/modelli/draft.gguf" },
+        beta: { nome: "Huihui Qwen 27B · Q3_K_XL", file: "D:/modelli/huihui.gguf", draft: "D:/modelli/draft.gguf" },
+        gamma: { nome: "Modello di prova con un nome molto lungo e quantizzazione Q4_K_M", file: "D:/modelli/modello-lungo.gguf" } } };
+    let localeStato = { stato: "spento", modello: null, client: 0, pid: null };
     Object.assign(api, {
+      ia_locale_catalogo: async () => ({ configurazione: localeCfg, modelli: Object.entries(localeCfg.modelli).map(([id,m]) => ({ id, ...m, disponibile: true, dimensione_gb: 13.3 })) }),
+      ia_locale_stato: async () => localeStato,
+      ia_locale_configura: async c => { localeCfg = c; return api.ia_locale_catalogo(); },
+      ia_locale_avvia: async (modello, contesto, dflash) => (localeStato = { stato: "pronto", modello, contesto, dflash, client: 0, pid: 123 }),
+      ia_locale_arresta: async () => (localeStato = { stato: "spento", client: 0, pid: null }),
+      ia_locale_scegli_percorso: async () => ({ percorso: null }),
       impostazioni: async () => ({ impostazioni: impFinte, avvio: true, installata: true, avvisi: false, radice: T("C:/Users/giulia/Second Brain", "C:/Users/emma/Second Brain"),
         versione: "2026.11.8.0600", account: { tipo: "abbonamento", testo: "Abbonamento Claude", email: T("giulia@example.com", "emma@example.com") } }),
       salva_impostazioni: async (n) => { impFinte = { ...impFinte, ...n }; return { ok: true, impostazioni: impFinte }; },

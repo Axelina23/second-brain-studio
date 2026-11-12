@@ -1,9 +1,15 @@
 # IA locali: contratto funzionale per l'interfaccia
 
-Il backend e pronto per il collegamento visuale. Questa modifica non cambia `app/web/`
-e non installa una nuova versione dell'app. Il collaudo con i modelli reali resta da
-ripetere dentro l'app dopo il collegamento dell'interfaccia; i test di questa modifica
-non caricano GPU o modelli.
+Backend e interfaccia sono collegati: selettore "Claude locale" / "Codex locale" nel pannello
+della chat nuova (`app/web/ia-locali.mjs`, `SceltaLocale`) e pagina Impostazioni -> IA locale
+(`ImpostazioniLocali`). I test non caricano GPU o modelli; il collaudo reale si fa con
+`Sistema/ia-locali/collaudo-studio.py` del second brain.
+
+Aggiunte rispetto alla prima base: catalogo dinamico dei GGUF nelle `cartelle_modelli`,
+`richiedi_chat_locale` (avvia il motore se serve ed emette `chat-locale-pronta`), stato `riposo`
+(riposo nativo di llama.cpp con `--sleep-idle-seconds`: scarica pesi e contesto anche a chat
+aperta, la richiesta successiva li ricarica), limiti configurabili (cache, checkpoint, cache KV,
+layer GPU, mmap) e `ia_locale_scegli_percorso`.
 
 ## Architettura
 

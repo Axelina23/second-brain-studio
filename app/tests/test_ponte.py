@@ -380,7 +380,7 @@ def test_chat_nuova_con_modello_e_assistente(tmp_path, monkeypatch):
     # i comandi dell'app (con un prompt) vanno all'assistente scelto, come primo messaggio
     assert p.apri_chat("nuova", prompt="briefing", assistente="codex")["assistente"] == "codex"
     assert p.terminali.avviate[-1] == ["C:/bin/codex.exe", "briefing"]
-    assert [a["id"] for a in p.assistenti()["assistenti"] if a["installato"]] == ["claude", "codex"]
+    assert [a["id"] for a in p.assistenti()["assistenti"] if a["installato"]] == ["claude", "codex", "claude_locale", "codex_locale"]
 
 
 def test_scheda_di_codex_non_prende_una_sessione_di_claude(tmp_path, monkeypatch):

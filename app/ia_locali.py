@@ -2,6 +2,8 @@
 import copy
 import http.client
 import json
+import hashlib
+import os
 import socket
 import subprocess
 import threading
@@ -10,7 +12,9 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-PREDEFINITE = {"eseguibile": "", "porta": 8087, "modelli": {}, "inattivita_secondi": 300}
+PREDEFINITE = {"eseguibile": "", "porta": 8087, "modelli": {}, "inattivita_secondi": 300,
+               "cartelle_modelli": [], "contesto": 16384, "dflash": True, "visione": False,
+               "cache_ram_mib": 512, "checkpoint": 2, "cache_kv": "q8_0", "mmap": False, "layer_gpu": -1}
 MODELLI_CLIENT = {"claude", "codex"}
 
 
@@ -34,8 +38,9 @@ def normalizza_anthropic(corpo):
 
 
 def argomenti_server(cfg, modello, contesto=8192, dflash=True, visione=False):
-    if type(contesto) is not int or contesto not in (8192, 16384, 32768):
-        raise ValueError("Contesto non valido: scegliere 8192, 16384 o 32768")
+    cfg = {**PREDEFINITE, **cfg}
+    if type(contesto) is not int or contesto not in (4096, 8192, 16384, 32768, 65536, 131072):
+        raise ValueError("Contesto non valido")
     if type(dflash) is not bool or type(visione) is not bool:
         raise ValueError("DFlash e visione devono essere booleani")
     voce = cfg["modelli"].get(modello)
@@ -49,9 +54,12 @@ def argomenti_server(cfg, modello, contesto=8192, dflash=True, visione=False):
     if any(not p or not Path(p).is_absolute() or not Path(p).is_file() for p in richiesti):
         raise ValueError("Eseguibile, modello o componenti richiesti mancanti")
     argv = [cfg["eseguibile"], "-m", voce["file"], "--host", "127.0.0.1", "--port", str(cfg["porta"]),
-            "--alias", "qwen-locale", "-ngl", "all", "--fit", "off", "-c", str(contesto), "-np", "1",
-            "-b", "256", "-ub", "128", "-fa", "on", "-ctk", "q8_0", "-ctv", "q8_0",
-            "--jinja", "--reasoning", "off", "--cache-ram", "512", "--ctx-checkpoints", "2", "--metrics"]
+            "--alias", "qwen-locale", "-ngl", "all" if cfg["layer_gpu"] == -1 else str(cfg["layer_gpu"]),
+            "--fit", "off", "-c", str(contesto), "-np", "1",
+            "-b", "256", "-ub", "128", "-fa", "on", "-ctk", cfg["cache_kv"], "-ctv", cfg["cache_kv"],
+            "--jinja", "--reasoning", "off", "--cache-ram", str(cfg["cache_ram_mib"]),
+            "--ctx-checkpoints", str(cfg["checkpoint"]), "--sleep-idle-seconds", str(cfg["inattivita_secondi"] or -1), "--metrics"]
+    argv += ["--load-mode", "mmap" if cfg["mmap"] else "none"]
     if dflash:
         argv += ["-md", voce["draft"], "--spec-type", "draft-dflash", "--spec-draft-n-max", "7",
                  "--spec-draft-ngl", "all"]
@@ -87,8 +95,18 @@ class GestoreLocale:
         nuova = {**copy.deepcopy(PREDEFINITE), **cfg}
         if type(nuova["porta"]) is not int or not 1024 <= nuova["porta"] <= 65535:
             raise ValueError("Porta non valida")
-        if type(nuova["inattivita_secondi"]) is not int or not 30 <= nuova["inattivita_secondi"] <= 3600:
-            raise ValueError("Inattivita non valida: da 30 a 3600 secondi")
+        if type(nuova["inattivita_secondi"]) is not int or not (nuova["inattivita_secondi"] == 0 or 30 <= nuova["inattivita_secondi"] <= 86400):
+            raise ValueError("Inattivita non valida: zero oppure da 30 a 86400 secondi")
+        for chiave, minimo, massimo in (("cache_ram_mib", 0, 8192), ("checkpoint", 0, 8), ("layer_gpu", -1, 200)):
+            if type(nuova[chiave]) is not int or not minimo <= nuova[chiave] <= massimo:
+                raise ValueError(f"Limite non valido: {chiave}")
+        if nuova["contesto"] not in (4096, 8192, 16384, 32768, 65536, 131072) or type(nuova["contesto"]) is not int:
+            raise ValueError("Contesto non valido")
+        if nuova["cache_kv"] not in ("f16", "q8_0", "q4_0") or any(type(nuova[k]) is not bool for k in ("mmap", "dflash", "visione")):
+            raise ValueError("Profilo memoria non valido")
+        if not isinstance(nuova["cartelle_modelli"], list) or len(nuova["cartelle_modelli"]) > 12 or any(
+                not isinstance(p, str) or not Path(p).is_absolute() for p in nuova["cartelle_modelli"]):
+            raise ValueError("Cartelle modelli non valide")
         if not isinstance(nuova["modelli"], dict) or not isinstance(nuova["eseguibile"], str):
             raise ValueError("Catalogo locale non valido")
         for chiave, voce in nuova["modelli"].items():
@@ -110,11 +128,47 @@ class GestoreLocale:
             self._config = nuova
         return self.catalogo()
 
+    def _modelli_disponibili(self):
+        modelli = copy.deepcopy(self._config["modelli"])
+        noti = {os.path.normcase(str(Path(v.get("file", "")).resolve())) for v in modelli.values()}
+        noti.update(os.path.normcase(str(Path(v[k]).resolve())) for v in modelli.values()
+                    for k in ("draft", "proiettore") if v.get(k))
+        radici = set(self._config["cartelle_modelli"])
+        radici.update(str(Path(v["file"]).parent) for v in modelli.values() if v.get("file"))
+        visitati = 0
+        for radice in sorted(radici):
+            for cartella, sottocartelle, nomi in os.walk(radice):
+                visitati += 1
+                if visitati > 1000:
+                    break
+                if len(Path(cartella).relative_to(radice).parts) >= 4:
+                    sottocartelle[:] = []
+                for nome in nomi:
+                    basso = nome.lower()
+                    if not basso.endswith(".gguf") or any(x in basso for x in ("mmproj", "dflash", "draft", "embedding")):
+                        continue
+                    if "-of-" in basso and "-00001-of-" not in basso:
+                        continue
+                    p = Path(cartella) / nome
+                    identita = os.path.normcase(str(p.resolve()))
+                    if identita in noti:
+                        continue
+                    noti.add(identita)
+                    chiave = "gguf-" + hashlib.sha256(identita.encode()).hexdigest()[:16]
+                    modelli[chiave] = {"nome": p.stem.replace("-", " "), "file": str(p)}
+        return modelli
+
     def catalogo(self):
         with self._lock:
             cfg = copy.deepcopy(self._config)
-        return {"configurazione": cfg, "modelli": [{"id": k, **v,
-                "disponibile": Path(v.get("file", "")).is_file()} for k, v in cfg["modelli"].items()],
+            modelli = self._modelli_disponibili()
+        def dimensione(voce):
+            try:
+                return round(Path(voce.get("file", "")).stat().st_size / 1e9, 2)
+            except OSError:
+                return None
+        return {"configurazione": cfg, "modelli": [{"id": k, **v, "dimensione_gb": dimensione(v),
+                "disponibile": Path(v.get("file", "")).is_file()} for k, v in modelli.items()],
                 "funzioni": {"file": True, "ricerca_web": False, "lettura_siti": False,
                              "browser": False, "visione": "richiede_proiettore"}}
 
@@ -138,6 +192,14 @@ class GestoreLocale:
         except (OSError, ValueError):
             return False
 
+    def _controlla_riposo(self):
+        apri = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+            with apri.open(self.stato()["url"] + "/props", timeout=2) as r:
+                return json.load(r).get("is_sleeping", False)
+        except (OSError, ValueError):
+            return None
+
     def avvia(self, modello, contesto=8192, dflash=True, visione=False):
         with self._lock:
             if self._vivo():
@@ -147,7 +209,7 @@ class GestoreLocale:
                 raise ValueError("Un altro profilo e attivo: arrestarlo prima del cambio")
             if self._client:
                 raise ValueError("Chiudere le chat locali del precedente avvio prima di caricare un modello")
-            argv = argomenti_server(self._config, modello, contesto, dflash, visione)
+            argv = argomenti_server({**self._config, "modelli": self._modelli_disponibili()}, modello, contesto, dflash, visione)
             with socket.socket() as s:
                 try:
                     s.bind(("127.0.0.1", self._config["porta"]))
@@ -168,6 +230,7 @@ class GestoreLocale:
 
     def _sorveglia(self, processo):
         scadenza = self._ora() + 900
+        ultimo_controllo = 0
         while True:
             with self._lock:
                 if self._processo is not processo:
@@ -176,7 +239,15 @@ class GestoreLocale:
                     self._stato.update(stato="errore", errore=f"Server terminato con codice {processo.returncode}")
                     self._notifica()
                     return
-                pronto = self._stato["stato"] == "pronto"
+                pronto = self._stato["stato"] in ("pronto", "riposo")
+            if pronto and self._ora() - ultimo_controllo >= 3:
+                ultimo_controllo = self._ora()
+                riposo = self._controlla_riposo()
+                with self._lock:
+                    nuovo = "riposo" if riposo else "pronto"
+                    if self._processo is processo and riposo is not None and self._stato["stato"] != nuovo:
+                        self._stato["stato"] = nuovo
+                        self._notifica()
             if not pronto and self._salute():
                 with self._lock:
                     if self._processo is not processo:
@@ -201,7 +272,7 @@ class GestoreLocale:
 
     def scarica_se_inattivo(self):
         with self._lock:
-            if self._client or self._ora() - self._ultimo_uso < self._config["inattivita_secondi"]:
+            if self._client or not self._config["inattivita_secondi"] or self._ora() - self._ultimo_uso < self._config["inattivita_secondi"]:
                 return False
             self.arresta()
             return True
@@ -309,7 +380,7 @@ class GestoreLocale:
         with self._lock:
             if assistente not in MODELLI_CLIENT:
                 raise ValueError("Assistente locale non supportato")
-            if self._stato["stato"] != "pronto" or not self._vivo():
+            if self._stato["stato"] not in ("pronto", "riposo") or not self._vivo():
                 raise ValueError("Avviare il modello e attendere lo stato pronto")
             contesto = self._stato["contesto"]
             if assistente == "codex":
@@ -336,7 +407,8 @@ class GestoreLocale:
 
     def chiedi(self, prompt, profilo, timeout=60):
         with self._lock:
-            if not profilo or self._stato["stato"] != "pronto" or any(
+            # anche a riposo: la richiesta stessa fa ricaricare il modello a llama.cpp
+            if not profilo or self._stato["stato"] not in ("pronto", "riposo") or any(
                     profilo.get(k) != self._stato[k] for k in ("modello", "contesto", "dflash", "visione")):
                 raise ValueError("Attivare il profilo locale della chat prima di generare il titolo")
             url = self.stato()["url"] + "/v1/chat/completions"

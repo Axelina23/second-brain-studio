@@ -676,6 +676,44 @@ class Ponte:
             return {"errore": "forza deve essere booleano"}
         return self._azione_locale(self.locali.arresta, forza)
 
+    def richiedi_chat_locale(self, assistente, modello=None, cartella=None, prompt=None, titolo=None, sessione=None):
+        if assistente not in ("claude", "codex"):
+            return {"errore": "Assistente locale non valido"}
+        cfg = self.locali.catalogo()["configurazione"]
+        precedente = self.locali.sessione(sessione) if sessione else None
+        profilo = precedente or {"modello": modello, "contesto": cfg["contesto"],
+                                 "dflash": cfg["dflash"], "visione": cfg["visione"]}
+        if not profilo.get("modello"):
+            return {"errore": "Scegli un modello locale installato"}
+        voce = next((m for m in self.locali.catalogo()["modelli"] if m["id"] == profilo["modello"]), None)
+        if not voce or not voce["disponibile"]:
+            return {"errore": "Il modello selezionato non e disponibile: aggiorna il catalogo"}
+        profilo = {k: profilo[k] for k in ("modello", "contesto", "dflash", "visione")}
+        if not precedente and not voce.get("draft"):
+            profilo["dflash"] = False
+        stato = self.locali.stato()
+        if stato["client"] and any(stato.get(k) != v for k, v in profilo.items()):
+            return {"errore": "Chiudi le altre chat locali prima di cambiare modello o profilo"}
+        operazione = str(uuid.uuid4())
+        def lavoro():
+            try:
+                corrente = self.locali.stato()
+                if corrente["pid"] and any(corrente.get(k) != v for k, v in profilo.items()):
+                    self.locali.arresta()
+                self.locali.avvia(**profilo)
+                limite = time.monotonic() + 910
+                while self.locali.stato()["stato"] not in ("pronto", "riposo"):
+                    corrente = self.locali.stato()
+                    if corrente["stato"] in ("spento", "errore") or time.monotonic() > limite:
+                        raise RuntimeError(corrente.get("errore") or "Avvio locale interrotto")
+                    time.sleep(.3)
+                risultato = self.apri_chat_locale(assistente, cartella, prompt, titolo, sessione)
+            except (OSError, ValueError, TypeError, RuntimeError) as e:
+                risultato = {"errore": str(e)}
+            self.emetti("chat-locale-pronta", {"operazione": operazione, **risultato})
+        self._in_thread("locale-" + operazione, lavoro)
+        return {"in_avvio": True, "operazione": operazione}
+
     def apri_chat_locale(self, assistente="claude", cartella=None, prompt=None, titolo=None, sessione=None):
         if assistente not in ("claude", "codex") or self.terminali is None:
             return {"errore": "Assistente o terminale locale non disponibile"}
@@ -741,7 +779,7 @@ class Ponte:
         if locale:
             if tipo == "duplica":
                 return {"errore": "Duplicazione chat locali non ancora disponibile"}
-            return self.apri_chat_locale(locale["assistente"], cartella, prompt, titolo, sessione)
+            return self.richiedi_chat_locale(locale["assistente"], cartella=cartella, prompt=prompt, titolo=titolo, sessione=sessione)
         dove = self.radice
         if cartella:
             dove = Path(cartella)
@@ -849,13 +887,17 @@ class Ponte:
 
     def assistenti(self) -> dict:
         # quali assistenti si possono scegliere per una chat nuova su questo PC
-        return {"assistenti": [{"id": k, "nome": n, "installato": k == "claude" or self._comando_assistente(k) is not None}
-                               for k, n in ASSISTENTI.items()]}
+        elenco = [{"id": k, "nome": n, "installato": k == "claude" or self._comando_assistente(k) is not None}
+                  for k, n in ASSISTENTI.items()]
+        elenco += [{"id": k + "_locale", "nome": n + " locale", "locale": True,
+                    "installato": next(a["installato"] for a in elenco if a["id"] == k)}
+                   for k, n in (("claude", "Claude"), ("codex", "Codex"))]
+        return {"assistenti": elenco}
 
     def salva_chat(self, sessione: str) -> dict:
         locale = self.locali.sessione(sessione)
         if locale:
-            return self.apri_chat_locale(locale["assistente"], prompt=PROMPT_SALVA[mod_struttura.rileva(self.radice)], sessione=sessione)
+            return self.richiedi_chat_locale(locale["assistente"], prompt=PROMPT_SALVA[mod_struttura.rileva(self.radice)], sessione=sessione)
         s = self._sessione(sessione)
         if s is None:
             return {"errore": "Chat non trovata"}
@@ -1069,7 +1111,7 @@ class Ponte:
             return {"errore": "Il nome è stato scelto manualmente"}
         def lavoro():
             profilo_locale = self.locali.sessione(sessione)
-            risposta = (self.locali.chiedi(parole.PROMPT + s.testo_utente, profilo_locale) if self._sessione_locale(s)
+            risposta = (self.locali.chiedi(parole.PROMPT + s.testo_utente, profilo_locale, timeout=600) if self._sessione_locale(s)
                         else self._chiedi_per(s.assistente)(parole.PROMPT + s.testo_utente))
             titolo = parole._formatta(risposta) if risposta else ""
             if titolo and sessione not in self._meta()["titoli"]:

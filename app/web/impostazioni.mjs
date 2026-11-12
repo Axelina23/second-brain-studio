@@ -4,6 +4,7 @@
 import { html, useState, useEffect } from "./vendor/preact-htm.mjs";
 import { Icona } from "./icone.mjs";
 import { impostaLingua } from "./lingua.mjs";
+import { ImpostazioniLocali } from "./ia-locali.mjs";
 
 export const COLORI = {
   limone: ["#f2c94c", "#1a1606", "Limone"], cobalto: ["#7aa2ec", "#08162e", "Cobalto"],
@@ -37,6 +38,7 @@ export function applicaAspetto(imp) {
 const SEZIONI = [["generale", "Generale", "oggi"], ["aspetto", "Aspetto", "mappa"], ["notifiche", "Notifiche", "chat"],
   ["account", "Account assistenti", "briefing"], ["terminale", "Terminale", "allarga"], ["appunti", "Appunti automatici", "appunti"],
   ["agenti", "Agenti", "chat"],
+  ["ia-locale", "IA locale", "allarga"],
   ["github", "GitHub", "github"], ["scorciatoie", "Scorciatoie", "riprendi"], ["dati", "Dati e manutenzione", "cartella"],
   ["info", "Informazioni", "esterno"]];
 
@@ -140,9 +142,10 @@ export function Impostazioni({ api, chiudi, avvisa, gh, accediGh, sincronizzaGh,
   const acc = d.account || {};
 
   const corpo = {
+    "ia-locale": html`<${ImpostazioniLocali} api=${api} avvisa=${avvisa} imp=${imp} mettiImp=${metti} />`,
     agenti: html`
       <${Voce} titolo="Assistente delle chat nuove" testo="Codex e Antigravity devono essere installati; usano il loro modello e il loro abbonamento.">
-        <${Segmenti} valore=${imp.assistente_chat} cambia=${(v) => metti("assistente_chat", v)} opzioni=${[["claude", "Claude"], ["codex", "Codex"], ["agy", "Antigravity"]]} /></${Voce}>
+        <${Segmenti} valore=${imp.assistente_chat} cambia=${(v) => metti("assistente_chat", v)} opzioni=${[["claude", "Claude"], ["codex", "Codex"], ["agy", "Antigravity"], ["claude_locale", "Claude locale"], ["codex_locale", "Codex locale"]]} /></${Voce}>
       <p class="imp-nota">Si applicano alle chat nuove e alle chat riprese. Le chat già aperte mantengono la modalità in uso.</p>
       ${[["claude", "Claude"], ["codex", "Codex"], ["agy", "Antigravity"]].map(([id, nome]) => html`
         <section class="imp-agente" data-agente=${id} aria-label=${nome}><h3>${nome}</h3>

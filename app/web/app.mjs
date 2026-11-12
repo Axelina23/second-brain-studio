@@ -13,6 +13,7 @@ import { linguaAttiva } from "./lingua.mjs";
 import { DialogoProgetto } from "./progetto.mjs";
 import { PrimoAvvio } from "./primo-avvio.mjs";
 import { Impostazioni, applicaAspetto, SceltaModello, CHIAVE_MODELLO } from "./impostazioni.mjs";
+import { SceltaLocale, LOCALE } from "./ia-locali.mjs";
 
 // ---------- ponte ----------
 const pronto = new Promise((ok) => {
@@ -80,6 +81,7 @@ function App({ primaChat, impIniziali, primoAvvio }) {
   const [schede, setSchede] = useState([]);
   const [attiva, setAttiva] = useState(null);
   const [sceltaNuova, setSceltaNuova] = useState(false);
+  const [avvioLocale, setAvvioLocale] = useState(false);
   const [modoTerm, setModoTerm] = useState(() => localStorage.getItem("modoTerm") || "normale");
   const [larghezzaLayout, setLarghezzaLayout] = useState(() => document.body.clientWidth);
   useEffect(() => {
@@ -288,9 +290,12 @@ function App({ primaChat, impIniziali, primoAvvio }) {
       setModoTerm((m) => m === "nascosto" ? "normale" : m);
       return;
     }
-    setSceltaNuova(false);
+    setSceltaNuova(true); setAvvioLocale(true);
     const r = await api("apri_chat", tipo, sessione, prompt, cartella, titolo);
+    if (r.in_avvio) return;
+    setAvvioLocale(false);
     if (r.errore) { avvisa(r.errore, "errore"); return; }
+    setSceltaNuova(false);
     if (r.nota) avvisa(r.nota);
     setSchede((s) => s.some((x) => x.id === r.id) ? s : [...s, r]);
     setAttiva(r.id);
@@ -298,7 +303,10 @@ function App({ primaChat, impIniziali, primoAvvio }) {
     setTimeout(caricaHome, 1500);
   }, []);
   const salvaChat = useCallback(async (sessione) => {
+    setAvvioLocale(true);
     const r = await api("salva_chat", sessione);
+    if (r.in_avvio) { setSceltaNuova(true); return; }
+    setAvvioLocale(false);
     if (r.errore) { avvisa(r.errore, "errore"); return; }
     if (r.avviato) { avvisa("Salvataggio degli appunti avviato"); caricaHome(); return; }
     setSchede((s) => s.some((x) => x.id === r.id) ? s : [...s, r]);
@@ -331,7 +339,14 @@ function App({ primaChat, impIniziali, primoAvvio }) {
   const vaiAppunto = (percorso, evidenzia = null) => { setApriAppunto({ percorso, evidenzia, t: Date.now() }); setPagina("appunti"); };
 
   useEvento((nome, d) => {
-    if (nome === "sync") setHome((h) => h && { ...h, sync: d.stato });
+    if (nome === "impostazioni-locali") setDialogo({ tipo: "impostazioni" });
+    else if (nome === "chat-locale-pronta") {
+      setAvvioLocale(false);
+      if (d.errore) { avvisa(d.errore, "errore"); return; }
+      setSceltaNuova(false); setSchede(s => s.some(x => x.id === d.id) ? s : [...s, d]); setAttiva(d.id);
+      setModoTerm(m => m === "nascosto" ? "normale" : m); setTimeout(caricaHome, 1000);
+    }
+    else if (nome === "sync") setHome((h) => h && { ...h, sync: d.stato });
     else if (nome === "oggi") setHome((h) => h && { ...h, oggi: d });
     else if (nome === "chat") { setSchede((v) => v.map((s) => s.sessione === d.id ? { ...s, titolo: d.etichetta } : s)); setHome((h) => h && { ...h, chat: h.chat.map((c) => c.id === d.id ? { ...c, etichetta: d.etichetta } : c) }); }
     else if (nome === "nota") avvisa(`Nota rinominata: ${d.nome}`);
@@ -416,7 +431,8 @@ function App({ primaChat, impIniziali, primoAvvio }) {
     <${Maniglia} />
     <${ColonnaTerminali} schede=${schede} attiva=${attiva} setAttiva=${(id) => { setSceltaNuova(false); setAttiva(id); }} chiudi=${chiudiScheda}
       apriChat=${apriChat} salvaChat=${salvaChat} modo=${modoTerm} setModo=${setModoTerm} home=${home} menuScheda=${menuScheda}
-      imp=${imp} mettiImp=${mettiImp} assistenti=${assistenti} sceltaNuova=${sceltaNuova} setSceltaNuova=${setSceltaNuova} />
+      imp=${imp} mettiImp=${mettiImp} assistenti=${assistenti} sceltaNuova=${sceltaNuova} setSceltaNuova=${setSceltaNuova}
+      avvioLocale=${avvioLocale} annullaAvvio=${async () => { const r = await api("ia_locale_arresta"); if (r.errore) avvisa(r.errore, "errore"); }} />
     <${BarraStato} git=${git} home=${home} schede=${schede} attiva=${attiva} sceltaNuova=${sceltaNuova} imp=${imp}
       orologio=${orologio} modo=${modoTerm} setModo=${setModoTerm} uso=${uso}
       aggiornamento=${aggiornamento} versione=${versione} remoti=${remoti} aggiorna=${() => schede.some((s) => !s.chiusa) ? setDialogo({ tipo: "aggiorna", aperte: schede.filter((s) => !s.chiusa).length }) : aggiornaOra()} />
@@ -929,7 +945,7 @@ function Schermo({ scheda, attiva, salvaChat, apriChat, chiudi }) {
 // azioni (eliminare, aprire in un'altra cartella, duplicare) esistono solo per quelle di Claude
 const NOMI_ASSISTENTI = { claude: "Claude", codex: "Codex", agy: "Antigravity" };
 const diClaude = (c) => !c.assistente || c.assistente === "claude";
-const Assistente = ({ c }) => NOMI_ASSISTENTI[c.assistente || "claude"] ? html`<span class="etichetta-assistente">${NOMI_ASSISTENTI[c.assistente || "claude"]}</span>` : null;
+const Assistente = ({ c }) => NOMI_ASSISTENTI[c.assistente || "claude"] ? html`<span class="etichetta-assistente">${NOMI_ASSISTENTI[c.assistente || "claude"]}${c.locale ? " locale" : ""}</span>` : null;
 
 // con quale assistente e modello parte una chat nuova: stesse impostazioni di Impostazioni > Agenti
 function SceltaChat({ imp, mettiImp, assistenti }) {
@@ -941,11 +957,12 @@ function SceltaChat({ imp, mettiImp, assistenti }) {
     ${assistenti.length > 1 && html`<span class="imp-seg" role="radiogroup" aria-label="Assistente">${assistenti.map((a) => html`<button role="radio"
       aria-checked=${scelto === a.id} class=${scelto === a.id ? "scelto" : ""} disabled=${!a.installato}
       title=${a.installato ? "" : "Non installato su questo PC"} onClick=${() => mettiImp("assistente_chat", a.id)}>${a.nome}</button>`)}</span>`}
-    <${SceltaModello} agente=${scelto} valore=${imp[chiave]} cambia=${(v) => mettiImp(chiave, v)} />
+    ${LOCALE(scelto) ? html`<${SceltaLocale} api=${api} imp=${imp} mettiImp=${mettiImp} />`
+      : html`<${SceltaModello} agente=${scelto} valore=${imp[chiave]} cambia=${(v) => mettiImp(chiave, v)} />`}
   </div>`;
 }
 
-function ColonnaTerminali({ schede, attiva, setAttiva, chiudi, apriChat, salvaChat, modo, setModo, home, menuScheda, imp, mettiImp, assistenti, sceltaNuova, setSceltaNuova }) {
+function ColonnaTerminali({ schede, attiva, setAttiva, chiudi, apriChat, salvaChat, modo, setModo, home, menuScheda, imp, mettiImp, assistenti, sceltaNuova, setSceltaNuova, avvioLocale, annullaAvvio }) {
   useEffect(() => { for (const id of [...console_.keys()]) if (!schede.some((s) => s.id === id)) { console_.get(id).distruggi(); console_.delete(id); } }, [schede]);
   useEffect(() => { const c = console_.get(attiva); if (c && !sceltaNuova) setTimeout(() => c.adatta(true), 60); }, [modo, sceltaNuova]);
   const ultima = home && home.chat && home.chat.find((c) => c.stato !== "aperta");
@@ -970,12 +987,13 @@ function ColonnaTerminali({ schede, attiva, setAttiva, chiudi, apriChat, salvaCh
       ${schede.map((s) => html`<${Schermo} key=${s.id} scheda=${s} attiva=${!mostraScelta && s.id === attiva}
           salvaChat=${salvaChat} apriChat=${apriChat} chiudi=${chiudi} />`)}
       ${mostraScelta && html`<div class="term-vuoto">
-        <h3>${schede.length ? "Nuova chat" : "Claude Code, qui accanto"}</h3>
+        <h3>${schede.length ? "Nuova chat" : "Il tuo assistente, qui accanto"}</h3>
         <p>${schede.length ? "Scegli con quale assistente e modello aprire la nuova linguetta." : "Ogni chat si apre in una linguetta. Puoi tenerne aperte più di una e passare dall'una all'altra."}</p>
         <${SceltaChat} imp=${imp} mettiImp=${mettiImp} assistenti=${assistenti} />
         <div class="azioni">
           ${schede.length > 0 && html`<button class="btn fantasma" onClick=${() => setSceltaNuova(false)}>Annulla</button>`}
-          <button class="btn primario" onClick=${avviaScelta}>${Icona.piu()}${schede.length ? "Avvia chat" : "Nuova chat"}</button>
+          <button class="btn primario" disabled=${avvioLocale || (LOCALE(imp?.assistente_chat) && !imp?.modello_locale)} onClick=${avviaScelta}>${Icona.piu()}${avvioLocale ? "Avvio in corso…" : schede.length ? "Avvia chat" : "Nuova chat"}</button>
+          ${avvioLocale && html`<button class="btn fantasma" onClick=${annullaAvvio}>Interrompi caricamento</button>`}
           ${!schede.length && ultima && html`<button class="btn" onClick=${() => apriChat("riprendi", ultima.id)} title=${ultima.etichetta}>${Icona.riprendi()}Riprendi l'ultima</button>`}</div>
       </div>`}
     </div>
@@ -1002,8 +1020,9 @@ function BarraStato({ git, home, schede, attiva, sceltaNuova, imp, orologio, mod
   const aperte = schede.filter((s) => !s.chiusa).length;
   const schedaAttiva = !sceltaNuova && schede.find((s) => s.id === attiva && !s.chiusa);
   const assAttivo = (schedaAttiva && schedaAttiva.assistente) || (imp && imp.assistente_chat) || "claude";
-  const nomeAss = { claude: "Claude", codex: "Codex", agy: "Antigravity" }[assAttivo] || "Claude";
-  const uAss = (uso && uso.assistenti && uso.assistenti[assAttivo]) || (assAttivo === "claude" ? uso : null);
+  const locale = !!schedaAttiva?.locale || LOCALE(assAttivo);
+  const nomeAss = ({ claude: "Claude", codex: "Codex", agy: "Antigravity", claude_locale: "Claude", codex_locale: "Codex" }[assAttivo] || "Claude") + (locale ? " locale" : "");
+  const uAss = locale ? null : (uso && uso.assistenti && uso.assistenti[assAttivo]) || (assAttivo === "claude" ? uso : null);
   const vecchio = uAss && uAss.noto && uAss.aggiornato && Date.now() / 1000 - uAss.aggiornato > 600;
   return html`<footer class="stato">
     ${versione && html`<span class="versione" title="Versione di Second Brain Studio">v${versione}</span>`}
