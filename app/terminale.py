@@ -78,6 +78,7 @@ class Scheda:
     cols: int = 120
     rows: int = 32
     chiusura_richiesta: bool = False
+    locale: dict | None = None
 
 
 class Terminali:
@@ -154,12 +155,20 @@ class Terminali:
 
     # --- schede ---
     def apri(self, argv: list[str], cwd: str, titolo: str, sessione: str | None = None,
-             cols: int = 120, rows: int = 32, assistente: str = "claude", accesso: bool = False) -> Scheda:
+             cols: int = 120, rows: int = 32, assistente: str = "claude", accesso: bool = False,
+             ambiente: dict | None = None, locale: dict | None = None) -> Scheda:
         sid = secrets.token_hex(6)
         scheda = Scheda(sid, argv, cwd, titolo, sessione, assistente=assistente)
         scheda.cols, scheda.rows = cols, rows
         scheda.accesso = accesso
-        scheda.pty = self._crea_pty(argv, cwd, cols, rows, ambiente_pulito())
+        scheda.locale = locale
+        env = ambiente_pulito()
+        if locale is not None:
+            env = {k: v for k, v in env.items() if not k.startswith(("ANTHROPIC_", "CLAUDE_CODE_USE_", "CODEX_"))
+                   and k not in ("OPENAI_API_KEY", "OPENAI_BASE_URL", "CLAUDE_CODE_SUBAGENT_MODEL")}
+        if ambiente:
+            env.update(ambiente)
+        scheda.pty = self._crea_pty(argv, cwd, cols, rows, env)
         with self._blocco:
             self.schede[sid] = scheda
         threading.Thread(target=self._leggi, args=(scheda,), name=f"pty-{sid}", daemon=True).start()

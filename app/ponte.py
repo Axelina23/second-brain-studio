@@ -12,6 +12,7 @@ import sys
 import threading
 import time
 import traceback
+import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -38,6 +39,7 @@ TITOLI_PROVVISORI = ("Nuova chat", *ASSISTENTI.values())
 from percorsi import CACHE, CARTELLA_SESSIONI, CLAUDE, RADICE, SEGNI, SOGLIA_SIGNIFICATIVA  # noqa: E402
 from percorsi import cartella_sessioni as cartella_sessioni_di  # noqa: E402
 import chat_extra  # noqa: E402
+from ia_locali import GestoreLocale  # noqa: E402
 
 # per lingua della struttura del second brain (struttura.py)
 PROMPT_SALVA = {"it": "Aggiorna gli appunti e il Registro con quanto fatto in questa chat.",
@@ -115,6 +117,7 @@ class Ponte:
         self._chiedi = chiedi
         self.adesso = adesso
         self.emetti = lambda nome, dati: None
+        self.locali = GestoreLocale(self.cache / "ia-locali", emetti=lambda nome, dati: self.emetti(nome, dati))
         self._sessioni_cache: dict[str, tuple] = {}
         self._date_git: dict[str, float] = {}
         self._date_git_quando = 0.0
@@ -212,6 +215,7 @@ class Ponte:
         candidati = []
         if self.cartella_codex:
             candidati += [("codex", p) for p in mod_assistenti.file_codex(self.cartella_codex)]
+        candidati += [("codex", p) for p in mod_assistenti.file_codex(self.locali.cartella / "codex")]
         if self.cartella_agy:
             candidati += [("agy", p) for p in mod_assistenti.file_agy(self.cartella_agy)]
         nuove = {}
@@ -306,7 +310,8 @@ class Ponte:
         return {"id": s.id, "etichetta": self._etichetta(s), "ultima": s.ultima.isoformat(),
                 "dimensione": s.dimensione, "messaggi": s.n_messaggi, "stato": self._stato(s),
                 "primo": s.primo_messaggio[:200], "fissata": s.id in self._meta()["fissate"],
-                "rinominata": s.id in self._meta()["titoli"], "assistente": s.assistente}
+                "rinominata": s.id in self._meta()["titoli"], "assistente": s.assistente,
+                "locale": self.locali.sessione(s.id)}
 
     def voci_per_altri_pc(self, limite: int = 100) -> list:
         # chat di questo PC per il riepilogo condiviso (altri_pc.py): senza il primo messaggio,
@@ -325,6 +330,8 @@ class Ponte:
 
     def _lavoro_parole(self, elenco) -> None:
         for s in elenco:
+            if self._sessione_locale(s):
+                continue
             if s.id in self._meta()["titoli"]:
                 continue
             aperta = any(t.sessione == s.id for t in (self.terminali.attive() if self.terminali else []))
@@ -646,6 +653,77 @@ class Ponte:
         return {"ok": True, "nome": p.name}
 
     # ---------- terminali ----------
+    def ia_locale_catalogo(self):
+        return self.locali.catalogo()
+
+    def ia_locale_stato(self):
+        return self.locali.stato()
+
+    def _azione_locale(self, azione, *args, **kwargs):
+        try:
+            return azione(*args, **kwargs)
+        except (OSError, ValueError, TypeError, RuntimeError) as e:
+            return {"errore": str(e)}
+
+    def ia_locale_configura(self, configurazione):
+        return self._azione_locale(self.locali.configura, configurazione)
+
+    def ia_locale_avvia(self, modello, contesto=8192, dflash=True, visione=False):
+        return self._azione_locale(self.locali.avvia, modello, contesto, dflash, visione)
+
+    def ia_locale_arresta(self, forza=False):
+        if type(forza) is not bool:
+            return {"errore": "forza deve essere booleano"}
+        return self._azione_locale(self.locali.arresta, forza)
+
+    def apri_chat_locale(self, assistente="claude", cartella=None, prompt=None, titolo=None, sessione=None):
+        if assistente not in ("claude", "codex") or self.terminali is None:
+            return {"errore": "Assistente o terminale locale non disponibile"}
+        if any(x is not None and not isinstance(x, str) for x in (cartella, prompt, titolo, sessione)):
+            return {"errore": "Parametri della chat locale non validi"}
+        dove = Path(cartella) if cartella else self.radice
+        if not dove.is_absolute() or not dove.is_dir():
+            return {"errore": "La cartella di lavoro non esiste"}
+        try:
+            stato = self.locali.stato()
+            profilo = {k: stato[k] for k in ("modello", "contesto", "dflash", "visione")}
+            precedente = self.locali.sessione(sessione) if sessione else None
+            if sessione and not precedente:
+                return {"errore": "Chat locale non registrata: impossibile riprenderla con certezza"}
+            if precedente and precedente.get("assistente") != assistente:
+                return {"errore": "Riprendere la chat con il suo assistente originale"}
+            if precedente and any(precedente.get(k) != v for k, v in profilo.items()):
+                return {"errore": "Per riprendere questa chat attivare il suo modello e profilo locale"}
+            argv = [str(CLAUDE)] if assistente == "claude" else self._comando_assistente("codex")
+            if not argv:
+                return {"errore": "Codex non e installato"}
+            if prompt and mod_assistenti.passa_da_cmd(argv):
+                prompt = re.sub(r'[&|<>^%"]', " ", prompt)
+            opzioni, env = self.locali.prepara_client(assistente)
+            imp = self._impostazioni()
+            argv += opzioni + mod_assistenti.opzioni_chat(assistente, imp.get(f"modalita_{assistente}", "predefinito"), "predefinito")
+            if sessione:
+                argv += (["--resume", sessione] if assistente == "claude" else ["resume", sessione])
+            elif assistente == "claude":
+                sessione = str(uuid.uuid4())
+                argv += ["--session-id", sessione]
+            if prompt:
+                argv.append(prompt)
+            scheda = self.terminali.apri(argv, str(dove), (titolo or f"{ASSISTENTI[assistente]} locale")[:60],
+                                       sessione=sessione, assistente=assistente, ambiente=env, locale=profilo)
+            self.locali.registra_client(scheda.id)
+            if sessione:
+                self.locali.ricorda_sessione(sessione, assistente, profilo)
+            if scheda.uscita.is_set():
+                self.locali.rilascia_client(scheda.id)
+            return self._voce_scheda(scheda)
+        except (OSError, ValueError, TypeError, RuntimeError) as e:
+            return {"errore": str(e)}
+
+    def _sessione_locale(self, s):
+        return bool(self.locali.sessione(s.id)) or (
+            s.assistente == "codex" and s.percorso.resolve().is_relative_to((self.locali.cartella / "codex").resolve()))
+
     def apri_chat(self, tipo: str = "nuova", sessione: str | None = None, prompt: str | None = None,
                   cartella: str | None = None, titolo: str | None = None, modello: str | None = None,
                   assistente: str | None = None) -> dict:
@@ -659,6 +737,11 @@ class Ponte:
             for t in self.terminali.attive():
                 if t.sessione == sessione:
                     return self._voce_scheda(t)
+        locale = self.locali.sessione(sessione) if sessione else None
+        if locale:
+            if tipo == "duplica":
+                return {"errore": "Duplicazione chat locali non ancora disponibile"}
+            return self.apri_chat_locale(locale["assistente"], cartella, prompt, titolo, sessione)
         dove = self.radice
         if cartella:
             dove = Path(cartella)
@@ -770,6 +853,9 @@ class Ponte:
                                for k, n in ASSISTENTI.items()]}
 
     def salva_chat(self, sessione: str) -> dict:
+        locale = self.locali.sessione(sessione)
+        if locale:
+            return self.apri_chat_locale(locale["assistente"], prompt=PROMPT_SALVA[mod_struttura.rileva(self.radice)], sessione=sessione)
         s = self._sessione(sessione)
         if s is None:
             return {"errore": "Chat non trovata"}
@@ -982,7 +1068,9 @@ class Ponte:
         if sessione in self._meta()["titoli"]:
             return {"errore": "Il nome è stato scelto manualmente"}
         def lavoro():
-            risposta = self._chiedi_per(s.assistente)(parole.PROMPT + s.testo_utente)
+            profilo_locale = self.locali.sessione(sessione)
+            risposta = (self.locali.chiedi(parole.PROMPT + s.testo_utente, profilo_locale) if self._sessione_locale(s)
+                        else self._chiedi_per(s.assistente)(parole.PROMPT + s.testo_utente))
             titolo = parole._formatta(risposta) if risposta else ""
             if titolo and sessione not in self._meta()["titoli"]:
                 with parole._blocco:
@@ -1155,7 +1243,8 @@ class Ponte:
         if s:
             t.titolo = self._etichetta(s)
         return {"id": t.id, "titolo": t.titolo, "sessione": t.sessione, "url": self.terminali.url(t.id),
-                "chiusa": t.codice is not None, "assistente": getattr(t, "assistente", "claude")}
+                "chiusa": t.codice is not None, "assistente": getattr(t, "assistente", "claude"),
+                "locale": getattr(t, "locale", None)}
 
     def schede(self) -> dict:
         if self.terminali is None:
@@ -1184,6 +1273,8 @@ class Ponte:
                 continue
             nuove.remove(s)
             t.sessione = s.id
+            if getattr(t, "locale", None):
+                self.locali.ricorda_sessione(s.id, t.assistente, t.locale)
             if getattr(t, "nome_scelto", False):
                 self._imposta_titolo(s.id, t.titolo)
             elif t.titolo in TITOLI_PROVVISORI:
@@ -1195,6 +1286,19 @@ class Ponte:
         return {"ok": True}
 
     def scheda_chiusa(self, scheda) -> None:
+        if getattr(scheda, "locale", None):
+            self.locali.rilascia_client(scheda.id)
+            if not scheda.sessione:
+                # Codex assegna l'id dopo l'avvio: cercare soltanto nel suo archivio locale.
+                usate = {t.sessione for t in self.terminali.schede.values() if t.id != scheda.id and t.sessione}
+                candidati = [self._leggi_altra("codex", p) for p in mod_assistenti.file_codex(self.locali.cartella / "codex")]
+                candidati = [s for s in candidati if s and s.id not in usate and s.ultima.timestamp() >= scheda.aperta_il - 2]
+                if candidati:
+                    scheda.sessione = max(candidati, key=lambda s: s.ultima).id
+            if scheda.sessione:
+                self.locali.ricorda_sessione(scheda.sessione, scheda.assistente, scheda.locale)
+            self.emetti("scheda", {"id": scheda.id, "chiusa": True, "sessione": scheda.sessione, "locale": scheda.locale})
+            return  # Le chat locali non avviano implicitamente il worker cloud degli appunti.
         if getattr(scheda, "accesso", False):
             self.emetti("scheda", {"id": scheda.id, "chiusa": True})
             return
@@ -1237,6 +1341,8 @@ class Ponte:
         # sono accesi e la chat e' abbastanza lunga parte il worker che li aggiorna (e poi
         # sincronizza), altrimenti si salvano e si caricano soltanto le modifiche ai file
         if s is None:
+            return False
+        if self._sessione_locale(s):
             return False
         imp = self._impostazioni()
         soglia = imp.get("soglia_kb") if isinstance(imp.get("soglia_kb"), (int, float)) else 30

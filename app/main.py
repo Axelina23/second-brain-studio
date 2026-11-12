@@ -107,6 +107,14 @@ class Api:
         chiave_mod = {"codex": "modello_codex", "agy": "modello_agy"}.get(imp["assistente_chat"], "modello_chat")
         return self._p.apri_chat(tipo, sessione, prompt, cartella, titolo, imp[chiave_mod], imp["assistente_chat"])
     def assistenti(self): return self._p.assistenti()
+    def ia_locale_catalogo(self): return self._p.ia_locale_catalogo()
+    def ia_locale_stato(self): return self._p.ia_locale_stato()
+    def ia_locale_configura(self, configurazione): return self._p.ia_locale_configura(configurazione)
+    def ia_locale_avvia(self, modello, contesto=8192, dflash=True, visione=False):
+        return self._p.ia_locale_avvia(modello, contesto, dflash, visione)
+    def ia_locale_arresta(self, forza=False): return self._p.ia_locale_arresta(forza)
+    def apri_chat_locale(self, assistente="claude", cartella=None, prompt=None, titolo=None, sessione=None):
+        return self._p.apri_chat_locale(assistente, cartella, prompt, titolo, sessione)
     def salva_chat(self, sessione): return self._p.salva_chat(sessione)
     def elimina_chat(self, sessione): return self._p.elimina_chat(sessione)
     def ripristina_chat(self, sessione): return self._p.ripristina_chat(sessione)
@@ -428,6 +436,7 @@ class App:
             return {"conferma": True}
         self.uscendo = True
         self.terminali.chiudi_tutte()
+        self.ponte.locali.chiudi()
         self._ultimo_stato_altri_pc()
         self._aggiorna_dopo_uscita()
         if self.icona:
@@ -775,6 +784,7 @@ class App:
                       storage_path=str(CACHE / "webview"))
         self.uscendo = True
         self.terminali.chiudi_tutte()
+        self.ponte.locali.chiudi()
         if self.icona:
             try:
                 self.icona.stop()
