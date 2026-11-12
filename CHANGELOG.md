@@ -6,6 +6,7 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 
 ## Next version
 
+- GitHub sync no longer gets stuck after a conflict hit by the end-of-session hook: both the hook and the app abort a half-finished rebase or merge before committing, so conflict markers never reach the repository, and the app then shows the conflict with "Let Claude fix it". A detached HEAD is reported instead of an unknown status.
 - Settings → Agents: the model is now picked with the same segmented control for Claude, Codex and Antigravity (as in the new-chat panel); permission mode and reasoning stay as aligned drop-downs.
 - Renew expiring GitHub sign-ins automatically and preserve refresh credentials in the system vault across restarts and app updates. Keep public app updates available if GitHub sign-in expires.
 - Recover from Codex background-server startup failures by retrying the same terminal once without the daemon, preserving the chat, prompt and permission settings.

@@ -317,6 +317,11 @@ class GitHub:
             return {"errore": "Git è occupato (forse sta sincronizzando Claude): riprova tra poco"}
         if not self.repo():
             return {"errore": "Il second brain non ha ancora un repository su GitHub"}
+        # un rebase o un merge lasciato a meta' (per esempio dallo hook di fine sessione) va
+        # annullato prima del commit: altrimenti i segni del conflitto finiscono nel repo e
+        # pull/push girano su un ramo staccato. Il pull qui sotto ritrova poi il conflitto vero.
+        if not self._annulla_a_meta():
+            return {"errore": "Una sincronizzazione precedente è rimasta a metà e non si riesce ad annullarla: serve sistemarla a mano"}
         self._git("add", "-A")
         cambiati = self._git("status", "--porcelain").stdout.strip()
         salvati = 0
@@ -326,7 +331,10 @@ class GitHub:
             r = self._git("commit", "-m", f"app: {host} {datetime.now():%Y-%m-%d %H:%M}")
             if r.returncode != 0:
                 return {"errore": f"Commit non riuscito: {r.stderr.strip()[:200]}"}
-        ramo = self._git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip() or "main"
+        r = self._git("symbolic-ref", "--short", "-q", "HEAD")
+        if r.returncode != 0:
+            return {"errore": "Il second brain non è su nessun ramo (HEAD staccato): serve sistemarlo a mano"}
+        ramo = r.stdout.strip() or "main"
         if not primo:
             r = self._git("pull", "--rebase", "--autostash", "origin", ramo, timeout=120, autenticato=True)
             if r.returncode != 0:
@@ -346,6 +354,15 @@ class GitHub:
                 return self._accesso_perso("git push", r.stderr)
             return {"errore": f"Caricamento non riuscito: {r.stderr.strip()[:200]}"}
         return {"ok": True, "salvati": salvati}
+
+    def _annulla_a_meta(self) -> bool:
+        # True se non c'e' (piu') nessun rebase o merge a meta'
+        cartella = self.radice / ".git"
+        if (cartella / "rebase-merge").exists() or (cartella / "rebase-apply").exists():
+            self._git("rebase", "--abort")
+        if (cartella / "MERGE_HEAD").exists():
+            self._git("merge", "--abort")
+        return not any((cartella / n).exists() for n in ("rebase-merge", "rebase-apply", "MERGE_HEAD"))
 
     def _accesso_perso(self, dove: str, testo: str) -> dict:
         # solo se la chiave c'era: senza chiave l'errore e' di git (credenziali del PC), non dell'app

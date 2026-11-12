@@ -72,6 +72,50 @@ def test_conflitto_si_ferma_senza_rompere(tmp_path):
     assert (b / "nota.md").read_text(encoding="utf-8") == "versione B\n"
 
 
+def _rebase_bloccato(tmp_path):
+    # come il 2026-11-12: lo hook di fine sessione lascia un rebase in conflitto a meta'
+    _, (a, b) = _ambiente(tmp_path)
+    (a / "nota.md").write_text("base\n", encoding="utf-8")
+    _gh(a).sincronizza(primo=True)
+    git(b, "pull", "origin", "main")
+    (a / "nota.md").write_text("versione A\n", encoding="utf-8")
+    _gh(a).sincronizza()
+    (b / "nota.md").write_text("versione B\n", encoding="utf-8")
+    git(b, "commit", "-am", "auto: portatile")
+    subprocess.run(["git", "pull", "--rebase", "origin", "main"], cwd=b, capture_output=True)
+    assert (b / ".git" / "rebase-merge").exists()
+    return a, b
+
+
+def test_rebase_a_meta_lasciato_da_altri(tmp_path):
+    _, b = _rebase_bloccato(tmp_path)
+    (b / "altra.md").write_text("nuova\n", encoding="utf-8")
+    esito = _gh(b).sincronizza()
+    # annullato, niente segni di conflitto nei commit, conflitto mostrato per farlo sistemare
+    assert esito.get("conflitto") is True and esito["file"] == ["nota.md"]
+    assert not (b / ".git" / "rebase-merge").exists()
+    assert git(b, "rev-parse", "--abbrev-ref", "HEAD") == "main"
+    assert "<<<<<<<" not in git(b, "log", "-p", "-3")
+    assert (b / "nota.md").read_text(encoding="utf-8") == "versione B\n"
+
+
+def test_hook_annulla_rebase_a_meta(tmp_path, monkeypatch):
+    _, b = _rebase_bloccato(tmp_path)
+    casa = tmp_path / "casa"
+    (casa / ".claude" / "second-brain").mkdir(parents=True)
+    (casa / ".claude" / "second-brain" / "config.json").write_text(
+        json.dumps({"radice": str(b)}), encoding="utf-8")
+    hook = Path(__file__).resolve().parent.parent / "hooks" / "sync.ps1"
+    monkeypatch.setenv("USERPROFILE", str(casa))
+    subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(hook), "-Modo", "push"],
+                   capture_output=True, timeout=120, stdin=subprocess.DEVNULL)
+    assert not (b / ".git" / "rebase-merge").exists()
+    assert git(b, "rev-parse", "--abbrev-ref", "HEAD") == "main"
+    assert "<<<<<<<" not in git(b, "log", "-p", "-3")
+    log = (casa / ".claude" / "second-brain" / "sync-ultimo.log").read_text(encoding="utf-8-sig")
+    assert "CONFLITTO" in log
+
+
 def test_senza_repository(tmp_path):
     git(tmp_path, "init", "-b", "main")
     assert "errore" in github.GitHub(tmp_path, chiave=ChiaveFinta()).sincronizza()
