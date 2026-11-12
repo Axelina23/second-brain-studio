@@ -58,12 +58,10 @@ function SezioneAgente({ agente, imp, metti }) {
     codex: [["predefinito", "Predefinita"], ["standard", "Standard"], ["auto", "Auto"], ["lettura", "Sola lettura"], ["completa", "Accesso completo, senza conferme"]],
     agy: [["predefinito", "Predefinita"], ["auto", "Auto"], ["accept-edits", "Accetta modifiche"], ["plan", "Pianifica"], ["completa", "Accesso completo, senza conferme"]],
   };
-  const chiave = agente === "claude" ? "modello_chat" : `modello_${agente}`;
-  const modelli = agente === "claude" ? [["predefinito", "Predefinito"], ["fable", "Fable"], ["opus", "Opus"], ["sonnet", "Sonnet"], ["haiku", "Haiku"]]
-    : [["predefinito", "Predefinito"], ["gemini-4-argon-high", "Argon High"], ["gemini-4-argon-medium", "Argon Medium"], ["gemini-4-argon-low", "Argon Low"], ["gemini-3.8-flash-high", "Flash High"], ["gemini-3.8-flash-low", "Flash Low"]];
+  const chiave = CHIAVE_MODELLO[agente];
   const scegli = (key, opzioni) => html`<select class="campo imp-sel" value=${imp[key] || "predefinito"} onChange=${(e) => metti(key, e.target.value)}>${opzioni.map(([v, n]) => html`<option value=${v}>${n}</option>`)}</select>`;
   const livelli = [["predefinito", "Predefinito"], ["low", "Basso"], ["medium", "Medio"], ["high", "Alto"], ["xhigh", "Molto alto"], ...(agente === "codex" ? [] : [["max", "Massimo"]])];
-  return html`<${Voce} titolo="Modello">${agente === "codex" ? html`<${SceltaCodex} valore=${imp[chiave] || "predefinito"} cambia=${(v) => metti(chiave, v)} />` : scegli(chiave, modelli)}</${Voce}>
+  return html`<${Voce} titolo="Modello"><${SceltaModello} agente=${agente} valore=${imp[chiave]} cambia=${(v) => metti(chiave, v)} /></${Voce}>
     <${Voce} titolo="Modalità permessi">${scegli(`modalita_${agente}`, modi[agente])}</${Voce}>
     <${Voce} titolo="Livello di ragionamento" testo="I livelli disponibili dipendono dal modello. Predefinito usa la scelta dell'assistente.">${scegli(`impegno_${agente}`, livelli)}</${Voce}>`;
 }
@@ -83,6 +81,21 @@ export function SceltaCodex({ valore, cambia }) {
   const scelto = FAMIGLIE_CODEX.find(([id]) => id === valore || (id !== "predefinito" && String(valore || "").endsWith("-" + id.split("-").at(-1))))?.[0] || "predefinito";
   return html`<span class="imp-seg" role="radiogroup" aria-label="Modello">${FAMIGLIE_CODEX.map(([id, nome]) => html`<button role="radio"
       aria-checked=${id === scelto} class=${id === scelto ? "scelto" : ""} onClick=${() => cambia(id)}>${nome}</button>`)}</span>`;
+}
+
+// Il modello si sceglie sempre con lo stesso selettore, per ogni assistente
+// (pagina Agenti e pannello delle chat nuove); permessi e ragionamento restano a tendina.
+export const MODELLI = {
+  claude: [["predefinito", "Predefinito"], ["fable", "Fable"], ["opus", "Opus"], ["sonnet", "Sonnet"], ["haiku", "Haiku"]],
+  agy: [["predefinito", "Predefinito"], ["gemini-4-argon-high", "Argon High"], ["gemini-4-argon-medium", "Argon Med"], ["gemini-4-argon-low", "Argon Low"], ["gemini-3.8-flash-high", "Flash High"], ["gemini-3.8-flash-low", "Flash Low"]],
+};
+export const CHIAVE_MODELLO = { claude: "modello_chat", codex: "modello_codex", agy: "modello_agy" };
+
+export function SceltaModello({ agente, valore, cambia }) {
+  if (agente === "codex") return html`<${SceltaCodex} valore=${valore || "predefinito"} cambia=${cambia} />`;
+  const mod = valore || "predefinito";
+  return html`<span class="imp-seg" role="radiogroup" aria-label="Modello">${(MODELLI[agente] || MODELLI.claude).map(([v, n]) => html`<button role="radio"
+    aria-checked=${mod === v} class=${mod === v ? "scelto" : ""} onClick=${() => cambia(v)}>${n}</button>`)}</span>`;
 }
 
 // chat eliminate (tasto destro > Elimina): restano qui per un mese, poi spariscono da sole

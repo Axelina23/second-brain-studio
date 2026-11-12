@@ -12,7 +12,7 @@ import { PaginaMappa, ordinaGruppi } from "./mappa.mjs";
 import { linguaAttiva } from "./lingua.mjs";
 import { DialogoProgetto } from "./progetto.mjs";
 import { PrimoAvvio } from "./primo-avvio.mjs";
-import { Impostazioni, applicaAspetto, SceltaCodex } from "./impostazioni.mjs";
+import { Impostazioni, applicaAspetto, SceltaModello, CHIAVE_MODELLO } from "./impostazioni.mjs";
 
 // ---------- ponte ----------
 const pronto = new Promise((ok) => {
@@ -931,27 +931,17 @@ const NOMI_ASSISTENTI = { claude: "Claude", codex: "Codex", agy: "Antigravity" }
 const diClaude = (c) => !c.assistente || c.assistente === "claude";
 const Assistente = ({ c }) => NOMI_ASSISTENTI[c.assistente || "claude"] ? html`<span class="etichetta-assistente">${NOMI_ASSISTENTI[c.assistente || "claude"]}</span>` : null;
 
-// con quale assistente e modello parte una chat nuova: stesse impostazioni di Impostazioni > Terminale
-const MODELLI_PER = {
-  claude: [["predefinito", "Predefinito"], ["fable", "Fable"], ["opus", "Opus"], ["sonnet", "Sonnet"], ["haiku", "Haiku"]],
-  agy: [["predefinito", "Predefinito"], ["gemini-4-argon-high", "Argon High"], ["gemini-4-argon-medium", "Argon Med"], ["gemini-4-argon-low", "Argon Low"], ["gemini-3.8-flash-high", "Flash High"], ["gemini-3.8-flash-low", "Flash Low"]],
-};
-const CHIAVE_MODELLO = { claude: "modello_chat", codex: "modello_codex", agy: "modello_agy" };
+// con quale assistente e modello parte una chat nuova: stesse impostazioni di Impostazioni > Agenti
 function SceltaChat({ imp, mettiImp, assistenti }) {
   if (!imp) return null;
   const installato = (id) => (assistenti.find((a) => a.id === id) || {}).installato;
   const scelto = installato(imp.assistente_chat) ? imp.assistente_chat : "claude";
   const chiave = CHIAVE_MODELLO[scelto] || "modello_chat";
-  const modelli = MODELLI_PER[scelto] || MODELLI_PER.claude;
-  const mod = imp[chiave] || "predefinito";
   return html`<div class="scelta-chat">
     ${assistenti.length > 1 && html`<span class="imp-seg" role="radiogroup" aria-label="Assistente">${assistenti.map((a) => html`<button role="radio"
       aria-checked=${scelto === a.id} class=${scelto === a.id ? "scelto" : ""} disabled=${!a.installato}
       title=${a.installato ? "" : "Non installato su questo PC"} onClick=${() => mettiImp("assistente_chat", a.id)}>${a.nome}</button>`)}</span>`}
-    ${scelto === "codex"
-      ? html`<${SceltaCodex} valore=${mod} cambia=${(v) => mettiImp(chiave, v)} />`
-      : html`<span class="imp-seg" role="radiogroup" aria-label="Modello">${modelli.map(([v, n]) => html`<button role="radio"
-          aria-checked=${mod === v} class=${mod === v ? "scelto" : ""} onClick=${() => mettiImp(chiave, v)}>${n}</button>`)}</span>`}
+    <${SceltaModello} agente=${scelto} valore=${imp[chiave]} cambia=${(v) => mettiImp(chiave, v)} />
   </div>`;
 }
 

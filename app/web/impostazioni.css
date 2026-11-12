@@ -45,6 +45,7 @@
 .imp-ore .campo { height: 32px; width: 110px; flex: none; }
 .imp-gruppo { margin: 16px 0 2px; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muto); }
 .imp-agente { min-width: 0; padding: 14px 0 4px; }
+.imp-agente .imp-sel { width: 248px; }
 .imp-agente h3 { margin: 0 0 4px; color: var(--limone); font-size: 16px; font-weight: 650; }
 .imp-riquadro { display: grid; gap: 6px; padding: 14px 16px; margin: 6px 0 8px; border-radius: var(--raggio); background: var(--pannello-2); border: 1px solid var(--cucitura); }
 .imp-riquadro span { color: var(--testo-2); font-size: 13px; }

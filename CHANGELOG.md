@@ -6,6 +6,7 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 
 ## Next version
 
+- Settings → Agents: the model is now picked with the same segmented control for Claude, Codex and Antigravity (as in the new-chat panel); permission mode and reasoning stay as aligned drop-downs.
 - Renew expiring GitHub sign-ins automatically and preserve refresh credentials in the system vault across restarts and app updates. Keep public app updates available if GitHub sign-in expires.
 - Recover from Codex background-server startup failures by retrying the same terminal once without the daemon, preserving the chat, prompt and permission settings.
 - After an explicit in-chat manual save, use a bounded read-only verification instead of rewriting complete notes. Reuse confirmation only while chat and file hashes match; leave ordinary automatic saves unchanged.
