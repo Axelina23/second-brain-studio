@@ -4,6 +4,7 @@ import http.client
 import json
 import hashlib
 import os
+import re
 import socket
 import subprocess
 import threading
@@ -16,6 +17,7 @@ PREDEFINITE = {"eseguibile": "", "porta": 8087, "modelli": {}, "inattivita_secon
                "cartelle_modelli": [], "contesto": 16384, "dflash": True, "visione": False,
                "cache_ram_mib": 512, "checkpoint": 2, "cache_kv": "q8_0", "mmap": False, "layer_gpu": -1}
 MODELLI_CLIENT = {"claude", "codex"}
+VELOCITA = re.compile(r"(prompt )?eval time\s*=.*?([\d.]+) tokens per second")
 
 
 def normalizza_anthropic(corpo):
@@ -200,6 +202,23 @@ class GestoreLocale:
         except (OSError, ValueError):
             return None
 
+    def _leggi_velocita(self, posizione):
+        """Legge dal log le ultime velocita' (token/s) di prompt e risposta; restituisce la nuova posizione."""
+        try:
+            with open(self._stato["log"], "rb") as f:
+                f.seek(posizione)
+                grezzo = f.read()
+        except (OSError, KeyError):
+            return posizione
+        grezzo = grezzo[:grezzo.rfind(b"\n") + 1]  # solo righe complete
+        nuova = dict(self._stato.get("velocita") or {})
+        for prompt, valore in VELOCITA.findall(grezzo.decode("utf-8", "replace")):
+            nuova["input" if prompt else "output"] = float(valore)
+        if nuova != (self._stato.get("velocita") or {}):
+            self._stato["velocita"] = nuova
+            self._notifica()
+        return posizione + len(grezzo)
+
     def avvia(self, modello, contesto=8192, dflash=True, visione=False):
         with self._lock:
             if self._vivo():
@@ -230,7 +249,7 @@ class GestoreLocale:
 
     def _sorveglia(self, processo):
         scadenza = self._ora() + 900
-        ultimo_controllo = 0
+        ultimo_controllo = posizione_log = 0
         while True:
             with self._lock:
                 if self._processo is not processo:
@@ -248,6 +267,8 @@ class GestoreLocale:
                     if self._processo is processo and riposo is not None and self._stato["stato"] != nuovo:
                         self._stato["stato"] = nuovo
                         self._notifica()
+                    if self._processo is processo:
+                        posizione_log = self._leggi_velocita(posizione_log)
             if not pronto and self._salute():
                 with self._lock:
                     if self._processo is not processo:
@@ -403,7 +424,10 @@ class GestoreLocale:
                    "MAX_THINKING_TOKENS": "0"}
             settings = self.cartella / "claude-locale.json"
             settings.write_text(json.dumps({"env": env, "disableAllHooks": True}), encoding="utf-8")
-            return ["--settings", str(settings), "--model", "qwen-locale"], env
+            # profilo snello: senza plugin, MCP e skill dell'utente il prompt scende da ~55k a ~8k token
+            return ["--settings", str(settings), "--model", "qwen-locale", "--setting-sources", "project",
+                    "--strict-mcp-config", "--disable-slash-commands",
+                    "--tools", "Bash,Edit,Read,Write,Glob,Grep"], env
 
     def chiedi(self, prompt, profilo, timeout=60):
         with self._lock:

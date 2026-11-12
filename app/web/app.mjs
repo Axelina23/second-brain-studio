@@ -82,6 +82,7 @@ function App({ primaChat, impIniziali, primoAvvio }) {
   const [attiva, setAttiva] = useState(null);
   const [sceltaNuova, setSceltaNuova] = useState(false);
   const [avvioLocale, setAvvioLocale] = useState(false);
+  const [statoLocale, setStatoLocale] = useState(null);
   const [modoTerm, setModoTerm] = useState(() => localStorage.getItem("modoTerm") || "normale");
   const [larghezzaLayout, setLarghezzaLayout] = useState(() => document.body.clientWidth);
   useEffect(() => {
@@ -340,6 +341,7 @@ function App({ primaChat, impIniziali, primoAvvio }) {
 
   useEvento((nome, d) => {
     if (nome === "impostazioni-locali") setDialogo({ tipo: "impostazioni" });
+    else if (nome === "ia-locale") setStatoLocale(d);
     else if (nome === "chat-locale-pronta") {
       setAvvioLocale(false);
       if (d.errore) { avvisa(d.errore, "errore"); return; }
@@ -434,7 +436,7 @@ function App({ primaChat, impIniziali, primoAvvio }) {
       imp=${imp} mettiImp=${mettiImp} assistenti=${assistenti} sceltaNuova=${sceltaNuova} setSceltaNuova=${setSceltaNuova}
       avvioLocale=${avvioLocale} annullaAvvio=${async () => { const r = await api("ia_locale_arresta"); if (r.errore) avvisa(r.errore, "errore"); }} />
     <${BarraStato} git=${git} home=${home} schede=${schede} attiva=${attiva} sceltaNuova=${sceltaNuova} imp=${imp}
-      orologio=${orologio} modo=${modoTerm} setModo=${setModoTerm} uso=${uso}
+      orologio=${orologio} modo=${modoTerm} setModo=${setModoTerm} uso=${uso} statoLocale=${statoLocale}
       aggiornamento=${aggiornamento} versione=${versione} remoti=${remoti} aggiorna=${() => schede.some((s) => !s.chiusa) ? setDialogo({ tipo: "aggiorna", aperte: schede.filter((s) => !s.chiusa).length }) : aggiornaOra()} />
     <div class="avvisi-volo" role="status">${toasts.map((t) => html`<div class=${`toast ${t.tipo}`} key=${t.id}><span>${t.testo}</span>
       ${t.azione && html`<button class="toast-azione" onClick=${() => { togliToast(t.id); t.azione.fai(); }}>${t.azione.testo}</button>`}</div>`)}</div>
@@ -1015,7 +1017,7 @@ function Uso({ nome, w, settimana }) {
     ${nome}<span class=${`uso-barra ${livello}`}><i style=${`width:${Math.max(p ? 4 : 0, p)}%`}></i></span><b class="num">${p}%</b>${quando && html`<span class="uso-reset num">↻ ${quando}</span>`}</span>`;
 }
 
-function BarraStato({ git, home, schede, attiva, sceltaNuova, imp, orologio, modo, setModo, uso, aggiornamento, aggiorna, versione, remoti }) {
+function BarraStato({ statoLocale, git, home, schede, attiva, sceltaNuova, imp, orologio, modo, setModo, uso, aggiornamento, aggiorna, versione, remoti }) {
   const altrove = ((remoti && remoti.attivo && remoti.pc) || []).map((p) => [p.pc, p.chat.filter((c) => ["non_salvata", "errore_salvataggio"].includes(c.stato)).length]).filter(([, n]) => n);
   const aperte = schede.filter((s) => !s.chiusa).length;
   const schedaAttiva = !sceltaNuova && schede.find((s) => s.id === attiva && !s.chiusa);
@@ -1032,6 +1034,10 @@ function BarraStato({ git, home, schede, attiva, sceltaNuova, imp, orologio, mod
     ${altrove.map(([pc, n]) => html`<span class="altrove" title="Chat chiuse senza salvare gli appunti su un altro PC">${n === 1 ? "1 non salvata" : `${n} non salvate`} su ${pc}</span>`)}
     <span class="spazio"></span>
     ${aggiornamento && html`<button class="aggiorna-btn" onClick=${aggiorna} title=${`Installa la versione ${aggiornamento === true ? "nuova" : aggiornamento} e riapre l'app`}>${Icona.ricarica()}Aggiornamento pronto</button>`}
+    ${locale && statoLocale && statoLocale.pid ? html`<span class="uso-gruppo" title="Velocità dell'ultima richiesta al modello locale: lettura del prompt (in) e generazione (out)">
+      <b>${nomeAss}</b>${statoLocale.stato === "riposo" ? html`<span class="uso">a riposo</span>` : statoLocale.velocita ? html`
+        <span class="uso">in <b class="num">${Math.round(statoLocale.velocita.input || 0)}</b> tok/s</span>
+        <span class="uso">out <b class="num">${(statoLocale.velocita.output || 0).toFixed(1)}</b> tok/s</span>` : html`<span class="uso">${statoLocale.stato === "caricamento" ? "caricamento…" : "pronto"}</span>`}</span>` : ""}
     ${uAss && uAss.noto ? html`<span class=${`uso-gruppo ${vecchio ? "vecchio" : ""}`}
         title=${vecchio ? `Ultimo dato alle ${ora(new Date(uAss.aggiornato * 1000))}: si aggiorna quando una chat di ${nomeAss} è aperta` : `Utilizzo di ${nomeAss}`}>
       <b>${nomeAss}</b><${Uso} nome="5h" w=${uAss.five_hour} /><${Uso} nome="7g" w=${uAss.seven_day} settimana /></span>`

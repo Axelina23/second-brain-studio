@@ -15,10 +15,21 @@ from ia_locali import GestoreLocale, argomenti_server, normalizza_anthropic
 import terminale
 
 
+def _porta_libera():
+    # non la 8087: il motore vero dell'app installata puo' essere acceso durante i test
+    import socket
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+PORTA_LIBERA = _porta_libera()
+
+
 def configurazione(tmp_path):
     for nome in ("motore.exe", "modello.gguf", "draft.gguf", "immagini.gguf"):
         (tmp_path / nome).touch()
-    return {"eseguibile": str(tmp_path / "motore.exe"), "porta": 8087,
+    return {"eseguibile": str(tmp_path / "motore.exe"), "porta": PORTA_LIBERA,
             "inattivita_secondi": 30,
             "modelli": {"alfa": {"nome": "Alfa", "file": str(tmp_path / "modello.gguf"),
                                      "draft": str(tmp_path / "draft.gguf"),
@@ -152,7 +163,7 @@ def test_client_pronti_isolati_e_sessioni_persistenti(tmp_path, monkeypatch):
     argv, env = g.prepara_client("claude")
     assert env["ANTHROPIC_BASE_URL"] == "http://127.0.0.1:12345"
     assert env["ANTHROPIC_API_KEY"] == "" and env["CLAUDE_CODE_MAX_CONTEXT_TOKENS"] == "8192"
-    assert argv[-2:] == ["--model", "qwen-locale"]
+    assert argv[argv.index("--model") + 1] == "qwen-locale"
     g.ricorda_sessione("prova", "codex", {"modello": "alfa"})
     riaperto = GestoreLocale(g.cartella)
     assert riaperto.sessione("prova") == {"assistente": "codex", "modello": "alfa"}
@@ -353,4 +364,20 @@ def test_chiedi_funziona_anche_a_riposo(tmp_path, monkeypatch):
     monkeypatch.setattr("ia_locali.urllib.request.build_opener", lambda *a: Apri())
     profilo = {k: g.stato()[k] for k in ("modello", "contesto", "dflash", "visione")}
     assert g.chiedi("x", profilo, timeout=600) == "391" and visti == [600]
+    g.chiudi()
+
+
+def test_velocita_letta_dal_log_e_profilo_snello(tmp_path, monkeypatch):
+    g, _ = gestore(tmp_path, monkeypatch)
+    g.avvia("alfa")
+    g._stato["stato"] = "pronto"
+    Path(g._stato["log"]).write_bytes(
+        b"slot print_timing: prompt eval time =   52794.88 ms /  6906 tokens (    7.64 ms per token,   130.81 tokens per second)\n"
+        b"slot print_timing:        eval time =     355.70 ms /     4 tokens (  118.57 ms per token,     8.43 tokens per second)\n"
+        b"riga incompleta eval time = 1 ms / 1 tokens ( 1 ms per token, 99.0 tokens per sec")
+    fine = g._leggi_velocita(0)
+    assert g.stato()["velocita"] == {"input": 130.81, "output": 8.43}
+    assert g._leggi_velocita(fine) == fine
+    opzioni, _ = g.prepara_client("claude")
+    assert opzioni[opzioni.index("--setting-sources") + 1] == "project" and "--strict-mcp-config" in opzioni
     g.chiudi()

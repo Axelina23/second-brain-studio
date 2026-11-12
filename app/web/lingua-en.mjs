@@ -1,6 +1,7 @@
 // Dizionario italiano -> inglese dell'interfaccia (vedi lingua.mjs). Chiave = testo esatto
 // mostrato in italiano (senza spazi ai bordi). REGOLE: testi con numeri, date e nomi.
 export const EN = {
+  "a riposo": "sleeping", "caricamento…": "loading…", "pronto": "ready",
   "IA locale": "Local AI", "Claude locale": "Local Claude", "Codex locale": "Local Codex", "Il tuo assistente, qui accanto": "Your assistant, right here",
   "Motore spento": "Engine stopped", "Caricamento del modello…": "Loading model…", "Modello pronto": "Model ready", "In riposo · modello scaricato": "Sleeping · model unloaded", "Errore del motore": "Engine error",
   "Gestisci": "Manage", "Aggiorna elenco": "Refresh list", "Avvio in corso…": "Starting…", "Interrompi caricamento": "Cancel loading",
