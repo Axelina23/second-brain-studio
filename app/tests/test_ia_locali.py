@@ -373,7 +373,7 @@ def test_parole_e_appunti_locali_non_chiamano_worker_cloud(tmp_path, monkeypatch
     from types import SimpleNamespace
     p = ponte.Ponte(radice=tmp_path, cache=tmp_path / "cache")
     p.locali.ricorda_sessione("locale", "claude", {"modello": "alfa"})
-    sessione = SimpleNamespace(id="locale", assistente="claude", percorso=tmp_path / "chat.jsonl")
+    sessione = SimpleNamespace(id="locale", assistente="claude", percorso=tmp_path / "chat.jsonl", dimensione=100)
     monkeypatch.setattr(p, "_chiedi_per", lambda *a: pytest.fail("chiamata cloud"))
     monkeypatch.setattr(p, "_avvia", lambda *a: pytest.fail("worker cloud"))
     p._lavoro_parole([sessione])
@@ -446,7 +446,9 @@ def test_velocita_letta_dal_log_e_profilo_snello(tmp_path, monkeypatch):
     opzioni, _ = g.prepara_client("claude")
     assert opzioni[opzioni.index("--setting-sources") + 1] == "user,project,local"
     assert "--disable-slash-commands" not in opzioni and "--strict-mcp-config" in opzioni
-    assert opzioni[opzioni.index("--tools") + 1] == "default"
+    strumenti = opzioni[opzioni.index("--tools") + 1].split(",")
+    assert {"Skill", "Agent", "Read", "Write", "Bash"} <= set(strumenti)
+    assert "Workflow" not in strumenti and "ToolSearch" not in strumenti
     assert g.prepara_client("claude")[1]["SLASH_COMMAND_TOOL_CHAR_BUDGET"] == "3000"
     g.chiudi()
 
@@ -459,5 +461,6 @@ def test_mcp_opzionale_non_disabilita_comandi_o_skill(tmp_path, monkeypatch):
     monkeypatch.setattr(g, "_avvia_ponte", lambda: 12345)
     argv, env = g.prepara_client("claude")
     assert "--strict-mcp-config" not in argv and "--disable-slash-commands" not in argv
+    assert "ToolSearch" in argv[argv.index("--tools") + 1]
     assert env["ANTHROPIC_MODEL"] == "qwen-locale" and env["DISABLE_COMPACT"] == "0"
     g.chiudi()

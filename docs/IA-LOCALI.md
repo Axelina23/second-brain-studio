@@ -22,13 +22,19 @@ layer GPU, mmap) e `ia_locale_scegli_percorso`.
 - Claude locale riceve un ambiente per processo e un file settings dedicato. Il ponte
   Anthropic dell'app riordina i messaggi system/developer e mantiene lo streaming.
 - Comandi e skill di Claude Code sono abilitati, incluse le fonti user/project/local
-  e gli strumenti standard (`--tools default`, compreso Skill). Il catalogo delle
+  e gli strumenti per file, terminale, Skill e Agent. Il catalogo delle
   skill ha un budget di 3000 caratteri; il testo completo si carica all'invocazione.
 - `mcp_claude=false` esclude i server MCP configurati senza disabilitare skill o
   comandi. L'opzione nella pagina IA locale li riabilita dalla riapertura della chat.
   Gli hook automatici restano disattivati per evitare il worker cloud degli appunti.
   Servizi ospitati, browser e skill con dipendenze esterne richiedono comunque i loro
   strumenti e account: un modello locale non li sostituisce automaticamente.
+- `strumenti_estesi_claude=false` evita di caricare tutti i tool nativi del client:
+  il profilo completo nella prova utente occupava 34k token di soli strumenti.
+  Il profilo mirato misurato sul server Qwen occupa circa 15120 token iniziali
+  (istruzioni, memoria, skill e strumenti compresi). I comandi slash rimangono attivi.
+  Abilitare gli strumenti estesi richiede nuovo margine di contesto; con MCP attivo
+  viene incluso anche ToolSearch. Il dato iniziale non include la cronologia esistente.
 - I percorsi di ogni GGUF sono indipendenti: principale su SSD e alternative su HDD
   sono possibili senza spostare file automaticamente. Nessun percorso personale nel codice.
 
@@ -97,9 +103,21 @@ il proiettore e necessario solo per `visione=true`, il draft solo per `dflash=tr
 - Le sessioni Codex locali vengono lette anche dal loro archivio separato.
 - La generazione automatica dei titoli e il worker cloud degli appunti non vengono
   lanciati per queste chat. Il titolo richiesto esplicitamente usa il backend locale.
-- Il salvataggio manuale riapre il client locale con la richiesta di aggiornare gli
-  appunti. Gli hook Claude del profilo locale sono disattivati per evitare il worker
-  cloud legacy; notifiche e automazioni locali dedicate sono un passaggio successivo.
+- Salvataggio manuale e automatico alla chiusura della scheda usano un worker Python
+  locale (`app/appunti_locali.py`), il client originale e lo stesso modello locale.
+  L'automatico rispetta `appunti_auto` e la soglia; il manuale funziona anche se spento.
+  Nessun worker cloud, nemmeno se la preferenza globale degli appunti indica un cloud.
+- Il worker estrae messaggi e risposte, escludendo output degli strumenti, in uno
+  snapshot limitato a 35000 caratteri (con avviso se tagliato). Lavora in una nuova
+  esecuzione, senza riprendere la chat eventualmente piena. Per Claude gli strumenti
+  del worker sono Read/Edit/Write/Glob/Grep; per Codex il profilo e workspace-write.
+- I segni `in-corso`, `salvata`, `errore` aggiornano lo stato dell'interfaccia. Successo
+  solo con uscita 0 e conferma finale `SB_NOTES_OK`; errori/timeout rimangono riprovabili.
+  Log e snapshot privati in `<cache>/salvataggi-locali/<id>/`. I worker locali sono
+  serializzati e trattengono il client del motore fino al completamento.
+- Il salvataggio locale richiede che SBS rimanga in esecuzione: uscire completamente
+  o forzare l'arresto del motore interrompe il servizio. Chiudere la finestra in tray
+  non termina SBS. La sincronizzazione Git continua a essere gestita dall'app.
 
 ## Funzioni successive
 

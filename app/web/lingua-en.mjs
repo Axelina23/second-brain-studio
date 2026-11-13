@@ -1,6 +1,8 @@
 // Dizionario italiano -> inglese dell'interfaccia (vedi lingua.mjs). Chiave = testo esatto
 // mostrato in italiano (senza spazi ai bordi). REGOLE: testi con numeri, date e nomi.
 export const EN = {
+  "Strumenti estesi di Claude locale": "Extended local Claude tools",
+  "Il profilo normale mantiene file, terminale, skill e sottoagenti. Questa opzione aggiunge workflow e strumenti avanzati: nella prova il profilo completo superava 32k token. Riapri la chat per applicare.": "The standard profile keeps files, terminal, skills and subagents. This option adds workflows and advanced tools: the complete profile exceeded 32k tokens in testing. Reopen the chat to apply.",
   "Connettori MCP di Claude locale": "Local Claude MCP connectors",
   "Carica i server MCP configurati in Claude Code e nei plugin. Aumentano strumenti e contesto; alcuni richiedono rete o servizi esterni. Comandi e skill sono disponibili anche con questa opzione spenta. Riapri la chat per applicare.": "Load MCP servers configured in Claude Code and plugins. They add tools and context; some require a network or external services. Commands and skills are available even with this option off. Reopen the chat to apply.",
   "Compattazione automatica Claude locale": "Local Claude automatic compaction",

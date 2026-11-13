@@ -17,8 +17,10 @@ PREDEFINITE = {"eseguibile": "", "porta": 8087, "modelli": {}, "inattivita_secon
                "cartelle_modelli": [], "contesto": 32768, "dflash": False, "visione": False,
                "compattazione_automatica": False,
                "mcp_claude": False,
+               "strumenti_estesi_claude": False,
                "cache_ram_mib": 512, "checkpoint": 2, "cache_kv": "q8_0", "mmap": False, "layer_gpu": -1}
 MODELLI_CLIENT = {"claude", "codex"}
+STRUMENTI_CLAUDE = "Bash,PowerShell,Read,Edit,Write,Glob,Grep,Skill,Agent"
 VELOCITA = re.compile(r"(prompt )?eval time\s*=.*?([\d.]+) tokens per second")
 
 
@@ -106,7 +108,7 @@ class GestoreLocale:
                 raise ValueError(f"Limite non valido: {chiave}")
         if nuova["contesto"] not in (4096, 8192, 16384, 32768, 65536, 131072) or type(nuova["contesto"]) is not int:
             raise ValueError("Contesto non valido")
-        if nuova["cache_kv"] not in ("f16", "q8_0", "q4_0") or any(type(nuova[k]) is not bool for k in ("mmap", "dflash", "visione", "compattazione_automatica", "mcp_claude")):
+        if nuova["cache_kv"] not in ("f16", "q8_0", "q4_0") or any(type(nuova[k]) is not bool for k in ("mmap", "dflash", "visione", "compattazione_automatica", "mcp_claude", "strumenti_estesi_claude")):
             raise ValueError("Profilo memoria non valido")
         if not isinstance(nuova["cartelle_modelli"], list) or len(nuova["cartelle_modelli"]) > 12 or any(
                 not isinstance(p, str) or not Path(p).is_absolute() for p in nuova["cartelle_modelli"]):
@@ -441,8 +443,11 @@ class GestoreLocale:
             settings = self.cartella / "claude-locale.json"
             settings.write_text(json.dumps({"env": env, "disableAllHooks": True}), encoding="utf-8")
             # Le descrizioni hanno un budget; i contenuti delle skill si caricano all'uso.
+            strumenti = "default" if self._config["strumenti_estesi_claude"] else STRUMENTI_CLAUDE
+            if self._config["mcp_claude"] and strumenti != "default":
+                strumenti += ",ToolSearch"
             argv = ["--settings", str(settings), "--model", "qwen-locale",
-                    "--setting-sources", "user,project,local", "--tools", "default"]
+                    "--setting-sources", "user,project,local", "--tools", strumenti]
             if not self._config["mcp_claude"]:
                 argv.append("--strict-mcp-config")
             return argv, env

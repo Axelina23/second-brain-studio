@@ -40,6 +40,7 @@ from percorsi import CACHE, CARTELLA_SESSIONI, CLAUDE, RADICE, SEGNI, SOGLIA_SIG
 from percorsi import cartella_sessioni as cartella_sessioni_di  # noqa: E402
 import chat_extra  # noqa: E402
 from ia_locali import GestoreLocale  # noqa: E402
+import appunti_locali  # noqa: E402
 
 # per lingua della struttura del second brain (struttura.py)
 PROMPT_SALVA = {"it": "Aggiorna gli appunti e il Registro con quanto fatto in questa chat.",
@@ -113,6 +114,7 @@ class Ponte:
         self._cartelle_agy: tuple = (None, {})
         self.cache = Path(cache)
         self.segni = Path(segni)
+        self._blocco_appunti_locali = threading.Lock()
         self.terminali = terminali
         self._chiedi = chiedi
         self.adesso = adesso
@@ -894,12 +896,13 @@ class Ponte:
         return {"assistenti": elenco}
 
     def salva_chat(self, sessione: str) -> dict:
-        locale = self.locali.sessione(sessione)
-        if locale:
-            return self.richiedi_chat_locale(locale["assistente"], prompt=PROMPT_SALVA[mod_struttura.rileva(self.radice)], sessione=sessione)
         s = self._sessione(sessione)
         if s is None:
             return {"errore": "Chat non trovata"}
+        if self._sessione_locale(s):
+            if not self._appunti_di(s, manuale=True):
+                return {"errore": "Impossibile avviare il salvataggio locale degli appunti"}
+            return {"avviato": True, "sessione": sessione}
         if any(t.sessione == sessione for t in (self.terminali.attive() if self.terminali else [])):
             return {"errore": "Chiudi la chat prima di salvare gli appunti"}
         if salvataggio.stato_salvataggio(s, self.segni) == "in_corso":
@@ -1338,7 +1341,14 @@ class Ponte:
                     scheda.sessione = max(candidati, key=lambda s: s.ultima).id
             if scheda.sessione:
                 self.locali.ricorda_sessione(scheda.sessione, scheda.assistente, scheda.locale)
-            self.emetti("scheda", {"id": scheda.id, "chiusa": True, "sessione": scheda.sessione, "locale": scheda.locale})
+                self.segni.mkdir(parents=True, exist_ok=True)
+                (self.segni / f"{scheda.sessione}.chiusa").touch()
+                s = self._sessione(scheda.sessione)
+                self._appunti_di(s)
+            else:
+                s = None
+            self.emetti("scheda", {"id": scheda.id, "chiusa": True, "sessione": scheda.sessione, "locale": scheda.locale,
+                "stato": salvataggio.stato_salvataggio(s, self.segni) if s else "non_salvata"})
             return  # Le chat locali non avviano implicitamente il worker cloud degli appunti.
         if getattr(scheda, "accesso", False):
             self.emetti("scheda", {"id": scheda.id, "chiusa": True})
@@ -1384,7 +1394,18 @@ class Ponte:
         if s is None:
             return False
         if self._sessione_locale(s):
-            return False
+            imp = self._impostazioni()
+            soglia = imp.get("soglia_kb") if isinstance(imp.get("soglia_kb"), (int, float)) else 30
+            if not manuale and (imp.get("appunti_auto") is False or s.dimensione < soglia * 1024):
+                return False
+            with self._blocco:
+                if f"appunti-locali-{s.id}" in self._lavori or salvataggio.stato_salvataggio(s, self.segni) == "in_corso":
+                    return True
+                self.segni.mkdir(parents=True, exist_ok=True)
+                (self.segni / f"{s.id}.in-corso").write_text(datetime.now().isoformat(), encoding="utf-8")
+            self._in_thread(f"appunti-locali-{s.id}", self._salva_appunti_locali, s)
+            self.emetti("chat-cambiate", {})
+            return True
         imp = self._impostazioni()
         soglia = imp.get("soglia_kb") if isinstance(imp.get("soglia_kb"), (int, float)) else 30
         ps = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]
@@ -1413,6 +1434,39 @@ class Ponte:
                 (self.segni / f"{s.id}.errore").touch()
                 (self.segni / f"{s.id}.in-corso").unlink(missing_ok=True)
             return False
+
+    def _salva_appunti_locali(self, s):
+        client = "appunti-" + s.id
+        cartella = self.cache / "salvataggi-locali" / s.id
+        try:
+            # Un solo autore degli appunti locali alla volta, anche con piu' chat chiuse.
+            with self._blocco_appunti_locali:
+                profilo = self.locali.profilo_chat(precedente=self.locali.sessione(s.id))
+                stato = self.locali.stato()
+                if stato["client"] and any(stato.get(k) != v for k, v in profilo.items()):
+                    raise ValueError("Un'altra chat locale usa un profilo diverso: chiudila e riprova il salvataggio")
+                if stato["pid"] and any(stato.get(k) != v for k, v in profilo.items()):
+                    self.locali.arresta()
+                self.locali.avvia(**profilo)
+                self.locali.registra_client(client)
+                limite = time.monotonic() + 840
+                while self.locali.stato()["stato"] not in ("pronto", "riposo"):
+                    corrente = self.locali.stato()
+                    if corrente["stato"] in ("spento", "errore") or time.monotonic() >= limite:
+                        raise RuntimeError(corrente.get("errore") or "Caricamento locale interrotto")
+                    time.sleep(.3)
+                appunti_locali.esegui(self.locali, s, self.radice, cartella,
+                    timeout=max(1, int(limite - time.monotonic())))
+                (self.segni / f"{s.id}.salvata").write_text(datetime.now().isoformat(), encoding="utf-8")
+        except Exception as e:
+            cartella.mkdir(parents=True, exist_ok=True)
+            (cartella / "errore.txt").write_text(str(e), encoding="utf-8")
+            (self.segni / f"{s.id}.errore").touch()
+            self._nota(f"Salvataggio locale {s.id} fallito: {e}")
+        finally:
+            (self.segni / f"{s.id}.in-corso").unlink(missing_ok=True)
+            self.locali.rilascia_client(client)
+            self.emetti("chat-cambiate", {})
 
     def _chiedi_per(self, assistente: str | None = None):
         if self._chiedi is not chiedi_haiku:
