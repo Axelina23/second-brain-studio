@@ -21,6 +21,14 @@ layer GPU, mmap) e `ia_locale_scegli_percorso`.
 - Codex locale usa una propria `CODEX_HOME`, senza cambiare il profilo cloud.
 - Claude locale riceve un ambiente per processo e un file settings dedicato. Il ponte
   Anthropic dell'app riordina i messaggi system/developer e mantiene lo streaming.
+- Comandi e skill di Claude Code sono abilitati, incluse le fonti user/project/local
+  e gli strumenti standard (`--tools default`, compreso Skill). Il catalogo delle
+  skill ha un budget di 3000 caratteri; il testo completo si carica all'invocazione.
+- `mcp_claude=false` esclude i server MCP configurati senza disabilitare skill o
+  comandi. L'opzione nella pagina IA locale li riabilita dalla riapertura della chat.
+  Gli hook automatici restano disattivati per evitare il worker cloud degli appunti.
+  Servizi ospitati, browser e skill con dipendenze esterne richiedono comunque i loro
+  strumenti e account: un modello locale non li sostituisce automaticamente.
 - I percorsi di ogni GGUF sono indipendenti: principale su SSD e alternative su HDD
   sono possibili senza spostare file automaticamente. Nessun percorso personale nel codice.
 

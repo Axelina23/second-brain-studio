@@ -1,6 +1,8 @@
 // Dizionario italiano -> inglese dell'interfaccia (vedi lingua.mjs). Chiave = testo esatto
 // mostrato in italiano (senza spazi ai bordi). REGOLE: testi con numeri, date e nomi.
 export const EN = {
+  "Connettori MCP di Claude locale": "Local Claude MCP connectors",
+  "Carica i server MCP configurati in Claude Code e nei plugin. Aumentano strumenti e contesto; alcuni richiedono rete o servizi esterni. Comandi e skill sono disponibili anche con questa opzione spenta. Riapri la chat per applicare.": "Load MCP servers configured in Claude Code and plugins. They add tools and context; some require a network or external services. Commands and skills are available even with this option off. Reopen the chat to apply.",
   "Compattazione automatica Claude locale": "Local Claude automatic compaction",
   "Consigliati almeno 32k per gli agenti. Le chat riprese adottano gli aumenti; mantengono il contesto precedente se più grande. Chiudi e riapri le chat dopo le modifiche.": "At least 32k is recommended for agents. Resumed chats adopt increases and keep their previous context if larger. Close and reopen chats after changes.",
   "Disattiva per evitare riassunti automatici molto lenti con contesti piccoli. Al limite usa /compact manualmente o apri una nuova chat. Vale dalla riapertura della chat.": "Disable to avoid very slow automatic summaries with small contexts. At the limit, use /compact manually or start a new chat. Applies when the chat is reopened.",

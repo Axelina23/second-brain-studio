@@ -16,6 +16,7 @@ from pathlib import Path
 PREDEFINITE = {"eseguibile": "", "porta": 8087, "modelli": {}, "inattivita_secondi": 300,
                "cartelle_modelli": [], "contesto": 32768, "dflash": False, "visione": False,
                "compattazione_automatica": False,
+               "mcp_claude": False,
                "cache_ram_mib": 512, "checkpoint": 2, "cache_kv": "q8_0", "mmap": False, "layer_gpu": -1}
 MODELLI_CLIENT = {"claude", "codex"}
 VELOCITA = re.compile(r"(prompt )?eval time\s*=.*?([\d.]+) tokens per second")
@@ -105,7 +106,7 @@ class GestoreLocale:
                 raise ValueError(f"Limite non valido: {chiave}")
         if nuova["contesto"] not in (4096, 8192, 16384, 32768, 65536, 131072) or type(nuova["contesto"]) is not int:
             raise ValueError("Contesto non valido")
-        if nuova["cache_kv"] not in ("f16", "q8_0", "q4_0") or any(type(nuova[k]) is not bool for k in ("mmap", "dflash", "visione", "compattazione_automatica")):
+        if nuova["cache_kv"] not in ("f16", "q8_0", "q4_0") or any(type(nuova[k]) is not bool for k in ("mmap", "dflash", "visione", "compattazione_automatica", "mcp_claude")):
             raise ValueError("Profilo memoria non valido")
         if not isinstance(nuova["cartelle_modelli"], list) or len(nuova["cartelle_modelli"]) > 12 or any(
                 not isinstance(p, str) or not Path(p).is_absolute() for p in nuova["cartelle_modelli"]):
@@ -435,13 +436,16 @@ class GestoreLocale:
                    "CLAUDE_CODE_MAX_CONTEXT_TOKENS": str(contesto), "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "2048",
                    "DISABLE_AUTO_COMPACT": "0" if self._config["compattazione_automatica"] else "1",
                    "DISABLE_COMPACT": "0",
+                   "SLASH_COMMAND_TOOL_CHAR_BUDGET": "3000",
                    "MAX_THINKING_TOKENS": "0"}
             settings = self.cartella / "claude-locale.json"
             settings.write_text(json.dumps({"env": env, "disableAllHooks": True}), encoding="utf-8")
-            # profilo snello: senza plugin, MCP e skill dell'utente il prompt scende da ~55k a ~8k token
-            return ["--settings", str(settings), "--model", "qwen-locale", "--setting-sources", "project",
-                    "--strict-mcp-config", "--disable-slash-commands",
-                    "--tools", "Bash,Edit,Read,Write,Glob,Grep"], env
+            # Le descrizioni hanno un budget; i contenuti delle skill si caricano all'uso.
+            argv = ["--settings", str(settings), "--model", "qwen-locale",
+                    "--setting-sources", "user,project,local", "--tools", "default"]
+            if not self._config["mcp_claude"]:
+                argv.append("--strict-mcp-config")
+            return argv, env
 
     def chiedi(self, prompt, profilo, timeout=60):
         with self._lock:

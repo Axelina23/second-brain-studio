@@ -444,5 +444,20 @@ def test_velocita_letta_dal_log_e_profilo_snello(tmp_path, monkeypatch):
     assert g.stato()["velocita"] == {"input": 130.81, "output": 8.43}
     assert g._leggi_velocita(fine) == fine
     opzioni, _ = g.prepara_client("claude")
-    assert opzioni[opzioni.index("--setting-sources") + 1] == "project" and "--strict-mcp-config" in opzioni
+    assert opzioni[opzioni.index("--setting-sources") + 1] == "user,project,local"
+    assert "--disable-slash-commands" not in opzioni and "--strict-mcp-config" in opzioni
+    assert opzioni[opzioni.index("--tools") + 1] == "default"
+    assert g.prepara_client("claude")[1]["SLASH_COMMAND_TOOL_CHAR_BUDGET"] == "3000"
+    g.chiudi()
+
+
+def test_mcp_opzionale_non_disabilita_comandi_o_skill(tmp_path, monkeypatch):
+    g, _ = gestore(tmp_path, monkeypatch)
+    g.configura({**configurazione(tmp_path), "mcp_claude": True})
+    g.avvia("alfa")
+    g._stato["stato"] = "pronto"
+    monkeypatch.setattr(g, "_avvia_ponte", lambda: 12345)
+    argv, env = g.prepara_client("claude")
+    assert "--strict-mcp-config" not in argv and "--disable-slash-commands" not in argv
+    assert env["ANTHROPIC_MODEL"] == "qwen-locale" and env["DISABLE_COMPACT"] == "0"
     g.chiudi()
