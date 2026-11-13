@@ -3,6 +3,7 @@ import json
 import sys
 import threading
 import time
+import pytest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -48,8 +49,9 @@ class PtyFinto:
         return self.exitstatus
 
 
-def test_codex_recupera_daemon_senza_perdere_resume_prompt_e_permessi():
-    chiamate, chiuse = [], []
+@pytest.mark.parametrize("locale", [False, True])
+def test_codex_recupera_daemon_senza_perdere_resume_prompt_e_permessi(locale):
+    chiamate, chiuse, ambienti = [], [], []
     errore = 'Error: failed to open daemon process: Accesso negato. Rerun with --no-daemon'
     class Finito(PtyFinto):
         def __init__(self, testo, codice):
@@ -61,13 +63,19 @@ def test_codex_recupera_daemon_senza_perdere_resume_prompt_e_permessi():
             raise EOFError
     def crea(argv, cwd, cols, rows, env):
         chiamate.append(list(argv))
+        ambienti.append(env)
         return Finito(errore if len(chiamate) == 1 else 'Codex pronto', 1 if len(chiamate) == 1 else 0)
     t = terminale.Terminali(crea_pty=crea, alla_chiusura=chiuse.append)
     argv = ['codex.exe', 'resume', 'sessione', '--sandbox', 'workspace-write', 'continua']
-    s = t.apri(argv, '.', 'Codex', assistente='codex')
+    s = t.apri(argv, '.', 'Codex', assistente='codex',
+               locale={"modello": "alfa"} if locale else None,
+               ambiente={"CODEX_HOME": "C:/profili/locale"} if locale else None)
     assert s.uscita.wait(2)
     assert chiamate == [argv, ['codex.exe', '--no-daemon', *argv[1:]]]
     assert s.codice == 0 and chiuse == [s]
+    if locale:
+        assert ambienti[0] == ambienti[1]
+        assert ambienti[1]["CODEX_HOME"] == "C:/profili/locale"
 
 
 def test_codex_non_riprova_errori_generici_o_daemon_gia_escluso():

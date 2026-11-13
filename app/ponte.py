@@ -679,10 +679,8 @@ class Ponte:
     def richiedi_chat_locale(self, assistente, modello=None, cartella=None, prompt=None, titolo=None, sessione=None):
         if assistente not in ("claude", "codex"):
             return {"errore": "Assistente locale non valido"}
-        cfg = self.locali.catalogo()["configurazione"]
         precedente = self.locali.sessione(sessione) if sessione else None
-        profilo = precedente or {"modello": modello, "contesto": cfg["contesto"],
-                                 "dflash": cfg["dflash"], "visione": cfg["visione"]}
+        profilo = self.locali.profilo_chat(modello, precedente)
         if not profilo.get("modello"):
             return {"errore": "Scegli un modello locale installato"}
         voce = next((m for m in self.locali.catalogo()["modelli"] if m["id"] == profilo["modello"]), None)
@@ -730,7 +728,8 @@ class Ponte:
                 return {"errore": "Chat locale non registrata: impossibile riprenderla con certezza"}
             if precedente and precedente.get("assistente") != assistente:
                 return {"errore": "Riprendere la chat con il suo assistente originale"}
-            if precedente and any(precedente.get(k) != v for k, v in profilo.items()):
+            atteso = self.locali.profilo_chat(precedente=precedente) if precedente else None
+            if atteso and any(atteso.get(k) != v for k, v in profilo.items()):
                 return {"errore": "Per riprendere questa chat attivare il suo modello e profilo locale"}
             argv = [str(CLAUDE)] if assistente == "claude" else self._comando_assistente("codex")
             if not argv:

@@ -79,6 +79,7 @@ class Scheda:
     rows: int = 32
     chiusura_richiesta: bool = False
     locale: dict | None = None
+    ambiente_locale: dict | None = field(default=None, repr=False)
 
 
 class Terminali:
@@ -168,6 +169,8 @@ class Terminali:
                    and k not in ("OPENAI_API_KEY", "OPENAI_BASE_URL", "CLAUDE_CODE_SUBAGENT_MODEL")}
         if ambiente:
             env.update(ambiente)
+        if locale is not None:
+            scheda.ambiente_locale = dict(env)
         scheda.pty = self._crea_pty(argv, cwd, cols, rows, env)
         with self._blocco:
             self.schede[sid] = scheda
@@ -202,7 +205,8 @@ class Terminali:
             posizione = 2 if len(argv) > 1 and argv[1].lower().endswith("codex.js") else 1
             argv.insert(posizione, "--no-daemon")
             try:
-                scheda.pty = self._crea_pty(argv, scheda.cwd, scheda.cols, scheda.rows, ambiente_pulito())
+                env = dict(scheda.ambiente_locale) if scheda.ambiente_locale is not None else ambiente_pulito()
+                scheda.pty = self._crea_pty(argv, scheda.cwd, scheda.cols, scheda.rows, env)
                 scheda.argv = argv
             except Exception as e:
                 self._diffondi(scheda, f"\r\nCodex: {e}\r\n")

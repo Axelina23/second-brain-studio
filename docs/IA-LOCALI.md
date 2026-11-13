@@ -76,7 +76,16 @@ il proiettore e necessario solo per `visione=true`, il draft solo per `dflash=tr
 ## Conversazioni e salvataggi
 
 - Le sessioni locali conservano assistente e profilo in `ia-locali/sessioni.json`.
-  La ripresa richiede lo stesso profilo e non torna al provider cloud.
+  La ripresa mantiene modello, assistente e visione originali, adotta la preferenza
+  attuale DFlash e gli aumenti di contesto. Non riduce mai il contesto storico.
+  Il profilo viene registrato dopo l'apertura del terminale; un altro client con
+  profilo diverso continua a impedire il cambio. Riaprire le chat dopo le modifiche.
+- Default delle nuove installazioni: 32768 token, DFlash spento, cache KV q8_0.
+  `compattazione_automatica=false` disabilita l'auto-compattazione solo per Claude
+  locale (`DISABLE_AUTO_COMPACT=1`), conservando `/compact` manuale. Al limite serve
+  compattare o aprire una nuova chat: disattivare l'automatismo non aumenta il contesto.
+  L'opzione in Impostazioni -> IA locale vale dalla riapertura del client.
+- Il ripristino Codex con `--no-daemon` mantiene anche l'ambiente locale e CODEX_HOME.
 - Le sessioni Codex locali vengono lette anche dal loro archivio separato.
 - La generazione automatica dei titoli e il worker cloud degli appunti non vengono
   lanciati per queste chat. Il titolo richiesto esplicitamente usa il backend locale.
@@ -91,7 +100,16 @@ il proiettore e necessario solo per `visione=true`, il draft solo per `dflash=tr
 2. Browser controllato: soprattutto RAM, con eventuale VRAM per accelerazione grafica.
 3. Immagini: proiettore visivo, buffer e token immagine; collaudare il margine con DFlash
    e prevedere un profilo senza draft se serve liberare VRAM.
-4. Contesti 16k/32k e prompt completi dei client: ammessi dal contratto ma ancora da
-   misurare sulla macchina. Il primo profilo reale verificato e quello da 8k.
+4. Contesti maggiori: misurare pesi, cache KV, stato ricorrente, buffer e memoria del
+   desktop sul modello e sull'hardware effettivi prima di scegliere un limite.
+
+## Velocita
+
+Il footer distingue lettura del prompt (`in`) e generazione (`out`). Sono i tempi
+del motore dell'ultima richiesta completata, non i token visibili divisi per il tempo
+totale dell'agente. Avvio, ricarica dopo il riposo, prompt iniziale, strumenti e
+compattazione aumentano l'attesa. Il motore e condiviso: anche richieste di altre chat
+o titoli espliciti possono aggiornare il dato. Il confronto DFlash richiede stesso
+modello, prompt e contesto: l'accettazione del drafter cambia con il contenuto.
 
 La disposizione dei controlli, le etichette e il flusso visuale si decidono con l'utente.

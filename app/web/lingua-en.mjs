@@ -1,6 +1,9 @@
 // Dizionario italiano -> inglese dell'interfaccia (vedi lingua.mjs). Chiave = testo esatto
 // mostrato in italiano (senza spazi ai bordi). REGOLE: testi con numeri, date e nomi.
 export const EN = {
+  "Compattazione automatica Claude locale": "Local Claude automatic compaction",
+  "Consigliati almeno 32k per gli agenti. Le chat riprese adottano gli aumenti; mantengono il contesto precedente se più grande. Chiudi e riapri le chat dopo le modifiche.": "At least 32k is recommended for agents. Resumed chats adopt increases and keep their previous context if larger. Close and reopen chats after changes.",
+  "Disattiva per evitare riassunti automatici molto lenti con contesti piccoli. Al limite usa /compact manualmente o apri una nuova chat. Vale dalla riapertura della chat.": "Disable to avoid very slow automatic summaries with small contexts. At the limit, use /compact manually or start a new chat. Applies when the chat is reopened.",
   "a riposo": "sleeping", "caricamento…": "loading…", "pronto": "ready",
   "IA locale": "Local AI", "Claude locale": "Local Claude", "Codex locale": "Local Codex", "Il tuo assistente, qui accanto": "Your assistant, right here",
   "Motore spento": "Engine stopped", "Caricamento del modello…": "Loading model…", "Modello pronto": "Model ready", "In riposo · modello scaricato": "Sleeping · model unloaded", "Errore del motore": "Engine error",

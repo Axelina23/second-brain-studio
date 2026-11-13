@@ -14,7 +14,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 PREDEFINITE = {"eseguibile": "", "porta": 8087, "modelli": {}, "inattivita_secondi": 300,
-               "cartelle_modelli": [], "contesto": 16384, "dflash": True, "visione": False,
+               "cartelle_modelli": [], "contesto": 32768, "dflash": False, "visione": False,
+               "compattazione_automatica": False,
                "cache_ram_mib": 512, "checkpoint": 2, "cache_kv": "q8_0", "mmap": False, "layer_gpu": -1}
 MODELLI_CLIENT = {"claude", "codex"}
 VELOCITA = re.compile(r"(prompt )?eval time\s*=.*?([\d.]+) tokens per second")
@@ -104,7 +105,7 @@ class GestoreLocale:
                 raise ValueError(f"Limite non valido: {chiave}")
         if nuova["contesto"] not in (4096, 8192, 16384, 32768, 65536, 131072) or type(nuova["contesto"]) is not int:
             raise ValueError("Contesto non valido")
-        if nuova["cache_kv"] not in ("f16", "q8_0", "q4_0") or any(type(nuova[k]) is not bool for k in ("mmap", "dflash", "visione")):
+        if nuova["cache_kv"] not in ("f16", "q8_0", "q4_0") or any(type(nuova[k]) is not bool for k in ("mmap", "dflash", "visione", "compattazione_automatica")):
             raise ValueError("Profilo memoria non valido")
         if not isinstance(nuova["cartelle_modelli"], list) or len(nuova["cartelle_modelli"]) > 12 or any(
                 not isinstance(p, str) or not Path(p).is_absolute() for p in nuova["cartelle_modelli"]):
@@ -323,6 +324,17 @@ class GestoreLocale:
             tmp.write_text(json.dumps(dati), encoding="utf-8")
             tmp.replace(self.cartella / "sessioni.json")
 
+    def profilo_chat(self, modello=None, precedente=None):
+        """Le chat riprese adottano i limiti nuovi senza ridurre il contesto storico."""
+        with self._lock:
+            cfg = self._config
+            modello = precedente["modello"] if precedente else modello
+            voce = self._modelli_disponibili().get(modello, {})
+            return {"modello": modello,
+                    "contesto": max(cfg["contesto"], precedente.get("contesto", 0) if precedente else 0),
+                    "dflash": cfg["dflash"] and bool(voce.get("draft")),
+                    "visione": precedente["visione"] if precedente else cfg["visione"]}
+
     def rilascia_client(self, sid):
         with self._lock:
             self._client.discard(sid)
@@ -421,6 +433,8 @@ class GestoreLocale:
                    "ANTHROPIC_DEFAULT_OPUS_MODEL": "qwen-locale", "ANTHROPIC_DEFAULT_SONNET_MODEL": "qwen-locale",
                    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "qwen-locale", "CLAUDE_CODE_SUBAGENT_MODEL": "qwen-locale",
                    "CLAUDE_CODE_MAX_CONTEXT_TOKENS": str(contesto), "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "2048",
+                   "DISABLE_AUTO_COMPACT": "0" if self._config["compattazione_automatica"] else "1",
+                   "DISABLE_COMPACT": "0",
                    "MAX_THINKING_TOKENS": "0"}
             settings = self.cartella / "claude-locale.json"
             settings.write_text(json.dumps({"env": env, "disableAllHooks": True}), encoding="utf-8")

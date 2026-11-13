@@ -84,10 +84,11 @@ export function ImpostazioniLocali({ api, avvisa, imp, mettiImp }) {
         <${Riga} titolo="Drafter opzionale" testo="Per DFlash serve un file compatibile con il modello scelto.">${percorso(voce.draft, "draft", v => modificaModello("draft", v))}</${Riga}>
         <${Riga} titolo="Proiettore immagini" testo="Componente visivo opzionale, compatibile con il modello scelto.">${percorso(voce.proiettore, "proiettore", v => modificaModello("proiettore", v))}</${Riga}>`}
       <div class="imp-gruppo">Profilo delle chat locali</div>
-      <${Riga} titolo="Contesto" testo="Contesti più ampi occupano altra VRAM. Per gli agenti possono servire 16k o 32k token."><select class="campo imp-sel" value=${form.contesto} onChange=${e => modifica("contesto", Number(e.target.value))}>
+      <${Riga} titolo="Contesto" testo="Consigliati almeno 32k per gli agenti. Le chat riprese adottano gli aumenti; mantengono il contesto precedente se più grande. Chiudi e riapri le chat dopo le modifiche."><select class="campo imp-sel" value=${form.contesto} onChange=${e => modifica("contesto", Number(e.target.value))}>
         ${[4096,8192,16384,32768,65536,131072].map(n => html`<option value=${n}>${n / 1024}k token</option>`)}</select></${Riga}>
       ${spunta("dflash", "Accelerazione DFlash", "Usata solo quando il modello ha un drafter configurato. Richiede altra VRAM.")}
       ${spunta("visione", "Abilita immagini", "Richiede il proiettore. Immagini grandi o numerose aumentano memoria e contesto.")}
+      ${spunta("compattazione_automatica", "Compattazione automatica Claude locale", "Disattiva per evitare riassunti automatici molto lenti con contesti piccoli. Al limite usa /compact manualmente o apri una nuova chat. Vale dalla riapertura della chat.")}
       <${Riga} titolo="Riposo dopo inattività" testo="Scarica modello e contesto anche con chat aperta; la richiesta successiva li ricarica."><select class="campo imp-sel" value=${form.inattivita_secondi} onChange=${e => modifica("inattivita_secondi", Number(e.target.value))}>
         ${[[0,"Mai"],[60,"1 minuto"],[180,"3 minuti"],[300,"5 minuti"],[600,"10 minuti"],[1800,"30 minuti"],[3600,"1 ora"]].map(([n,t]) => html`<option value=${n}>${t}</option>`)}</select></${Riga}>
       <details class="locale-avanzate"><summary>Memoria e impostazioni avanzate</summary>

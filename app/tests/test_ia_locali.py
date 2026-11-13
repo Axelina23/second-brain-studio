@@ -269,6 +269,7 @@ class TerminaliLocaliFinti:
 def test_ponte_apre_schede_locali_con_ambiente_separato(tmp_path, monkeypatch, assistente):
     import ponte
     g, _ = gestore(tmp_path, monkeypatch)
+    g.configura({**configurazione(tmp_path), "contesto": 8192, "dflash": True})
     g.avvia("alfa")
     g._stato["stato"] = "pronto"
     monkeypatch.setattr(g, "_avvia_ponte", lambda: 12345)
@@ -300,6 +301,70 @@ def test_ponte_apre_schede_locali_con_ambiente_separato(tmp_path, monkeypatch, a
         assert "--resume" in terminali_finti.schede[voce_ripresa["id"]].argv
     else:
         assert "CODEX_HOME" in terminali_finti.ambienti[0]
+    g.chiudi()
+
+
+def test_ripresa_migra_limiti_solo_dopo_apertura_riuscita(tmp_path, monkeypatch):
+    import ponte
+    g, _ = gestore(tmp_path, monkeypatch)
+    cfg = {**configurazione(tmp_path), "contesto": 32768, "dflash": False}
+    g.configura(cfg)
+    storico = {"modello": "alfa", "contesto": 16384, "dflash": True, "visione": False}
+    g.ricorda_sessione("vecchia", "claude", storico)
+    p = ponte.Ponte(radice=tmp_path, cache=tmp_path / "cache", terminali=TerminaliLocaliFinti())
+    p.locali = g
+    monkeypatch.setattr(p, "_impostazioni", lambda: {})
+    monkeypatch.setattr(g, "_avvia_ponte", lambda: 12345)
+    monkeypatch.setattr(p, "_in_thread", lambda nome, lavoro: lavoro())
+    monkeypatch.setattr(g, "_sorveglia", lambda processo: g._stato.update(stato="pronto"))
+    eventi = []
+    p.emetti = lambda nome, dati: eventi.append(dati)
+    # Un client incompatibile non deve essere interrotto, ne' migrare i metadati.
+    g.avvia("alfa", 16384, True)
+    g.registra_client("altra")
+    assert "errore" in p.richiedi_chat_locale("claude", sessione="vecchia")
+    assert g.sessione("vecchia")["contesto"] == 16384
+    g.rilascia_client("altra")
+    assert p.richiedi_chat_locale("claude", sessione="vecchia")["in_avvio"]
+    assert eventi[-1]["locale"] == {**storico, "contesto": 32768, "dflash": False}
+    assert g.sessione("vecchia")["contesto"] == 32768
+    assert p.terminali.ambienti[-1]["CLAUDE_CODE_MAX_CONTEXT_TOKENS"] == "32768"
+    assert p.terminali.ambienti[-1]["DISABLE_AUTO_COMPACT"] == "1"
+    g.chiudi()
+
+
+def test_ripresa_non_riduce_contesto_ne_cambia_identita_e_visione(tmp_path, monkeypatch):
+    g, _ = gestore(tmp_path, monkeypatch)
+    precedente = {"modello": "alfa", "contesto": 65536, "dflash": True, "visione": True}
+    g.configura({**configurazione(tmp_path), "contesto": 32768, "dflash": False, "visione": False})
+    assert g.profilo_chat("altro", precedente) == {**precedente, "dflash": False}
+    g.avvia("alfa", 32768, False)
+    g._stato["stato"] = "pronto"
+    monkeypatch.setattr(g, "_avvia_ponte", lambda: 12345)
+    assert g.prepara_client("claude")[1]["DISABLE_AUTO_COMPACT"] == "1"
+    g.arresta()
+    g.configura({**configurazione(tmp_path), "compattazione_automatica": True})
+    g.avvia("alfa", 32768, False)
+    g._stato["stato"] = "pronto"
+    assert g.prepara_client("claude")[1]["DISABLE_AUTO_COMPACT"] == "0"
+    g.chiudi()
+
+
+def test_ripresa_fallita_non_migra_metadati(tmp_path, monkeypatch):
+    import ponte
+    g, _ = gestore(tmp_path, monkeypatch)
+    storico = {"modello": "alfa", "contesto": 16384, "dflash": True, "visione": False}
+    g.ricorda_sessione("vecchia", "claude", storico)
+    g.avvia("alfa", 32768, False)
+    g._stato["stato"] = "pronto"
+    p = ponte.Ponte(radice=tmp_path, cache=tmp_path / "cache", terminali=TerminaliLocaliFinti())
+    p.locali = g
+    monkeypatch.setattr(p, "_impostazioni", lambda: {})
+    monkeypatch.setattr(g, "_avvia_ponte", lambda: 12345)
+    def fallisci(*a, **k): raise OSError("apertura fallita")
+    monkeypatch.setattr(p.terminali, "apri", fallisci)
+    assert "errore" in p.apri_chat_locale("claude", sessione="vecchia")
+    assert g.sessione("vecchia") == {"assistente": "claude", **storico}
     g.chiudi()
 
 
