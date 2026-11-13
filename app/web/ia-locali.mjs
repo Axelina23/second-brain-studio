@@ -41,6 +41,38 @@ function Campo({ valore, cambia, tipo="text", min, max }) {
     onInput=${e => cambia(tipo === "number" ? Number(e.target.value) : e.target.value)} />`;
 }
 
+function ProfiloStrumenti({ form, setForm, catalogo, avvisa }) {
+  const [nuovi, setNuovi] = useState("");
+  const modo = form.profilo_strumenti_claude || (form.strumenti_estesi_claude ? "completo" : "bilanciato");
+  const bilanciati = catalogo.strumenti_claude_bilanciati || ["Bash", "PowerShell", "Read", "Edit", "Write", "Glob", "Grep", "Skill", "Agent"];
+  const scelti = form.strumenti_claude || bilanciati;
+  const catalogati = catalogo.strumenti_claude_disponibili || bilanciati.map(id => ({ id, nome: id }));
+  const elenco = [...catalogati, ...scelti.filter(id => !catalogati.some(t => t.id === id)).map(id => ({ id, nome: id }))];
+  const cambia = (lista) => setForm(f => ({ ...f, profilo_strumenti_claude: "personalizzato", strumenti_estesi_claude: false, strumenti_claude: lista }));
+  const aggiungi = () => {
+    const nomi = nuovi.split(/[\s,]+/).filter(Boolean);
+    if (!nomi.length || nomi.some(n => !/^[A-Za-z][A-Za-z0-9_]{0,79}$/.test(n))) { avvisa("Inserisci nomi validi degli strumenti", "errore"); return; }
+    cambia([...new Set([...scelti, ...nomi])]); setNuovi("");
+  };
+  return html`<div>
+    <${Riga} titolo="Profilo strumenti Claude" testo="Scegli il profilo per le chat locali. Le modifiche valgono alla riapertura della chat, senza ricaricare il modello.">
+      <select class="campo imp-sel" value=${modo} onChange=${e => setForm(f => ({ ...f, profilo_strumenti_claude: e.target.value, strumenti_estesi_claude: e.target.value === "completo" }))}>
+        <option value="bilanciato">Bilanciato</option><option value="completo">Completo</option><option value="personalizzato">Personalizzato</option>
+      </select></${Riga}>
+    ${modo === "bilanciato" && html`<p class="imp-nota">${bilanciati.join(", ")}</p>`}
+    ${modo === "completo" && html`<p class="imp-nota">Tutti gli strumenti nativi della CLI installata. Le loro definizioni possono superare il contesto disponibile: verifica /context.</p>`}
+    ${modo === "personalizzato" && html`<div class="locale-griglia-strumenti" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:8px">
+      ${elenco.map(t => html`<label class="locale-check" title=${t.id}><input type="checkbox" checked=${scelti.includes(t.id)} onChange=${e => cambia(e.target.checked ? [...scelti, t.id] : scelti.filter(n => n !== t.id))} />${t.nome}</label>`)}
+      </div><div class="locale-azioni" style="margin-top:12px"><input class="campo imp-sel" aria-label="Altri strumenti Claude" placeholder="Nome strumento" value=${nuovi} onInput=${e => setNuovi(e.target.value)} />
+        <button class="btn piccolo" onClick=${aggiungi}>Aggiungi strumento</button>
+        <button class="btn piccolo fantasma" onClick=${() => cambia([...bilanciati])}>Ripristina selezione bilanciata</button></div>
+      <p class="imp-nota">Puoi aggiungere altri nomi supportati dalla tua CLI senza aggiornare SBS. Skill permette al modello di invocare le skill, Agent di usare sottoagenti; i comandi slash restano disponibili.</p>
+      ${!scelti.length && html`<p class="imp-nota">Nessuno strumento nativo selezionato.</p>`}`}
+    <${Riga} titolo="Budget elenco skill (caratteri)" testo="Limita lo spazio delle descrizioni iniziali; il contenuto completo delle skill si carica quando le invochi.">
+      <${Campo} tipo="number" valore=${form.budget_skill_claude ?? 3000} min="256" max="64000" cambia=${v => setForm(f => ({ ...f, budget_skill_claude: v }))} /></${Riga}>
+  </div>`;
+}
+
 export function ImpostazioniLocali({ api, avvisa, imp, mettiImp }) {
   const { catalogo, stato, errore, carica } = useLocali(api);
   const [form, setForm] = useState(null), [selezione, setSelezione] = useState(""), [salvando, setSalvando] = useState(false), [forza, setForza] = useState(false);
@@ -88,9 +120,6 @@ export function ImpostazioniLocali({ api, avvisa, imp, mettiImp }) {
         ${[4096,8192,16384,32768,65536,131072].map(n => html`<option value=${n}>${n / 1024}k token</option>`)}</select></${Riga}>
       ${spunta("dflash", "Accelerazione DFlash", "Usata solo quando il modello ha un drafter configurato. Richiede altra VRAM.")}
       ${spunta("visione", "Abilita immagini", "Richiede il proiettore. Immagini grandi o numerose aumentano memoria e contesto.")}
-      ${spunta("compattazione_automatica", "Compattazione automatica Claude locale", "Disattiva per evitare riassunti automatici molto lenti con contesti piccoli. Al limite usa /compact manualmente o apri una nuova chat. Vale dalla riapertura della chat.")}
-      ${spunta("mcp_claude", "Connettori MCP di Claude locale", "Carica i server MCP configurati in Claude Code e nei plugin. Aumentano strumenti e contesto; alcuni richiedono rete o servizi esterni. Comandi e skill sono disponibili anche con questa opzione spenta. Riapri la chat per applicare.")}
-      ${spunta("strumenti_estesi_claude", "Strumenti estesi di Claude locale", "Il profilo normale mantiene file, terminale, skill e sottoagenti. Questa opzione aggiunge workflow e strumenti avanzati: nella prova il profilo completo superava 32k token. Riapri la chat per applicare.")}
       <${Riga} titolo="Riposo dopo inattività" testo="Scarica modello e contesto anche con chat aperta; la richiesta successiva li ricarica."><select class="campo imp-sel" value=${form.inattivita_secondi} onChange=${e => modifica("inattivita_secondi", Number(e.target.value))}>
         ${[[0,"Mai"],[60,"1 minuto"],[180,"3 minuti"],[300,"5 minuti"],[600,"10 minuti"],[1800,"30 minuti"],[3600,"1 ora"]].map(([n,t]) => html`<option value=${n}>${t}</option>`)}</select></${Riga}>
       <details class="locale-avanzate"><summary>Memoria e impostazioni avanzate</summary>
@@ -100,9 +129,15 @@ export function ImpostazioniLocali({ api, avvisa, imp, mettiImp }) {
         <${Riga} titolo="Layer sulla GPU" testo="−1 carica tutti i layer; 0 usa la CPU. Un valore specifico permette un caricamento misto."><${Campo} tipo="number" valore=${form.layer_gpu} min="-1" max="200" cambia=${v => modifica("layer_gpu", v)} /></${Riga}>
         ${spunta("mmap", "Mapping dei pesi in RAM", "Può velocizzare alcuni caricamenti; influisce sulla memoria del processo. L'SSD accelera l'avvio in entrambi i casi.")}
       </details>
-      <div class="locale-azioni"><button class="btn primario" onClick=${salva}>${salvando ? "Salvo…" : "Salva impostazioni"}</button>
-        <button class="btn" disabled=${!id} onClick=${avvia}>Carica modello</button></div>
+      <div class="locale-azioni"><button class="btn" disabled=${!id} onClick=${avvia}>Carica modello</button></div>
     </fieldset>
+    <fieldset disabled=${salvando} class="locale-campi">
+      <div class="imp-gruppo">Agente locale e strumenti</div>
+      <${ProfiloStrumenti} form=${form} setForm=${setForm} catalogo=${catalogo} avvisa=${avvisa} />
+      ${spunta("compattazione_automatica", "Compattazione automatica Claude locale", "Disattiva per evitare riassunti automatici molto lenti con contesti piccoli. Al limite usa /compact manualmente o apri una nuova chat. Vale dalla riapertura della chat.")}
+      ${spunta("mcp_claude", "Connettori MCP di Claude locale", "Carica i server MCP configurati in Claude Code e nei plugin. Aumentano strumenti e contesto; alcuni richiedono rete o servizi esterni. Comandi e skill sono disponibili anche con questa opzione spenta. Riapri la chat per applicare.")}
+    </fieldset>
+    <div class="locale-azioni"><button class="btn primario" disabled=${salvando} onClick=${salva}>${salvando ? "Salvo…" : "Salva impostazioni"}</button></div>
     <p class="imp-nota">I file possono stare su dischi diversi. I gestori dei modelli si occupano dei download; ricerca, siti e browser sono strumenti dell'agente. Questa versione collega i GGUF a llama.cpp.</p>
   </div>`;
 }

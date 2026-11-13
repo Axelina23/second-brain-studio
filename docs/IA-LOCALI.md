@@ -35,6 +35,27 @@ layer GPU, mmap) e `ia_locale_scegli_percorso`.
   (istruzioni, memoria, skill e strumenti compresi). I comandi slash rimangono attivi.
   Abilitare gli strumenti estesi richiede nuovo margine di contesto; con MCP attivo
   viene incluso anche ToolSearch. Il dato iniziale non include la cronologia esistente.
+
+### Profilo strumenti personale
+
+Impostazioni -> IA locale offre Bilanciato, Completo e Personalizzato. Il primo usa
+la selezione iniziale; Completo chiede tutti gli strumenti nativi alla CLI installata;
+Personalizzato permette spunte individuali e nomi aggiuntivi, senza una nuova build SBS.
+I nomi sono identificatori della CLI, non comandi shell; non aggiungono strumenti che
+la CLI non implementa. Il budget delle descrizioni skill e modificabile (256-64000
+caratteri). Non e una misura esatta del numero di token del profilo.
+
+Configurazione per utente: `profilo_strumenti_claude`, `strumenti_claude` (lista anche
+vuota), `budget_skill_claude`. La vecchia preferenza `strumenti_estesi_claude=true`
+migra a Completo quando il nuovo campo non e presente. Le selezioni personali sono
+persistenti e indipendenti dall'elenco predefinito distribuito con l'app.
+
+Le opzioni del client si salvano anche con motore e chat aperti, senza scaricare i
+pesi: entrano in vigore alla riapertura della chat. Cambiare eseguibile, modello,
+contesto, memoria o altri parametri del server continua a richiedere il suo arresto.
+Il worker degli appunti conserva la propria selezione dedicata, indipendente dai
+tool scelti per la chat. Queste preferenze di strumenti riguardano Claude locale;
+Codex mantiene il suo contratto e le sue impostazioni di permessi.
 - I percorsi di ogni GGUF sono indipendenti: principale su SSD e alternative su HDD
   sono possibili senza spostare file automaticamente. Nessun percorso personale nel codice.
 

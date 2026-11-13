@@ -1,6 +1,19 @@
 // Dizionario italiano -> inglese dell'interfaccia (vedi lingua.mjs). Chiave = testo esatto
 // mostrato in italiano (senza spazi ai bordi). REGOLE: testi con numeri, date e nomi.
 export const EN = {
+  "Profilo strumenti Claude": "Claude tool profile", "Bilanciato": "Balanced", "Completo": "Complete", "Personalizzato": "Custom",
+  "Scegli il profilo per le chat locali. Le modifiche valgono alla riapertura della chat, senza ricaricare il modello.": "Choose the profile for local chats. Changes apply when you reopen the chat, without reloading the model.",
+  "Tutti gli strumenti nativi della CLI installata. Le loro definizioni possono superare il contesto disponibile: verifica /context.": "All native tools in the installed CLI. Their definitions may exceed the available context: check /context.",
+  "Altri strumenti Claude": "Other Claude tools", "Nome strumento": "Tool name", "Aggiungi strumento": "Add tool",
+  "Ripristina selezione bilanciata": "Restore balanced selection", "Nessuno strumento nativo selezionato.": "No native tools selected.",
+  "Inserisci nomi validi degli strumenti": "Enter valid tool names",
+  "Puoi aggiungere altri nomi supportati dalla tua CLI senza aggiornare SBS. Skill permette al modello di invocare le skill, Agent di usare sottoagenti; i comandi slash restano disponibili.": "Add other names supported by your CLI without updating SBS. Skill lets the model invoke skills, Agent lets it use subagents; slash commands remain available.",
+  "Budget elenco skill (caratteri)": "Skill list budget (characters)",
+  "Limita lo spazio delle descrizioni iniziali; il contenuto completo delle skill si carica quando le invochi.": "Limit initial descriptions; full skill content loads when invoked.",
+  "Agente locale e strumenti": "Local agent and tools",
+  "Leggere file": "Read files", "Modificare file": "Edit files", "Scrivere file": "Write files", "Trovare file": "Find files", "Cercare nei file": "Search files",
+  "Terminale Bash": "Bash terminal", "Terminale PowerShell": "PowerShell terminal", "Invocare skill": "Invoke skills", "Sottoagenti": "Subagents",
+  "Scoprire strumenti": "Discover tools", "Elencare agenti": "List agents", "Riferire risultati": "Report findings", "Pianificare riprese": "Schedule wakeups",
   "Strumenti estesi di Claude locale": "Extended local Claude tools",
   "Il profilo normale mantiene file, terminale, skill e sottoagenti. Questa opzione aggiunge workflow e strumenti avanzati: nella prova il profilo completo superava 32k token. Riapri la chat per applicare.": "The standard profile keeps files, terminal, skills and subagents. This option adds workflows and advanced tools: the complete profile exceeded 32k tokens in testing. Reopen the chat to apply.",
   "Connettori MCP di Claude locale": "Local Claude MCP connectors",

@@ -18,9 +18,20 @@ PREDEFINITE = {"eseguibile": "", "porta": 8087, "modelli": {}, "inattivita_secon
                "compattazione_automatica": False,
                "mcp_claude": False,
                "strumenti_estesi_claude": False,
+               "profilo_strumenti_claude": "bilanciato",
+               "strumenti_claude": ["Bash", "PowerShell", "Read", "Edit", "Write", "Glob", "Grep", "Skill", "Agent"],
+               "budget_skill_claude": 3000,
                "cache_ram_mib": 512, "checkpoint": 2, "cache_kv": "q8_0", "mmap": False, "layer_gpu": -1}
 MODELLI_CLIENT = {"claude", "codex"}
 STRUMENTI_CLAUDE = "Bash,PowerShell,Read,Edit,Write,Glob,Grep,Skill,Agent"
+CATALOGO_STRUMENTI = [
+    ("Read", "Leggere file"), ("Edit", "Modificare file"), ("Write", "Scrivere file"),
+    ("Glob", "Trovare file"), ("Grep", "Cercare nei file"), ("Bash", "Terminale Bash"),
+    ("PowerShell", "Terminale PowerShell"), ("Skill", "Invocare skill"), ("Agent", "Sottoagenti"),
+    ("ToolSearch", "Scoprire strumenti"), ("Workflow", "Workflow"), ("ListAgents", "Elencare agenti"),
+    ("ReportFindings", "Riferire risultati"), ("ScheduleWakeup", "Pianificare riprese")]
+OPZIONI_CLIENT = {"compattazione_automatica", "mcp_claude", "strumenti_estesi_claude",
+                  "profilo_strumenti_claude", "strumenti_claude", "budget_skill_claude"}
 VELOCITA = re.compile(r"(prompt )?eval time\s*=.*?([\d.]+) tokens per second")
 
 
@@ -99,6 +110,17 @@ class GestoreLocale:
         if not isinstance(cfg, dict) or set(cfg) - set(PREDEFINITE):
             raise ValueError("Configurazione locale non valida")
         nuova = {**copy.deepcopy(PREDEFINITE), **cfg}
+        if "profilo_strumenti_claude" not in cfg and cfg.get("strumenti_estesi_claude") is True:
+            nuova["profilo_strumenti_claude"] = "completo"
+        if nuova["profilo_strumenti_claude"] not in ("bilanciato", "completo", "personalizzato"):
+            raise ValueError("Profilo strumenti Claude non valido")
+        strumenti = nuova["strumenti_claude"]
+        if not isinstance(strumenti, list) or len(strumenti) > 80 or any(
+                not isinstance(s, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,79}", s) for s in strumenti):
+            raise ValueError("Nomi degli strumenti Claude non validi")
+        nuova["strumenti_claude"] = list(dict.fromkeys(strumenti))
+        if type(nuova["budget_skill_claude"]) is not int or not 256 <= nuova["budget_skill_claude"] <= 64000:
+            raise ValueError("Budget skill non valido: da 256 a 64000 caratteri")
         if type(nuova["porta"]) is not int or not 1024 <= nuova["porta"] <= 65535:
             raise ValueError("Porta non valida")
         if type(nuova["inattivita_secondi"]) is not int or not (nuova["inattivita_secondi"] == 0 or 30 <= nuova["inattivita_secondi"] <= 86400):
@@ -125,7 +147,7 @@ class GestoreLocale:
     def configura(self, cfg):
         nuova = self._valida_config(cfg)
         with self._lock:
-            if self._vivo():
+            if self._vivo() and any(nuova[k] != self._config[k] for k in PREDEFINITE if k not in OPZIONI_CLIENT):
                 raise ValueError("Arrestare il server prima di cambiare configurazione")
             self.cartella.mkdir(parents=True, exist_ok=True)
             temporaneo = self.cartella / "config.json.tmp"
@@ -173,7 +195,10 @@ class GestoreLocale:
                 return round(Path(voce.get("file", "")).stat().st_size / 1e9, 2)
             except OSError:
                 return None
-        return {"configurazione": cfg, "modelli": [{"id": k, **v, "dimensione_gb": dimensione(v),
+        return {"configurazione": cfg,
+                "strumenti_claude_disponibili": [{"id": k, "nome": v} for k, v in CATALOGO_STRUMENTI],
+                "strumenti_claude_bilanciati": STRUMENTI_CLAUDE.split(","),
+                "modelli": [{"id": k, **v, "dimensione_gb": dimensione(v),
                 "disponibile": Path(v.get("file", "")).is_file()} for k, v in modelli.items()],
                 "funzioni": {"file": True, "ricerca_web": False, "lettura_siti": False,
                              "browser": False, "visione": "richiede_proiettore"}}
@@ -438,13 +463,15 @@ class GestoreLocale:
                    "CLAUDE_CODE_MAX_CONTEXT_TOKENS": str(contesto), "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "2048",
                    "DISABLE_AUTO_COMPACT": "0" if self._config["compattazione_automatica"] else "1",
                    "DISABLE_COMPACT": "0",
-                   "SLASH_COMMAND_TOOL_CHAR_BUDGET": "3000",
+                   "SLASH_COMMAND_TOOL_CHAR_BUDGET": str(self._config["budget_skill_claude"]),
                    "MAX_THINKING_TOKENS": "0"}
             settings = self.cartella / "claude-locale.json"
             settings.write_text(json.dumps({"env": env, "disableAllHooks": True}), encoding="utf-8")
             # Le descrizioni hanno un budget; i contenuti delle skill si caricano all'uso.
-            strumenti = "default" if self._config["strumenti_estesi_claude"] else STRUMENTI_CLAUDE
-            if self._config["mcp_claude"] and strumenti != "default":
+            modo = self._config["profilo_strumenti_claude"]
+            strumenti = ("default" if modo == "completo" else ",".join(self._config["strumenti_claude"])
+                         if modo == "personalizzato" else STRUMENTI_CLAUDE)
+            if self._config["mcp_claude"] and modo == "bilanciato":
                 strumenti += ",ToolSearch"
             argv = ["--settings", str(settings), "--model", "qwen-locale",
                     "--setting-sources", "user,project,local", "--tools", strumenti]

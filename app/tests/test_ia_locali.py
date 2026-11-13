@@ -464,3 +464,49 @@ def test_mcp_opzionale_non_disabilita_comandi_o_skill(tmp_path, monkeypatch):
     assert "ToolSearch" in argv[argv.index("--tools") + 1]
     assert env["ANTHROPIC_MODEL"] == "qwen-locale" and env["DISABLE_COMPACT"] == "0"
     g.chiudi()
+
+
+def test_profilo_personale_persistente_e_modificabile_a_motore_acceso(tmp_path, monkeypatch):
+    g, chiamate = gestore(tmp_path, monkeypatch)
+    g.avvia("alfa", 32768, False)
+    g._stato["stato"] = "pronto"
+    monkeypatch.setattr(g, "_avvia_ponte", lambda: 12345)
+    cfg = g.catalogo()["configurazione"]
+    cfg.update(profilo_strumenti_claude="personalizzato", strumenti_claude=["Read", "Skill", "NuovoTool", "Read"], budget_skill_claude=1200)
+    g.configura(cfg)
+    argv, env = g.prepara_client("claude")
+    assert argv[argv.index("--tools") + 1] == "Read,Skill,NuovoTool"
+    assert env["SLASH_COMMAND_TOOL_CHAR_BUDGET"] == "1200"
+    assert "--disable-slash-commands" not in argv
+    assert len(chiamate) == 1 and g.stato()["pid"] == Processo.pid
+    riaperto = GestoreLocale(g.cartella).catalogo()["configurazione"]
+    assert riaperto["strumenti_claude"] == ["Read", "Skill", "NuovoTool"]
+    assert riaperto["profilo_strumenti_claude"] == "personalizzato"
+    with pytest.raises(ValueError, match="Arrestare"):
+        g.configura({**cfg, "contesto": 65536})
+    g.chiudi()
+
+
+def test_migrazione_completo_e_personalizzato_senza_strumenti(tmp_path, monkeypatch):
+    g, _ = gestore(tmp_path, monkeypatch)
+    g.configura({**configurazione(tmp_path), "strumenti_estesi_claude": True})
+    assert g.catalogo()["configurazione"]["profilo_strumenti_claude"] == "completo"
+    g.avvia("alfa")
+    g._stato["stato"] = "pronto"
+    monkeypatch.setattr(g, "_avvia_ponte", lambda: 12345)
+    argv, _ = g.prepara_client("claude")
+    assert argv[argv.index("--tools") + 1] == "default"
+    cfg = g.catalogo()["configurazione"]
+    g.configura({**cfg, "profilo_strumenti_claude": "personalizzato", "strumenti_claude": []})
+    argv, _ = g.prepara_client("claude")
+    assert argv[argv.index("--tools") + 1] == ""
+    g.chiudi()
+
+
+@pytest.mark.parametrize("modifica", [
+    {"strumenti_claude": "Read"}, {"strumenti_claude": ["Read,--model"]},
+    {"strumenti_claude": [False]}, {"profilo_strumenti_claude": "inventato"},
+    {"budget_skill_claude": True}, {"budget_skill_claude": 0}, {"budget_skill_claude": 100000}])
+def test_validazione_profilo_personale(tmp_path, modifica):
+    with pytest.raises(ValueError):
+        GestoreLocale(tmp_path / "dati").configura({**configurazione(tmp_path), **modifica})
