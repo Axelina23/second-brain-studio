@@ -98,7 +98,8 @@ def test_chiusura_locale_avvia_salvataggio_automatico(tmp_path, monkeypatch):
     assert ponte.salvataggio.stato_salvataggio(s, p.segni) == "in_corso"
 
 
-def test_worker_codex_conferma_solo_ultima_risposta_locale(tmp_path, monkeypatch):
+@pytest.mark.parametrize("bloccato", [False, True])
+def test_worker_codex_conferma_solo_ultima_risposta_locale(tmp_path, monkeypatch, bloccato):
     s = chat(tmp_path); s.assistente = "codex"
     monkeypatch.setattr(appunti_locali, "conversazione", lambda s: "UTENTE: Decisione sul progetto Alfa.")
     monkeypatch.setattr(appunti_locali.assistenti, "comando", lambda chi: ["codex.exe"])
@@ -107,7 +108,11 @@ def test_worker_codex_conferma_solo_ultima_risposta_locale(tmp_path, monkeypatch
         assert "--ephemeral" in argv and argv[-1] == "-"
         assert kw["env"]["CODEX_HOME"] == str(tmp_path / "profilo-locale")
         Path(argv[argv.index("--output-last-message") + 1]).write_text("SB_NOTES_OK\n", encoding="utf-8")
-        return SimpleNamespace(returncode=0, stdout="log", stderr="")
+        return SimpleNamespace(returncode=0, stdout="log", stderr="rejected: blocked by policy" if bloccato else "")
     g = Gestore()
     g.prepara_client = lambda a: ([], {"CODEX_HOME": str(tmp_path / "profilo-locale")})
-    assert "SB_NOTES_OK" in appunti_locali.esegui(g, s, tmp_path, tmp_path / "log", run=run)
+    if bloccato:
+        with pytest.raises(RuntimeError, match="accesso"):
+            appunti_locali.esegui(g, s, tmp_path, tmp_path / "log", run=run)
+    else:
+        assert "SB_NOTES_OK" in appunti_locali.esegui(g, s, tmp_path, tmp_path / "log", run=run)

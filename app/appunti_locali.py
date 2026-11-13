@@ -87,6 +87,10 @@ def esegui(gestore, sessione, radice, cartella, timeout=600, run=None):
     risposta = risultato.stdout or ""
     if sessione.assistente == "codex":
         risposta = finale.read_text(encoding="utf-8") if finale.is_file() else ""
+        # Il modello puo' confermare anche dopo chiamate agli strumenti rifiutate.
+        if re.search(r"sandbox:\s*read-only|blocked by policy|rejected: blocked|approval policy is Never; reject",
+                     risultato.stderr or "", re.IGNORECASE):
+            raise RuntimeError("Codex locale non ha accesso agli strumenti di scrittura: salvataggio non confermato; controlla il log")
     if risultato.returncode or not re.search(r"(?m)^SB_NOTES_OK\s*$", risposta):
         raise RuntimeError("L'agente locale non ha confermato il salvataggio; dettagli nel log della chat")
     return risposta

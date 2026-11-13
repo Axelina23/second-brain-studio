@@ -113,6 +113,8 @@ il proiettore e necessario solo per `visione=true`, il draft solo per `dflash=tr
   del worker sono Read/Edit/Write/Glob/Grep; per Codex il profilo e workspace-write.
 - I segni `in-corso`, `salvata`, `errore` aggiornano lo stato dell'interfaccia. Successo
   solo con uscita 0 e conferma finale `SB_NOTES_OK`; errori/timeout rimangono riprovabili.
+  Per Codex si rifiuta inoltre la conferma se il log segnala sola lettura o strumenti
+  bloccati dalla policy: nel collaudo reale il modello confermava senza aver letto i file.
   Log e snapshot privati in `<cache>/salvataggi-locali/<id>/`. I worker locali sono
   serializzati e trattengono il client del motore fino al completamento.
 - Il salvataggio locale richiede che SBS rimanga in esecuzione: uscire completamente
