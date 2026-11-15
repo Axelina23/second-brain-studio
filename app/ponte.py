@@ -600,6 +600,7 @@ class Ponte:
         return {"inbox": n}
 
     def inbox(self) -> dict:
+        from inbox_import import miniatura
         voci = []
         for p in self._file_inbox():
             anteprima = ""
@@ -609,34 +610,17 @@ class Ponte:
                 except OSError:
                     pass
             voci.append({"nome": p.name, "percorso": _rel(p, self.radice), "anteprima": anteprima,
-                         "dimensione": p.stat().st_size,
+                         "immagine": miniatura(p), "dimensione": p.stat().st_size,
                          "modificato": datetime.fromtimestamp(p.stat().st_mtime).astimezone().isoformat()})
         return {"inbox": voci}
 
     def aggiungi_inbox(self, percorsi: list[str]) -> dict:
-        # file trascinati nell'app: copiati in Inbox/ con la data davanti (regola dei
-        # documenti: "AAAA-MM-GG descrizione.ext"), mai sovrascrivendo; le cartelle si saltano
-        import shutil
-        cartella = self.radice / "Inbox"
-        cartella.mkdir(parents=True, exist_ok=True)
-        oggi = f"{self.adesso():%Y-%m-%d}"
-        aggiunti, saltati = [], []
-        for percorso in percorsi or []:
-            p = Path(percorso)
-            if not p.is_file():
-                saltati.append(p.name or str(p))
-                continue
-            nome = p.name if re.match(r"^\d{4}-\d{2}-\d{2} ", p.name) else f"{oggi} {p.name}"
-            dest, n = cartella / nome, 2
-            while dest.exists():
-                dest = cartella / f"{Path(nome).stem}-{n}{p.suffix}"
-                n += 1
-            try:
-                shutil.copy2(p, dest)
-                aggiunti.append(dest.name)
-            except OSError:
-                saltati.append(p.name)
-        return {"aggiunti": aggiunti, "saltati": saltati}
+        from inbox_import import copia_file
+        return copia_file(self.radice / "Inbox", percorsi, self.adesso())
+
+    def incolla_inbox(self, dati=None) -> dict:
+        from inbox_import import incolla_immagine
+        return incolla_immagine(self.radice / "Inbox", self.adesso(), dati)
 
     def nota(self, testo: str) -> dict:
         adesso = self.adesso()

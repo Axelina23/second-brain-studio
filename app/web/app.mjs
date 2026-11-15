@@ -238,6 +238,22 @@ function App({ primaChat, impIniziali, primoAvvio }) {
   }, []);
 
   useEffect(() => { caricaHome(); const t = setInterval(caricaHome, 5 * 60e3); return () => clearInterval(t); }, []);
+  useEffect(() => {
+    let fermo = false, occupato = false;
+    const leggi = async () => {
+      if (occupato) return;
+      occupato = true;
+      try {
+        const r = await api("importazioni_inbox");
+        if (!fermo) for (const esito of (r && r.esiti) || []) {
+          window.sb.evento("inbox-apri", {});
+          window.sb.evento("inbox-aggiunti", esito);
+        }
+      } finally { occupato = false; }
+    };
+    leggi(); const t = setInterval(leggi, 1000);
+    return () => { fermo = true; clearInterval(t); };
+  }, []);
   // l'Inbox cambia anche da fuori (Claude nei terminali): se il numero di file cambia, home ricaricata
   const contoInbox = useRef(null);
   contoInbox.current = home ? home.inbox : null;
@@ -366,7 +382,9 @@ function App({ primaChat, impIniziali, primoAvvio }) {
       if (!vista) setSchede((s) => s.map((x) => x.id === d.scheda ? { ...x, avviso: d.tipo } : x));
     }
     else if (nome === "mostrata") caricaHome();
+    else if (nome === "inbox-apri") { setPagina("inbox"); }
     else if (nome === "inbox-aggiunti") {
+      if (d.errore) { avvisa(d.errore, "errore"); return; }
       const n = d.aggiunti.length;
       if (n) avvisa(n === 1 ? `Aggiunto all'Inbox: ${d.aggiunti[0]}` : `${n} file aggiunti all'Inbox`);
       if (d.saltati.length) avvisa(`Saltati (cartelle o non leggibili): ${d.saltati.join(", ")}`, "errore");
@@ -849,6 +867,38 @@ function PaginaAppunti({ apri, avvisa, apriChat }) {
 function PaginaInbox({ apriChat, menuInbox }) {
   const [voci, setVoci] = useState(null);
   const [sopra, setSopra] = useState(0);
+  const occupato = useRef(false);
+  const [incollando, setIncollando] = useState(false);
+  const incolla = async (file = null) => {
+    if (occupato.current) return;
+    occupato.current = true; setIncollando(true);
+    try {
+      let dati = null;
+      if (file) {
+        if (file.size > 30 * 1024 * 1024) {
+          window.sb.evento("inbox-aggiunti", { errore: "Immagine troppo grande (massimo 30 MB)." });
+          return;
+        }
+        dati = await new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result.split(",")[1]); r.onerror = reject; r.readAsDataURL(file);
+        });
+      }
+      window.sb.evento("inbox-aggiunti", await api("incolla_inbox", dati));
+    } catch (_) {
+      window.sb.evento("inbox-aggiunti", { errore: "Non riesco a incollare l'immagine. Copiala di nuovo e riprova." });
+    } finally { occupato.current = false; setIncollando(false); }
+  };
+  useEffect(() => {
+    const ricevi = (e) => {
+      if (e.target.closest?.("input, textarea, [contenteditable], .xterm, [role=dialog]")) return;
+      const immagine = [...(e.clipboardData?.items || [])].find((x) => x.kind === "file" && x.type.startsWith("image/"));
+      if (!immagine) return;
+      e.preventDefault(); incolla(immagine.getAsFile());
+    };
+    document.addEventListener("paste", ricevi);
+    return () => document.removeEventListener("paste", ricevi);
+  }, []);
   const carica = async () => { const r = await api("inbox"); setVoci(r.inbox || []); };
   useEffect(() => { carica(); }, []);
   useEvento((n) => { if (n === "inbox-aggiunti") { setSopra(0); carica(); } });
@@ -859,14 +909,14 @@ function PaginaInbox({ apriChat, menuInbox }) {
       onDrop=${() => setSopra(0)}>
     ${sopra > 0 && html`<div class="rilascio"><div>${Icona.inbox()}<b>Rilascia per aggiungere all'Inbox</b><span>I file vengono copiati con la data di oggi davanti al nome</span></div></div>`}
     <header class="testata"><div><h1 class="piccolo">Inbox</h1></div>
-      <div class="azioni"><button class="btn primario" disabled=${!voci || voci.length === 0}
+      <div class="azioni"><button class="btn" disabled=${incollando} onClick=${() => incolla()}>${incollando ? "Incollo..." : "Incolla screenshot"}</button><button class="btn primario" disabled=${!voci || voci.length === 0}
         onClick=${() => apriChat("nuova", null, "smista l'inbox")}>Smista l'inbox</button></div></header>
-    <p class="sotto-testata">Trascina qui i file da smistare: l'app li copia nella cartella Inbox del second brain.</p>
+    <p class="sotto-testata">Incolla uno screenshot con Ctrl+V o trascina qui i file. Da Esplora file: tasto destro > Invia a > SBS Inbox (su Windows 11: Mostra altre opzioni).</p>
     ${voci === null ? html`<span class="carica"></span>` : voci.length === 0
       ? html`<div class="scheda vuoto" style="margin-top:22px"><strong>Inbox vuota</strong>Le note al volo e i file da smistare finiscono qui. Puoi trascinare dei file in questa pagina.</div>`
       : html`<div class="inbox-griglia">${voci.map((v) => html`<div class="scheda inbox-voce" tabindex="0" onContextMenu=${(e) => menuInbox(e, v, carica)}
           title="Tasto destro: apri, smista, sposta, rinomina, elimina">
-          <b>${v.nome}</b>${v.anteprima ? html`<div class="md" dangerouslySetInnerHTML=${{ __html: DOMPurify.sanitize(marked.parse(v.anteprima)) }}></div>` : ""}
+          <b>${v.nome}</b>${v.immagine && html`<img src=${v.immagine} alt=${v.nome} style="width:100%;max-height:200px;object-fit:contain;border-radius:8px;margin:8px 0" />`}${v.anteprima ? html`<div class="md" dangerouslySetInnerHTML=${{ __html: DOMPurify.sanitize(marked.parse(v.anteprima)) }}></div>` : ""}
           <div class="riga"><span class="num">${quando(v.modificato)}</span><span class="spazio" style="flex:1"></span>
             <button class="btn piccolo fantasma" onClick=${() => api("apri_esterno", v.percorso)}>${Icona.esterno()}Apri</button></div></div>`)}</div>`}
   </div>`;

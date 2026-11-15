@@ -175,6 +175,12 @@ export const EN = {
   "meno di una settimana": "less than a week", "1 settimana": "1 week", "1-2 settimane": "1-2 weeks", "1 mese": "1 month", "3 mesi": "3 months",
   "ferma da più di 2 settimane": "untouched for more than 2 weeks", "più recenti": "most recent", "più vecchi": "oldest",
   // Inbox
+  "Incolla screenshot": "Paste screenshot", "Incollo...": "Pasting...",
+  "Incolla uno screenshot con Ctrl+V o trascina qui i file. Da Esplora file: tasto destro > Invia a > SBS Inbox (su Windows 11: Mostra altre opzioni).": "Paste a screenshot with Ctrl+V or drag files here. From File Explorer: right click > Send to > SBS Inbox (Windows 11: Show more options).",
+  "Nessuna immagine negli appunti. Fai uno screenshot e riprova.": "No image in the clipboard. Take a screenshot and try again.",
+  "Non riesco a incollare l'immagine. Copiala di nuovo e riprova.": "Cannot paste the image. Copy it again and retry.",
+  "Immagine troppo grande (massimo 30 MB).": "Image too large (30 MB maximum).",
+  "Configura prima la cartella del second brain, poi invia di nuovo i file.": "Set up your second brain folder first, then send the files again.",
   "Smista l'inbox": "Sort the inbox", "smista l'inbox": "sort the inbox", "Inbox vuota": "Inbox is empty",
   "Trascina qui i file da smistare: l'app li copia nella cartella Inbox del second brain.": "Drop files to sort here: the app copies them into the second brain's Inbox folder.",
   "Le note al volo e i file da smistare finiscono qui. Puoi trascinare dei file in questa pagina.": "Quick notes and files to sort end up here. You can drag files onto this page.",

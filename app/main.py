@@ -100,6 +100,12 @@ class Api:
     def scrivi(self, rel, testo, mtime): return self._p.scrivi(rel, testo, mtime)
     def cerca(self, q): return self._p.cerca(q)
     def inbox(self): return self._p.inbox()
+    def incolla_inbox(self, dati=None): return self._p.incolla_inbox(dati)
+    def importazioni_inbox(self):
+        with self._app._blocco_importazioni:
+            esiti = self._app._importazioni[:]
+            self._app._importazioni.clear()
+        return {"esiti": esiti}
     def conta_inbox(self): return self._p.conta_inbox()
     def nota(self, testo): return self._p.nota(testo)
     def apri_chat(self, tipo="nuova", sessione=None, prompt=None, cartella=None, titolo=None):
@@ -222,6 +228,8 @@ class Api:
 
 class App:
     def __init__(self, nascosta: bool, debug: bool, nuova_chat: bool = False):
+        self._importazioni = []
+        self._blocco_importazioni = threading.Lock()
         self.nuova_chat = nuova_chat
         self.nascosta = nascosta
         self.debug = debug
@@ -484,6 +492,18 @@ class App:
         self.ponte.token_git = self.github._token
         self.altri._log = self.ponte._log
 
+    def importa_inbox(self, percorsi):
+        if not struttura.ha_indice(self.ponte.radice):
+            esito = {"errore": "Configura prima la cartella del second brain, poi invia di nuovo i file."}
+        else:
+            try:
+                esito = self.ponte.aggiungi_inbox(percorsi)
+            except OSError as e:
+                esito = {"errore": str(e)}
+        with self._blocco_importazioni:
+            self._importazioni.append(esito)
+        self.mostra()
+
     # --- file trascinati nell'Inbox ---
     def _al_caricamento(self) -> None:
         try:
@@ -658,7 +678,14 @@ class App:
                         if not pezzo:
                             break
                         comando += pezzo
-                    if comando.startswith(b"vai "):
+                    if comando.startswith(b"inbox "):
+                        try:
+                            percorsi = json.loads(comando[6:].decode("utf-8"))
+                            if isinstance(percorsi, list) and all(isinstance(p, str) for p in percorsi):
+                                self.importa_inbox(percorsi)
+                        except (ValueError, OSError):
+                            self.ponte._log()
+                    elif comando.startswith(b"vai "):
                         self.mostra()
                         self.emetti("vai-chat", {"sessione": comando[4:].decode("utf-8", "ignore").strip()})
                     elif comando.startswith(b"chat "):
@@ -803,6 +830,7 @@ class App:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--inbox", nargs="+", help="copia i file selezionati nell'Inbox")
     parser.add_argument("--nascosta", action="store_true")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--nuova-chat", action="store_true")
@@ -819,7 +847,9 @@ def main() -> None:
         except Exception:
             pass  # Verifica opzionale: il worker continua il salvataggio normale.
         return
-    if args.link:
+    if args.inbox:
+        comando = b"inbox " + json.dumps([str(Path(p).absolute()) for p in args.inbox]).encode("utf-8")
+    elif args.link:
         tipo, sessione = notifiche_win.leggi_link(args.link)
         comando = f"vai {sessione}".encode() if tipo == "chat" else b"mostra"
         if gia_aperta(comando):
@@ -830,7 +860,10 @@ def main() -> None:
         comando = b"nuova" if args.nuova_chat else b"mostra"
     if gia_aperta(comando):
         return
-    App(args.nascosta, args.debug, args.nuova_chat).avvia()
+    app = App(args.nascosta, args.debug, args.nuova_chat)
+    if args.inbox:
+        app.importa_inbox(args.inbox)
+    app.avvia()
 
 
 if __name__ == "__main__":

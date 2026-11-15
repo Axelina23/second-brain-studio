@@ -60,6 +60,9 @@ Name: "{autoprograms}\Second Brain Studio"; Filename: "{app}\Second Brain Studio
 Name: "{autodesktop}\Second Brain Studio"; Filename: "{app}\Second Brain Studio.exe"; Tasks: desktop
 Name: "{userstartup}\Second Brain Studio"; Filename: "{app}\Second Brain Studio.exe"; Parameters: "--nascosta"; Tasks: avvio
 
+; Explorer aggiunge alla riga di comando tutti i file selezionati.
+Name: "{usersendto}\SBS Inbox"; Filename: "{app}\Second Brain Studio.exe"; Parameters: "--inbox"; WorkingDir: "{app}"; Comment: "Copia i file nell'Inbox di Second Brain Studio"
+
 [Run]
 ; dopo un aggiornamento Windows tiene in cache le icone vecchie dei collegamenti: le rinfresca
 Filename: "{sys}\ie4uinit.exe"; Parameters: "-show"; Flags: runhidden nowait
