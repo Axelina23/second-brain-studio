@@ -99,11 +99,12 @@ if ($Pubblica -or $Stabile) {
   $corpo += "`n`n**Install:** download the ``Setup`` file below and run it (no administrator rights needed). " +
     "Windows SmartScreen may say it protected your PC because the installer is not code-signed yet: click **More info**, then **Run anyway**."
   if ($FirmaLocaleDiProva) {
-    $corpo += "`n`n**Windows 11 main Inbox menu - development certificate:** this pre-release contains a self-signed sparse package. " +
+    $avvisoFirma = "**Windows 11 main Inbox menu - development certificate:** this pre-release contains a self-signed sparse package. " +
       "On another PC, first import the attached public ``publisher.cer`` into **Local Computer > Trusted People** with explicit administrator approval, then run the installer. If you already installed it, import the certificate and run the installer again. " +
       "The installer never imports certificate trust automatically. Do not import it into Trusted Root Certification Authorities. " +
       "Screenshot paste and drag-and-drop work without this certificate. A production-trusted signature is still required before a stable release of the modern menu. " +
       "Certificate SHA-1 thumbprint: ``$($firma.SignerCertificate.Thumbprint)``. [Instructions](https://github.com/Axelina23/second-brain-studio/blob/main/docs/INBOX.md)."
+    $corpo = $avvisoFirma + "`n`n" + $corpo
   }
   $notefile = Join-Path $lavoro "note.md"
   [IO.File]::WriteAllText($notefile, $corpo, (New-Object Text.UTF8Encoding($false)))
