@@ -9,3 +9,4 @@ app/.impeccable/review/
 
 # bozze e cache del lavoro di design (Impeccable): restano sul disco, non nel repository
 app/.impeccable/
+app/shell/dist/

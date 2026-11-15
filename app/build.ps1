@@ -9,10 +9,19 @@
 #  -Pubblica: pre-release di prova (la ricevono solo le app con "Anche le versioni di prova")
 #  -Stabile:  release vera per tutti, con le note della prima sezione di CHANGELOG.md
 # Nota: niente lettere accentate in questo file (PowerShell 5.1 legge male l'UTF-8).
-param([switch]$SoloInstaller, [switch]$Pubblica, [switch]$Stabile)
+param([switch]$SoloInstaller, [switch]$Pubblica, [switch]$Stabile, [switch]$MenuWindows11)
 $ErrorActionPreference = "Stop"
 
 $qui = $PSScriptRoot
+$menu = Join-Path $qui "shell\dist"
+if ($MenuWindows11) {
+  foreach ($nome in @("SBSInbox.dll", "InboxMenu.msix", "publisher.cer")) {
+    if (-not (Test-Path -LiteralPath (Join-Path $menu $nome))) { throw "Compilare e firmare prima app\shell\build.ps1: manca $nome" }
+  }
+  $firma = Get-AuthenticodeSignature -FilePath (Join-Path $menu "InboxMenu.msix")
+  if (-not $firma.SignerCertificate) { throw "Il pacchetto del menu non e' firmato" }
+  if (($Pubblica -or $Stabile) -and (($firma.Status -ne "Valid") -or ($firma.SignerCertificate.Subject -eq $firma.SignerCertificate.Issuer))) { throw "Non pubblicare un menu con firma locale non attendibile sugli altri PC" }
+}
 $avvio = Join-Path (Split-Path $qui) "motore"
 # Python: il piu' recente tra le installazioni classiche e quelle del nuovo gestore (pythoncore-3.x)
 $py = @(Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe", "$env:LOCALAPPDATA\Python\pythoncore-3.*\python.exe" -ErrorAction SilentlyContinue) |
@@ -40,12 +49,21 @@ Write-Host "PyInstaller (versione $versione)..."
   (Join-Path $qui "main.py")
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller non riuscito" }
 $uscita = Join-Path $lavoro "dist\Second Brain Studio"
+if ($MenuWindows11) {
+  $shellOut = Join-Path $uscita "_shell"
+  New-Item -ItemType Directory -Force -Path $shellOut | Out-Null
+  foreach ($nome in @("SBSInbox.dll", "InboxMenu.msix", "publisher.cer")) { Copy-Item -LiteralPath (Join-Path $menu $nome) -Destination $shellOut }
+  Copy-Item -LiteralPath (Join-Path $qui "shell\gestisci-menu.ps1") -Destination $shellOut
+  Copy-Item -LiteralPath (Join-Path $qui "icona-1024.png") -Destination (Join-Path $shellOut "logo.png")
+}
 Remove-Item (Join-Path $uscita "_internal\web\prova.html") -ErrorAction SilentlyContinue
 
 Write-Host "Installer (Inno Setup)..."
 $dist = Join-Path $qui "dist"
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
-& $iscc /Q "/DVersione=$versione" "/DSorgente=$uscita" "/O$dist" (Join-Path $qui "installer.iss")
+$opzioniMenu = @()
+if ($MenuWindows11) { $opzioniMenu = @("/DMenuWindows11") }
+& $iscc /Q "/DVersione=$versione" "/DSorgente=$uscita" "/O$dist" @opzioniMenu (Join-Path $qui "installer.iss")
 if ($LASTEXITCODE -ne 0) { throw "Inno Setup non riuscito" }
 $setup = Join-Path $dist "Second Brain Studio Setup $versione.exe"
 # tiene solo gli ultimi 3 installer

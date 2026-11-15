@@ -44,6 +44,7 @@ def test_istanza_aperta_riceve_un_invito_multifile(monkeypatch, tmp_path):
     evento = threading.Event()
     app = m.App.__new__(m.App)
     app.uscendo = False
+    app.finestra = None
     app.importa_inbox = lambda file: (ricevuti.extend(file), evento.set())
     t = threading.Thread(target=app._ascolta_istanze, daemon=True)
     t.start()

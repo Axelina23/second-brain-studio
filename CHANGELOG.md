@@ -6,6 +6,8 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 
 ## Next version
 
+- Optional native Windows 11 Inbox command in the main File Explorer context menu, with multiple-file selection, explicit launch, signed sparse-package registration and uninstall cleanup. Keep the classic Send to entry for Windows 10. Build with `-MenuWindows11` after compiling and signing `app/shell`; never import certificate trust automatically.
+
 - Paste screenshots into Inbox with Ctrl+V or the Paste screenshot button, with image previews. Add Windows Explorer ? Send to ? SBS Inbox for one or more files, including when Studio is closed. Keep originals and existing Inbox files; import only on explicit action.
 
 - Configure local Claude tool profiles in Settings: Balanced, Complete or Custom, with individual checkboxes, additional CLI tool names and an editable skill-list budget. Save client preferences while the local model stays loaded; reopen the chat to apply them without another app update. Preserve legacy Complete profiles and personal selections across restarts.
