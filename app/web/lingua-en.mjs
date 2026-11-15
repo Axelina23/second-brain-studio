@@ -176,7 +176,7 @@ export const EN = {
   "ferma da più di 2 settimane": "untouched for more than 2 weeks", "più recenti": "most recent", "più vecchi": "oldest",
   // Inbox
   "Incolla screenshot": "Paste screenshot", "Incollo...": "Pasting...",
-  "Incolla uno screenshot con Ctrl+V o trascina qui i file. Da Esplora file: tasto destro > Invia a > SBS Inbox (su Windows 11: Mostra altre opzioni).": "Paste a screenshot with Ctrl+V or drag files here. From File Explorer: right click > Send to > SBS Inbox (Windows 11: Show more options).",
+  "Incolla uno screenshot con Ctrl+V o trascina qui i file. Puoi anche inviare file dal menu contestuale di Esplora file.": "Paste a screenshot with Ctrl+V or drag files here. You can also send files from the File Explorer context menu.",
   "Nessuna immagine negli appunti. Fai uno screenshot e riprova.": "No image in the clipboard. Take a screenshot and try again.",
   "Non riesco a incollare l'immagine. Copiala di nuovo e riprova.": "Cannot paste the image. Copy it again and retry.",
   "Immagine troppo grande (massimo 30 MB).": "Image too large (30 MB maximum).",

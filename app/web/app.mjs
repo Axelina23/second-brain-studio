@@ -911,7 +911,7 @@ function PaginaInbox({ apriChat, menuInbox }) {
     <header class="testata"><div><h1 class="piccolo">Inbox</h1></div>
       <div class="azioni"><button class="btn" disabled=${incollando} onClick=${() => incolla()}>${incollando ? "Incollo..." : "Incolla screenshot"}</button><button class="btn primario" disabled=${!voci || voci.length === 0}
         onClick=${() => apriChat("nuova", null, "smista l'inbox")}>Smista l'inbox</button></div></header>
-    <p class="sotto-testata">Incolla uno screenshot con Ctrl+V o trascina qui i file. Da Esplora file: tasto destro > Invia a > SBS Inbox (su Windows 11: Mostra altre opzioni).</p>
+    <p class="sotto-testata">Incolla uno screenshot con Ctrl+V o trascina qui i file. Puoi anche inviare file dal menu contestuale di Esplora file.</p>
     ${voci === null ? html`<span class="carica"></span>` : voci.length === 0
       ? html`<div class="scheda vuoto" style="margin-top:22px"><strong>Inbox vuota</strong>Le note al volo e i file da smistare finiscono qui. Puoi trascinare dei file in questa pagina.</div>`
       : html`<div class="inbox-griglia">${voci.map((v) => html`<div class="scheda inbox-voce" tabindex="0" onContextMenu=${(e) => menuInbox(e, v, carica)}
