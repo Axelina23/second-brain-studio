@@ -9,10 +9,13 @@
 #  -Pubblica: pre-release di prova (la ricevono solo le app con "Anche le versioni di prova")
 #  -Stabile:  release vera per tutti, con le note della prima sezione di CHANGELOG.md
 # Nota: niente lettere accentate in questo file (PowerShell 5.1 legge male l'UTF-8).
-param([switch]$SoloInstaller, [switch]$Pubblica, [switch]$Stabile, [switch]$MenuWindows11)
+param([switch]$SoloInstaller, [switch]$Pubblica, [switch]$Stabile, [switch]$MenuWindows11, [switch]$FirmaLocaleDiProva)
 $ErrorActionPreference = "Stop"
 
 $qui = $PSScriptRoot
+if ($FirmaLocaleDiProva -and (-not $Pubblica -or $Stabile -or -not $MenuWindows11)) {
+  throw "FirmaLocaleDiProva e' consentito solo con -Pubblica -MenuWindows11, mai per una stabile"
+}
 $menu = Join-Path $qui "shell\dist"
 if ($MenuWindows11) {
   foreach ($nome in @("SBSInbox.dll", "InboxMenu.msix", "publisher.cer")) {
@@ -20,7 +23,8 @@ if ($MenuWindows11) {
   }
   $firma = Get-AuthenticodeSignature -FilePath (Join-Path $menu "InboxMenu.msix")
   if (-not $firma.SignerCertificate) { throw "Il pacchetto del menu non e' firmato" }
-  if (($Pubblica -or $Stabile) -and (($firma.Status -ne "Valid") -or ($firma.SignerCertificate.Subject -eq $firma.SignerCertificate.Issuer))) { throw "Non pubblicare un menu con firma locale non attendibile sugli altri PC" }
+  $firmaAutofirmata = $firma.SignerCertificate.Subject -eq $firma.SignerCertificate.Issuer
+  if (($Pubblica -or $Stabile) -and (($firma.Status -ne "Valid") -or ($firmaAutofirmata -and -not $FirmaLocaleDiProva))) { throw "Serve una firma attendibile. Per una pre-release locale esplicita usare anche -FirmaLocaleDiProva; mai per una stabile" }
 }
 $avvio = Join-Path (Split-Path $qui) "motore"
 # Python: il piu' recente tra le installazioni classiche e quelle del nuovo gestore (pythoncore-3.x)
@@ -81,15 +85,33 @@ if ($Pubblica -or $Stabile) {
     $titolo = "Second Brain Studio $versione"
     $tipo = @()
   } else {
+    $righe = @(Get-Content (Join-Path (Split-Path $qui) "CHANGELOG.md") -Encoding UTF8)
+    $inizio = [array]::IndexOf($righe, '## Next version')
     $corpo = "Test build $versione. It may have rough edges: stable releases are the ones without the Pre-release label."
+    if ($inizio -ge 0) {
+      $novita = @()
+      for ($i = $inizio + 1; $i -lt $righe.Count -and $righe[$i] -notmatch '^## '; $i++) { $novita += $righe[$i] }
+      $corpo += "`n`n" + ($novita -join "`n").Trim()
+    }
     $titolo = "$versione (test)"
     $tipo = @("--prerelease")
   }
   $corpo += "`n`n**Install:** download the ``Setup`` file below and run it (no administrator rights needed). " +
     "Windows SmartScreen may say it protected your PC because the installer is not code-signed yet: click **More info**, then **Run anyway**."
+  if ($FirmaLocaleDiProva) {
+    $corpo += "`n`n**Windows 11 main Inbox menu - development certificate:** this pre-release contains a self-signed sparse package. " +
+      "On another PC, first import the attached public ``publisher.cer`` into **Local Computer > Trusted People** with explicit administrator approval, then run the installer. If you already installed it, import the certificate and run the installer again. " +
+      "The installer never imports certificate trust automatically. Do not import it into Trusted Root Certification Authorities. " +
+      "Screenshot paste and drag-and-drop work without this certificate. A production-trusted signature is still required before a stable release of the modern menu. " +
+      "Certificate SHA-1 thumbprint: ``$($firma.SignerCertificate.Thumbprint)``. [Instructions](https://github.com/Axelina23/second-brain-studio/blob/main/docs/INBOX.md)."
+  }
   $notefile = Join-Path $lavoro "note.md"
   [IO.File]::WriteAllText($notefile, $corpo, (New-Object Text.UTF8Encoding($false)))
-  gh release create "v$versione" $setup --repo Axelina23/second-brain-studio @tipo --title $titolo --notes-file $notefile
+  $asset = @($setup)
+  if ($FirmaLocaleDiProva) { $asset += (Join-Path $menu "publisher.cer") }
+  $testa = git -C (Split-Path $qui) rev-parse HEAD
+  if ($LASTEXITCODE -ne 0) { throw "Commit sorgente non trovato" }
+  gh release create "v$versione" @asset --repo Axelina23/second-brain-studio @tipo --target $testa.Trim() --title $titolo --notes-file $notefile
   if ($LASTEXITCODE -ne 0) { throw "Pubblicazione su GitHub non riuscita" }
   Write-Host "Pubblicata: v$versione"
 }
