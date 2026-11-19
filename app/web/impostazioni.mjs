@@ -137,6 +137,11 @@ export function famiglieAgy() {
     per.get(fam).livelli.push([id, m ? m[2] : ""]);
   }
   for (const f of per.values()) f.livelli.sort((a, b) => LIVELLI_AGY.indexOf(a[1]) - LIVELLI_AGY.indexOf(b[1]));
+  // "4 Neon" -> "Neon": il numero di versione resta solo se due famiglie avrebbero lo stesso nome
+  const corto = (n) => n.replace(/^\d+(\.\d+)* /, "");
+  const conteggio = new Map();
+  for (const f of per.values()) conteggio.set(corto(f.nome), (conteggio.get(corto(f.nome)) || 0) + 1);
+  for (const f of per.values()) if (conteggio.get(corto(f.nome)) === 1) f.nome = corto(f.nome);
   return [...per.values()];
 }
 const LIVELLO_DI_PARTENZA = ["medium", "high", "low", "xhigh"];

@@ -4,6 +4,10 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 `app\build.ps1 -Stabile` uses the first section below as the release notes, so the newest version goes on top.
 "Next version" collects what is in `main` but not released yet: rename it when it ships.
 
+## Next version
+
+- English translations for the new Antigravity settings, shorter model names (Neon, Argon, Hydrogen, Flash) and refreshed README screenshots and tour GIF.
+
 ## 2026.11.19 - Open source (GPL-3.0), live model lists and local AI
 
 - Second Brain Studio is now free software under the GNU General Public License v3.0 (it was PolyForm Noncommercial). Versions up to 2026.11.15 keep their old license. Added a code of conduct, a security policy and third-party notices.

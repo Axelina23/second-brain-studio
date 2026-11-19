@@ -42,8 +42,8 @@ Choose the assistant and model for each new chat. Studio runs the installed CLI 
 - Usage indicators depend on what each assistant exposes; they are not identical across providers. Conversation duplication uses Claude's native fork and is only offered for Claude.
 
 <table><tr>
-<td width="50%"><img src="docs/immagini/en/assistenti-codex.png" alt="Demo: Codex assistant and model settings"><br>Choose Codex and its model family.</td>
-<td width="50%"><img src="docs/immagini/en/assistenti-antigravity.png" alt="Demo: Antigravity assistant and model settings"><br>Choose Antigravity and its model.</td>
+<td width="50%"><img src="docs/immagini/en/assistenti-codex.png" alt="Demo: Codex assistant and model settings"><br>Choose Codex and its model family: always the newest version.</td>
+<td width="50%"><img src="docs/immagini/en/assistenti-antigravity.png" alt="Demo: Antigravity assistant and model settings"><br>Choose Antigravity and its model: the list (Neon, Argon, Hydrogen, Flash...) is read from the CLI, so new models appear by themselves.</td>
 </tr></table>
 
 Screenshots are interface previews using fictional data; they do not show real accounts or live assistant conversations.

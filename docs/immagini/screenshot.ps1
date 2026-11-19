@@ -20,8 +20,8 @@ Remove-Item -LiteralPath $profiloAssoluto -Recurse -Force -ErrorAction SilentlyC
 
 # nome del file -> parametri della pagina di prova
 $scatti = [ordered]@{
-  "assistenti-codex" = "imp=terminale&assistente=codex"
-  "assistenti-antigravity" = "imp=terminale&assistente=agy"
+  "assistenti-codex" = "imp=agenti&assistente=codex"
+  "assistenti-antigravity" = "imp=agenti&assistente=agy&scorri"
   "oggi"              = "demo"
   "oggi-chiaro"       = "demo&tema=chiaro"
   "chat-pc"           = "demo&pagina=chat"
