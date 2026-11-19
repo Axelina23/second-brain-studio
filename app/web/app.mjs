@@ -290,12 +290,18 @@ function App({ primaChat, impIniziali, primoAvvio }) {
       if (r && r.assistenti) setAssistenti((vecchi) => JSON.stringify(vecchi) === JSON.stringify(r.assistenti) ? vecchi : r.assistenti);
     });
     leggi();
-    // elenco dei modelli dalle CLI: il primo caricamento puo' essere ancora vuoto, poi si rilegge
-    caricaCatalogo(api);
-    const modelli = setInterval(() => caricaCatalogo(api), 60000);
+    // elenco dei modelli dalle CLI: al primo avvio puo' essere ancora vuoto, quindi si riprova
+    // ogni 3 secondi finche' arriva; poi si rilegge ogni minuto e quando la finestra torna in primo piano
+    let provaModelli = 0;
+    const cercaModelli = async () => { if (await caricaCatalogo(api) || ++provaModelli >= 20) { clearInterval(riprova); } };
+    const riprova = setInterval(cercaModelli, 3000);
+    cercaModelli();
+    const rileggiModelli = () => caricaCatalogo(api);
+    const modelli = setInterval(rileggiModelli, 60000);
     const timer = setInterval(leggi, 15000);
     window.addEventListener("focus", leggi);
-    return () => { clearInterval(timer); clearInterval(modelli); window.removeEventListener("focus", leggi); };
+    window.addEventListener("focus", rileggiModelli);
+    return () => { clearInterval(timer); clearInterval(modelli); clearInterval(riprova); window.removeEventListener("focus", leggi); window.removeEventListener("focus", rileggiModelli); };
   }, []);
   const mettiImp = useCallback(async (k, v) => {
     setImp((x) => ({ ...x, [k]: v }));

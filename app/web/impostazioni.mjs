@@ -81,10 +81,13 @@ let ultimoCatalogo = "";
 export async function caricaCatalogo(api, forza = false) {
   const r = await api("modelli", forza);
   const a = r && r.assistenti;
-  if (!a || JSON.stringify(a) === ultimoCatalogo) return;
-  ultimoCatalogo = JSON.stringify(a);
-  CATALOGO.codex = a.codex || []; CATALOGO.agy = a.agy || [];
-  ascoltatori.forEach((f) => f());
+  if (!a) return false;
+  if (JSON.stringify(a) !== ultimoCatalogo) {
+    ultimoCatalogo = JSON.stringify(a);
+    CATALOGO.codex = a.codex || []; CATALOGO.agy = a.agy || [];
+    ascoltatori.forEach((f) => f());
+  }
+  return CATALOGO.agy.length > 0 || CATALOGO.codex.length > 0;
 }
 function useCatalogo() {
   const [, rifai] = useState(0);
