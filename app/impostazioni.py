@@ -39,7 +39,7 @@ PREDEFINITE = {
     "terminale_righe": 10000, "terminale_scorrimento_fluido": False, "terminale_incolla_destro": True,
     "terminale_posizione": "auto", "terminale_tema": "notte",
     "modello_codex": "predefinito", "modello_agy": "predefinito", "assistente_chat": "claude",
-    "modello_locale": "",
+    "modello_locale": "", "agy_mostra_altri": False,
     "codex_senza_conferme": False,
     "modalita_claude": "predefinito", "modalita_codex": "predefinito", "modalita_agy": "predefinito",
     "impegno_claude": "predefinito", "impegno_codex": "predefinito", "impegno_agy": "predefinito",

@@ -1019,7 +1019,7 @@ function SceltaChat({ imp, mettiImp, assistenti }) {
       aria-checked=${scelto === a.id} class=${scelto === a.id ? "scelto" : ""} disabled=${!a.installato}
       title=${a.installato ? "" : "Non installato su questo PC"} onClick=${() => mettiImp("assistente_chat", a.id)}>${a.nome}</button>`)}</span>`}
     ${LOCALE(scelto) ? html`<${SceltaLocale} api=${api} imp=${imp} mettiImp=${mettiImp} />`
-      : html`<${SceltaModello} agente=${scelto} valore=${imp[chiave]} cambia=${(v) => mettiImp(chiave, v)} />`}
+      : html`<${SceltaModello} agente=${scelto} valore=${imp[chiave]} cambia=${(v) => mettiImp(chiave, v)} tutti=${imp.agy_mostra_altri} />`}
   </div>`;
 }
 

@@ -87,3 +87,9 @@ def test_modelli_nuovi_dalla_cli_si_possono_salvare(monkeypatch):
     assert r["ok"] and "scartate" not in r
     assert imp.leggi()["modello_agy"] == "gemini-4-neon-high"
     assert "modello_agy" in imp.salva({"modello_agy": "x; rm"})["scartate"]
+
+
+def test_claude_e_gpt_oss_di_antigravity_nascosti_di_default():
+    assert imp.leggi()["agy_mostra_altri"] is False
+    assert imp.salva({"agy_mostra_altri": True})["ok"] and imp.leggi()["agy_mostra_altri"] is True
+    assert "agy_mostra_altri" in imp.salva({"agy_mostra_altri": "si"})["scartate"]

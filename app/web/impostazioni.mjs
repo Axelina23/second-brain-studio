@@ -63,7 +63,8 @@ function SezioneAgente({ agente, imp, metti }) {
   const chiave = CHIAVE_MODELLO[agente];
   const scegli = (key, opzioni) => html`<select class="campo imp-sel" value=${imp[key] || "predefinito"} onChange=${(e) => metti(key, e.target.value)}>${opzioni.map(([v, n]) => html`<option value=${v}>${n}</option>`)}</select>`;
   const livelli = [["predefinito", "Predefinito"], ["low", "Basso"], ["medium", "Medio"], ["high", "Alto"], ["xhigh", "Molto alto"], ...(agente === "codex" ? [] : [["max", "Massimo"]])];
-  return html`<${Voce} titolo="Modello"><${SceltaModello} agente=${agente} valore=${imp[chiave]} cambia=${(v) => metti(chiave, v)} /></${Voce}>
+  return html`<${Voce} titolo="Modello"><${SceltaModello} agente=${agente} valore=${imp[chiave]} cambia=${(v) => metti(chiave, v)} tutti=${imp.agy_mostra_altri} /></${Voce}>
+    ${agente === "agy" && html`<${Interruttore} titolo="Mostra anche Claude e GPT-OSS" testo="Sono i modelli non Google di Antigravity: utili quando finisci la quota di Gemini 4." valore=${imp.agy_mostra_altri} cambia=${(v) => metti("agy_mostra_altri", v)} />`}
     <${Voce} titolo="Modalità permessi">${scegli(`modalita_${agente}`, modi[agente])}</${Voce}>
     <${Voce} titolo="Livello di ragionamento" testo="I livelli disponibili dipendono dal modello. Predefinito usa la scelta dell'assistente.">${scegli(`impegno_${agente}`, livelli)}</${Voce}>`;
 }
@@ -140,9 +141,10 @@ export function famiglieAgy() {
 }
 const LIVELLO_DI_PARTENZA = ["medium", "high", "low", "xhigh"];
 
-export function SceltaAgy({ valore, cambia, predefinito = true }) {
+export function SceltaAgy({ valore, cambia, predefinito = true, tutti = false }) {
   useCatalogo();
-  const famiglie = famiglieAgy();
+  // di default solo i Gemini: Claude e GPT-OSS di Antigravity servono a chi finisce la quota (interruttore in Impostazioni > Agenti)
+  const famiglie = famiglieAgy().filter((f) => tutti || f.id.startsWith("gemini") || f.livelli.some(([id]) => id === valore));
   if (!famiglie.length) {
     const fisso = predefinito ? MODELLI.agy : MODELLI.agy.filter(([v]) => v !== "predefinito");
     return html`<span class="imp-seg" role="radiogroup" aria-label="Modello">${fisso.map(([v, n]) => html`<button role="radio"
@@ -170,9 +172,9 @@ export const MODELLI = {
 };
 export const CHIAVE_MODELLO = { claude: "modello_chat", codex: "modello_codex", agy: "modello_agy" };
 
-export function SceltaModello({ agente, valore, cambia }) {
+export function SceltaModello({ agente, valore, cambia, tutti }) {
   if (agente === "codex") return html`<${SceltaCodex} valore=${valore || "predefinito"} cambia=${cambia} />`;
-  if (agente === "agy") return html`<${SceltaAgy} valore=${valore || "predefinito"} cambia=${cambia} />`;
+  if (agente === "agy") return html`<${SceltaAgy} valore=${valore || "predefinito"} cambia=${cambia} tutti=${tutti} />`;
   const mod = valore || "predefinito";
   return html`<span class="imp-seg" role="radiogroup" aria-label="Modello">${(MODELLI[agente] || MODELLI.claude).map(([v, n]) => html`<button role="radio"
     aria-checked=${mod === v} class=${mod === v ? "scelto" : ""} onClick=${() => cambia(v)}>${n}</button>`)}</span>`;
@@ -324,7 +326,7 @@ export function Impostazioni({ api, chiudi, avvisa, gh, accediGh, sincronizzaGh,
       <${Voce} titolo="Modello appunti di Codex" testo="Predefinito = quello configurato in Codex.">
         <${SceltaCodex} valore=${imp.modello_appunti_codex} cambia=${(v) => metti("modello_appunti_codex", v)} /></${Voce}>
       <${Voce} titolo="Modello appunti di Antigravity" testo="Flash e Hydrogen sono veloci e leggeri; Neon e Argon più approfonditi. L'elenco si aggiorna da solo.">
-        <${SceltaAgy} valore=${imp.modello_appunti_agy} cambia=${(v) => metti("modello_appunti_agy", v)} predefinito=${false} /></${Voce}>
+        <${SceltaAgy} valore=${imp.modello_appunti_agy} cambia=${(v) => metti("modello_appunti_agy", v)} predefinito=${false} tutti=${imp.agy_mostra_altri} /></${Voce}>
       <${Voce} titolo="Chat troppo corte" testo=${`Sotto ${imp.soglia_kb} KB di trascrizione non si aggiornano gli appunti.`}>
         <input type="range" min="5" max="200" step="5" value=${imp.soglia_kb} onChange=${(e) => metti("soglia_kb", +e.target.value)} /></${Voce}>
       <p class="imp-nota">Valgono per gli hook installati dall'app (primo avvio). Se usi hook tuoi, restano i tuoi.</p>`,
