@@ -66,7 +66,7 @@ function SezioneAgente({ agente, imp, metti }) {
   return html`<${Voce} titolo="Modello"><${SceltaModello} agente=${agente} valore=${imp[chiave]} cambia=${(v) => metti(chiave, v)} tutti=${imp.agy_mostra_altri} /></${Voce}>
     ${agente === "agy" && html`<${Interruttore} titolo="Mostra anche Claude e GPT-OSS" testo="Sono i modelli non Google di Antigravity: utili quando finisci la quota di Gemini 4." valore=${imp.agy_mostra_altri} cambia=${(v) => metti("agy_mostra_altri", v)} />`}
     <${Voce} titolo="Modalità permessi">${scegli(`modalita_${agente}`, modi[agente])}</${Voce}>
-    <${Voce} titolo="Livello di ragionamento" testo="I livelli disponibili dipendono dal modello. Predefinito usa la scelta dell'assistente.">${scegli(`impegno_${agente}`, livelli)}</${Voce}>`;
+    <${Voce} titolo="Livello di ragionamento" testo=${agente === "agy" ? "Per Antigravity sceglie il livello del modello (Low, Medium, High, XHigh); se il modello non lo ha, usa il più vicino." : "I livelli disponibili dipendono dal modello. Predefinito usa la scelta dell'assistente."}>${scegli(`impegno_${agente}`, livelli)}</${Voce}>`;
 }
 
 function Segmenti({ valore, cambia, opzioni }) {
@@ -125,9 +125,9 @@ export function SceltaCodex({ valore, cambia }) {
       aria-checked=${id === scelto} class=${id === scelto ? "scelto" : ""} onClick=${() => cambia(id)}>${nome}</button>`)}</span>`;
 }
 
-// Antigravity: famiglia (Neon, Argon, Hydrogen, Flash, Claude...) e, sotto, il livello (Low...XHigh).
+// Antigravity: una sola riga di famiglie (Neon, Argon, Hydrogen, Flash...). Il livello (Low...XHigh)
+// non si sceglie qui: lo decide "Livello di ragionamento" in Impostazioni > Agenti, come per Claude e Codex.
 const LIVELLI_AGY = ["low", "medium", "high", "xhigh"];
-const NOMI_LIVELLO = { low: "Low", medium: "Med", high: "High", xhigh: "XHigh" };
 export function famiglieAgy() {
   const per = new Map();
   for (const { id, nome } of CATALOGO.agy) {
@@ -141,7 +141,7 @@ export function famiglieAgy() {
 }
 const LIVELLO_DI_PARTENZA = ["medium", "high", "low", "xhigh"];
 
-export function SceltaAgy({ valore, cambia, predefinito = true, tutti = false }) {
+export function SceltaAgy({ valore, cambia, predefinito = true, tutti = false, partenza = LIVELLO_DI_PARTENZA }) {
   useCatalogo();
   // di default solo i Gemini: Claude e GPT-OSS di Antigravity servono a chi finisce la quota (interruttore in Impostazioni > Agenti)
   const famiglie = famiglieAgy().filter((f) => tutti || f.id.startsWith("gemini") || f.livelli.some(([id]) => id === valore));
@@ -152,16 +152,13 @@ export function SceltaAgy({ valore, cambia, predefinito = true, tutti = false })
   }
   const corrente = famiglie.find((f) => f.livelli.some(([id]) => id === valore));
   const scegliFamiglia = (f) => {
-    const pref = LIVELLO_DI_PARTENZA.map((l) => f.livelli.find(([, x]) => x === l)).find(Boolean) || f.livelli[0];
+    const pref = partenza.map((l) => f.livelli.find(([, x]) => x === l)).find(Boolean) || f.livelli[0];
     cambia(pref[0]);
   };
   const senzaScelta = !corrente && (valore || "predefinito") === "predefinito";
-  return html`<span class="imp-modello-doppio">
-    <span class="imp-seg" role="radiogroup" aria-label="Modello">
+  return html`<span class="imp-seg" role="radiogroup" aria-label="Modello">
       ${predefinito && html`<button role="radio" aria-checked=${senzaScelta} class=${senzaScelta ? "scelto" : ""} onClick=${() => cambia("predefinito")}>Predefinito</button>`}
-      ${famiglie.map((f) => html`<button role="radio" aria-checked=${corrente === f} class=${corrente === f ? "scelto" : ""} title=${f.id} onClick=${() => scegliFamiglia(f)}>${f.nome}</button>`)}</span>
-    ${corrente && corrente.livelli.length > 1 && html`<span class="imp-seg" role="radiogroup" aria-label="Livello">${corrente.livelli.map(([id, l]) => html`<button role="radio"
-      aria-checked=${valore === id} class=${valore === id ? "scelto" : ""} onClick=${() => cambia(id)}>${NOMI_LIVELLO[l] || l}</button>`)}</span>`}</span>`;
+      ${famiglie.map((f) => html`<button role="radio" aria-checked=${corrente === f} class=${corrente === f ? "scelto" : ""} title=${f.id} onClick=${() => scegliFamiglia(f)}>${f.nome}</button>`)}</span>`;
 }
 
 // Il modello si sceglie sempre con lo stesso selettore, per ogni assistente
@@ -326,7 +323,7 @@ export function Impostazioni({ api, chiudi, avvisa, gh, accediGh, sincronizzaGh,
       <${Voce} titolo="Modello appunti di Codex" testo="Predefinito = quello configurato in Codex.">
         <${SceltaCodex} valore=${imp.modello_appunti_codex} cambia=${(v) => metti("modello_appunti_codex", v)} /></${Voce}>
       <${Voce} titolo="Modello appunti di Antigravity" testo="Flash e Hydrogen sono veloci e leggeri; Neon e Argon più approfonditi. L'elenco si aggiorna da solo.">
-        <${SceltaAgy} valore=${imp.modello_appunti_agy} cambia=${(v) => metti("modello_appunti_agy", v)} predefinito=${false} tutti=${imp.agy_mostra_altri} /></${Voce}>
+        <${SceltaAgy} valore=${imp.modello_appunti_agy} cambia=${(v) => metti("modello_appunti_agy", v)} predefinito=${false} tutti=${imp.agy_mostra_altri} partenza=${["low", "medium", "high", "xhigh"]} /></${Voce}>
       <${Voce} titolo="Chat troppo corte" testo=${`Sotto ${imp.soglia_kb} KB di trascrizione non si aggiornano gli appunti.`}>
         <input type="range" min="5" max="200" step="5" value=${imp.soglia_kb} onChange=${(e) => metti("soglia_kb", +e.target.value)} /></${Voce}>
       <p class="imp-nota">Valgono per gli hook installati dall'app (primo avvio). Se usi hook tuoi, restano i tuoi.</p>`,

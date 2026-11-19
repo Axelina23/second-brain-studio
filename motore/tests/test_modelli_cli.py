@@ -82,3 +82,28 @@ def test_codex_prende_la_versione_piu_nuova_della_famiglia(monkeypatch):
     assert assistenti.ultimo_modello_codex("gpt-5.6-sol") == "gpt-6.2-sol"
     assert assistenti.ultimo_modello_codex("gpt-6-luna") == "gpt-6-luna"
     assert assistenti.argomenti("codex", modello="gpt-6.1-sol") == ["-m", "gpt-6.2-sol"]
+
+
+def _con_elenco(monkeypatch):
+    monkeypatch.setattr(modelli_cli, "scarica", lambda n: modelli_cli.leggi_agy(
+        "\n".join(f"gemini-4-neon-{l}\tNeon ({l})" for l in ("low", "medium", "high", "xhigh"))
+        + "\ngemini-3.8-flash-low\tF\ngemini-3.8-flash-medium\tF\ngemini-3.8-flash-high\tF") if n == "agy" else None)
+    modelli_cli.aggiorna(forza=True)
+
+
+def test_il_livello_lo_decide_l_impegno_scelto_nelle_impostazioni(monkeypatch):
+    _con_elenco(monkeypatch)
+    assert modelli_cli.con_livello("gemini-4-neon-medium", "high") == "gemini-4-neon-high"
+    assert modelli_cli.con_livello("gemini-4-neon-medium", "max") == "gemini-4-neon-xhigh"
+    # Flash non ha xhigh: si usa il piu' alto disponibile
+    assert modelli_cli.con_livello("gemini-3.8-flash-low", "xhigh") == "gemini-3.8-flash-high"
+    assert modelli_cli.con_livello("gemini-4-neon-medium", "predefinito") == "gemini-4-neon-medium"
+    assert modelli_cli.con_livello("inventato", "high") == "inventato"
+
+
+def test_agy_con_impegno_non_passa_anche_effort(monkeypatch):
+    _con_elenco(monkeypatch)
+    assert assistenti.argomenti("agy", modello="gemini-4-neon-medium", impegno="xhigh") == ["--model", "gemini-4-neon-xhigh"]
+    assert assistenti.argomenti("agy", modello="gemini-4-neon-medium") == ["--model", "gemini-4-neon-medium"]
+    # senza modello scelto resta --effort come prima
+    assert assistenti.argomenti("agy", impegno="high") == ["--effort", "high"]

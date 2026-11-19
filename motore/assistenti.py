@@ -368,4 +368,11 @@ def argomenti(nome: str, sessione: str | None = None, prompt: str | None = None,
         valido = ultimo_modello_codex(valido) if valido else None
         permessi = opzioni_chat(nome, modalita or ("completa" if senza_conferme else "predefinito"), impegno)
         return (["-m", valido] if valido else []) + (["resume", sessione] if sessione else []) + permessi + ([prompt] if prompt else [])
+    if nome == "agy" and valido:
+        # il livello e' parte del nome del modello (gemini-4-neon-high): lo decide l'impegno scelto
+        # nelle impostazioni, e allora non serve anche --effort
+        import modelli_cli
+        scelto = modelli_cli.con_livello(valido, impegno)
+        if modelli_cli.conosce("agy", scelto):
+            valido, impegno = scelto, "predefinito"
     return (["--model", valido] if valido else []) + (["--conversation", sessione] if sessione else []) + opzioni_chat(nome, modalita or "predefinito", impegno) + (["-i", prompt] if prompt else [])

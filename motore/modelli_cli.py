@@ -119,6 +119,24 @@ def catalogo() -> dict:
     return {"assistenti": {n: elenco(n) for n in _LETTORI}}
 
 
+LIVELLI = ("low", "medium", "high", "xhigh")
+RE_LIVELLO = re.compile(r"(.+)-(low|medium|high|xhigh)")
+
+
+def con_livello(modello: str, impegno: str) -> str:
+    # gemini-4-neon-medium + "high" -> gemini-4-neon-high; se quel livello non esiste per il modello
+    # si prende il piu' vicino verso il basso (poi verso l'alto). "max" vale xhigh.
+    m = RE_LIVELLO.fullmatch(modello or "")
+    if not m or impegno not in (*LIVELLI, "max"):
+        return modello
+    disponibili = [l for l in LIVELLI if conosce("agy", f"{m.group(1)}-{l}")]
+    if not disponibili:
+        return modello
+    voluto = LIVELLI.index("xhigh" if impegno == "max" else impegno)
+    sotto = [l for l in disponibili if LIVELLI.index(l) <= voluto]
+    return f"{m.group(1)}-{(sotto[-1] if sotto else disponibili[0])}"
+
+
 def ultimo_codex(modello: str) -> str:
     # gpt-6-sol -> gpt-6.2-sol: la versione piu' nuova della stessa famiglia nell'elenco
     m = re.fullmatch(r"gpt-(\d+(?:\.\d+)*)-([a-z]+)", modello or "")
