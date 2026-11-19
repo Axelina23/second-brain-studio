@@ -238,9 +238,11 @@ I tuoi appunti (nel tuo repository privato, come qualsiasi repository git) e, se
 JSON per PC con parole chiave, orari e stato delle chat. Mai il contenuto delle conversazioni.
 
 **Perché Windows mi avvisa quando apro l'installer?**
-I certificati per firmare il codice si pagano ogni anno e questo è un progetto gratuito, quindi l'installer non è firmato.
-SmartScreen avvisa per i file non firmati che pochi hanno scaricato finora. Se preferisci non fidarti di un eseguibile,
-il codice e lo script per compilarlo sono tutti qui.
+I certificati per firmare il codice si pagano ogni anno e questo è un progetto gratuito, quindi l'installer non è ancora firmato.
+SmartScreen avvisa per i file non firmati che pochi hanno scaricato finora. Sto chiedendo la firma gratuita alla
+[SignPath Foundation](https://signpath.org/), che firma i progetti open source; vedi la [policy di firma](../CODE_SIGNING_POLICY.md).
+Finché non è attiva, se preferisci non fidarti di un eseguibile, il codice e lo script per compilarlo sono tutti qui e l'installer
+viene costruito in pubblico da [GitHub Actions](../.github/workflows/release.yml).
 
 **E il Mac?**
 È in programma. Il motore funziona ovunque; le parti legate a Windows sono il terminale e l'installer.

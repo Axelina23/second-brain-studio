@@ -238,9 +238,11 @@ Your notes (to your private repo, like any git repo) and, if the multi-PC view i
 keywords, times and save status. Never the content of your chats.
 
 **Why does Windows warn me about the installer?**
-Code-signing certificates cost money every year and this is a free project, so the installer isn't signed.
-SmartScreen warns about unsigned files that few people have downloaded yet. If you'd rather not trust a binary,
-the source and the build script are all here.
+Code-signing certificates cost money every year and this is a free project, so the installer isn't signed yet.
+SmartScreen warns about unsigned files that few people have downloaded yet. I am applying for free code signing from the
+[SignPath Foundation](https://signpath.org/), which signs open source projects; see the [code signing policy](CODE_SIGNING_POLICY.md).
+Until that is active, if you'd rather not trust a binary, the source and the build script are all here, and the installer is built
+in public by [GitHub Actions](.github/workflows/release.yml).
 
 **Mac?**
 Planned. The engine is cross-platform; the terminal and the installer are the Windows-specific parts.
