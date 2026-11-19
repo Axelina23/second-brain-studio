@@ -10,7 +10,7 @@ and every PC in sync through your own private GitHub repository.
 
 [![Download for Windows](https://img.shields.io/github/v/release/Axelina23/second-brain-studio?label=download&logo=windows&logoColor=white&color=1f4fa3)](https://github.com/Axelina23/second-brain-studio/releases/latest)
 [![Python 3.14](https://img.shields.io/badge/Python-3.14-f2c94c?logo=python&logoColor=black)](app/requirements.txt)
-[![License: PolyForm Noncommercial](https://img.shields.io/badge/license-PolyForm%20Noncommercial-86c5a1)](LICENSE.md)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-86c5a1)](LICENSE.md)
 [![Interface: EN · IT](https://img.shields.io/badge/interface-EN%20%C2%B7%20IT-c8643b)](#features)
 
 [Features](#features) · [How it works](#how-it-works) · [Install](#install) · [FAQ](#faq) · [Contributing](#contributing) · [🇮🇹 Italiano](docs/README.it.md)
@@ -259,5 +259,11 @@ Second Brain Studio is free and I build it in my spare time. If it saves you tim
 
 ## License
 
-[PolyForm Noncommercial 1.0.0](LICENSE.md): free to use, change and share for any noncommercial purpose.
-Nobody may sell it. Emblem icons: Microsoft Fluent Emoji (MIT). Terminal: xterm.js. Interface: Preact.
+Copyright (C) 2026 Francesco Cinquegrana. Free software under the [GNU General Public License v3.0](LICENSE.md) (or any later version):
+use it, study it, change it and share it. If you share a modified version, it must stay open under the same license.
+Versions up to 2026.11.15 were released under [PolyForm Noncommercial 1.0.0](docs/PREVIOUS-LICENSE-PolyForm-Noncommercial-1.0.0.md) and keep that license.
+The name "Second Brain Studio" and its icon are not covered by the license: please pick another name for a fork.
+Third-party components (xterm.js, Preact, Fluent Emoji, Figtree...): see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Second Brain Studio is an independent project, not affiliated with or endorsed by Anthropic, OpenAI or Google.
+Claude, Codex and Antigravity are trademarks of their owners.

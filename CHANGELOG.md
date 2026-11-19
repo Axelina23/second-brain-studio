@@ -4,12 +4,13 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 `app\build.ps1 -Stabile` uses the first section below as the release notes, so the newest version goes on top.
 "Next version" collects what is in `main` but not released yet: rename it when it ships.
 
-## Next version
+## 2026.11.19 - Open source (GPL-3.0), live model lists and local AI
+
+- Second Brain Studio is now free software under the GNU General Public License v3.0 (it was PolyForm Noncommercial). Versions up to 2026.11.15 keep their old license. Added a code of conduct, a security policy and third-party notices.
 
 - Model lists for Antigravity and Codex are now read from the CLIs themselves (`agy models`, `codex debug models`), cached for 6 hours and refreshed on start, so new models (Gemini 4 Neon, Hydrogen, GPT 6.2...) show up without an app update. Antigravity picker is one row of families (Neon, Hydrogen...); the level (Low...XHigh) follows the reasoning level chosen in Settings > Agents, like Claude and Codex; Codex picks the newest version of each family. The built-in lists remain as a fallback when a CLI is missing or fails. Antigravity shows only the Gemini models by default; a setting in Agents brings back Claude and GPT-OSS. The list is retried every 3 seconds on first start until the CLIs answer.
 
-- Optional native Windows 11 Inbox command in the main File Explorer context menu, with multiple-file selection, explicit launch, signed sparse-package registration and uninstall cleanup. Keep the classic Send to entry for Windows 10. Build with `-MenuWindows11` after compiling and signing `app/shell`; never import certificate trust automatically.
-- Development-signed Windows 11 menu packages are available only through the explicit pre-release build option; attach the public certificate and installation steps. Stable publishing still rejects self-signed packages. Other test PCs must authorize the certificate manually; screenshot paste does not require it.
+- The Windows 11 main-menu Inbox command exists in the repository but ships only in test builds for now (it needs a trusted signature); it is not part of this release.
 
 - Paste screenshots into Inbox with Ctrl+V or the Paste screenshot button, with image previews. Add Windows Explorer > Send to > SBS Inbox for one or more files, including when Studio is closed. Keep originals and existing Inbox files; import only on explicit action.
 

@@ -10,7 +10,7 @@ e tutti i tuoi PC allineati tramite il tuo repository privato su GitHub.
 
 [![Scarica per Windows](https://img.shields.io/github/v/release/Axelina23/second-brain-studio?label=scarica&logo=windows&logoColor=white&color=1f4fa3)](https://github.com/Axelina23/second-brain-studio/releases/latest)
 [![Python 3.14](https://img.shields.io/badge/Python-3.14-f2c94c?logo=python&logoColor=black)](../app/requirements.txt)
-[![Licenza: PolyForm Noncommercial](https://img.shields.io/badge/licenza-PolyForm%20Noncommercial-86c5a1)](../LICENSE.md)
+[![Licenza: GPL-3.0](https://img.shields.io/badge/licenza-GPL--3.0-86c5a1)](../LICENSE.md)
 [![Interfaccia: IT · EN](https://img.shields.io/badge/interfaccia-IT%20%C2%B7%20EN-c8643b)](#funzioni)
 
 [Funzioni](#funzioni) · [Come funziona](#come-funziona) · [Installazione](#installazione) · [Domande](#domande-frequenti) · [Contribuire](#contribuire) · [🇬🇧 English](../README.md)
@@ -259,5 +259,11 @@ Second Brain Studio è gratis e lo sviluppo nel tempo libero. Se ti fa risparmia
 
 ## Licenza
 
-[PolyForm Noncommercial 1.0.0](../LICENSE.md): gratis da usare, modificare e condividere per qualsiasi scopo non commerciale.
-Nessuno può venderla. Icone degli emblemi: Microsoft Fluent Emoji (MIT). Terminale: xterm.js. Interfaccia: Preact.
+Copyright (C) 2026 Francesco Cinquegrana. Software libero con licenza [GNU General Public License v3.0](../LICENSE.md) (o successiva):
+puoi usarlo, studiarlo, modificarlo e condividerlo. Se condividi una versione modificata, deve restare aperta con la stessa licenza.
+Le versioni fino alla 2026.11.15 erano sotto [PolyForm Noncommercial 1.0.0](PREVIOUS-LICENSE-PolyForm-Noncommercial-1.0.0.md) e mantengono quella licenza.
+Il nome "Second Brain Studio" e la sua icona non sono coperti dalla licenza: per un fork scegli un altro nome.
+Componenti di terzi (xterm.js, Preact, Fluent Emoji, Figtree...): vedi [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+
+Second Brain Studio è un progetto indipendente, non affiliato né approvato da Anthropic, OpenAI o Google.
+Claude, Codex e Antigravity sono marchi dei rispettivi proprietari.

@@ -271,7 +271,7 @@ export const EN = {
   "Svuota": "Clear", "Cache svuotata": "Cache cleared", "Cambia second brain": "Switch second brain",
   "Rifai il primo avvio per crearne un altro o collegarne uno diverso. Quello attuale resta dov'è.": "Run the first setup again to create another one or connect a different one. The current one stays where it is.",
   "Rifai il primo avvio": "Run the first setup again", "Versione": "Version", "Valore non valido": "Invalid value",
-  "Codice aperto con licenza PolyForm Noncommercial 1.0.0: gratis per tutti, nessuno può venderlo.": "Source-available under the PolyForm Noncommercial 1.0.0 license: free for everyone, nobody can sell it.",
+  "Codice aperto con licenza GPL-3.0: gratis per tutti; chi lo modifica e lo condivide deve restare aperto.": "Open source under the GPL-3.0 license: free for everyone; anyone who changes and shares it must keep it open.",
   "Ti è utile Second Brain Studio?": "Is Second Brain Studio useful to you?",
   "È gratis e lo sviluppo nel tempo libero. Un caffè su Ko-fi mi aiuta a continuare: nuove funzioni e la versione per Mac.": "It's free and I build it in my spare time. A coffee on Ko-fi helps me keep going: new features and the Mac version.",
   "Offrimi un caffè su Ko-fi": "Buy me a coffee on Ko-fi",

@@ -26,4 +26,4 @@ The interface can be worked on in a normal browser, with made-up data and no Pyt
 ## License of contributions
 
 By sending a pull request you agree that your contribution is released under the project's
-[PolyForm Noncommercial 1.0.0](LICENSE.md) license.
+[GNU General Public License v3.0](LICENSE.md) (or any later version).

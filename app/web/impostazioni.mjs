@@ -364,7 +364,7 @@ export function Impostazioni({ api, chiudi, avvisa, gh, accediGh, sincronizzaGh,
     info: html`
       <div class="imp-info"><img src="icona.svg" width="56" height="56" alt="" />
         <div><b>Second Brain Studio</b><span>Versione ${d.versione}</span></div></div>
-      <p class="imp-nota">Codice aperto con licenza PolyForm Noncommercial 1.0.0: gratis per tutti, nessuno può venderlo.</p>
+      <p class="imp-nota">Codice aperto con licenza GPL-3.0: gratis per tutti; chi lo modifica e lo condivide deve restare aperto.</p>
       <div class="imp-riquadro imp-kofi-grande"><b>Ti è utile Second Brain Studio?</b>
         <span>È gratis e lo sviluppo nel tempo libero. Un caffè su Ko-fi mi aiuta a continuare: nuove funzioni e la versione per Mac.</span>
         <button class="btn primario piccolo" onClick=${() => api("apri_link", KOFI)}>${Icona.caffe()}Offrimi un caffè su Ko-fi</button></div>
