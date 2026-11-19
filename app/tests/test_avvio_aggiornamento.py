@@ -37,10 +37,15 @@ def test_due_script_insieme_ne_parte_uno(tmp_path):
     script.write_text(testo, encoding="utf-8")
     cmd = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script)]
     a = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=NASCOSTO)
-    time.sleep(1.5)
+    # il secondo parte solo quando il primo ha davvero preso il mutex (su un computer lento PowerShell
+    # ci mette piu' di un tempo fisso a partire)
+    registro = tmp_path / "aggiornamento.log"
+    fine_attesa = time.time() + 40
+    while time.time() < fine_attesa and not (registro.exists() and "inizio:" in registro.read_text(encoding="utf-8-sig")):
+        time.sleep(0.2)
     b = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, timeout=60, creationflags=NASCOSTO)
     a.wait(timeout=60)
-    log = (tmp_path / "aggiornamento.log").read_text(encoding="utf-8-sig")
+    log = registro.read_text(encoding="utf-8-sig")
     assert log.count("inizio:") == 1, log
     assert "gia in corso" in log
 
