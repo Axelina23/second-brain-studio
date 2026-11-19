@@ -27,6 +27,16 @@ def processi_test_nascosti(monkeypatch):
     monkeypatch.setattr(subprocess, "Popen", nascosto)
 
 
+@pytest.fixture(autouse=True)
+def elenco_modelli_isolato(tmp_path, monkeypatch):
+    # i test non devono leggere l'elenco dei modelli vero di questo PC (~/.claude/second-brain/modelli.json)
+    try:
+        import modelli_cli
+    except ImportError:
+        return
+    monkeypatch.setattr(modelli_cli, "_file", lambda: tmp_path / "modelli-test.json")
+
+
 def _niente(*a, **k):
     return None
 

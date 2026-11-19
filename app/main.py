@@ -41,6 +41,7 @@ import avvisi  # noqa: E402
 import configurazione  # noqa: E402
 import struttura  # noqa: E402
 import assistenti as mod_assistenti  # noqa: E402
+import modelli_cli  # noqa: E402
 import impostazioni as imp_mod  # noqa: E402
 import notifiche_win  # noqa: E402
 from percorsi import cartella_sessioni  # noqa: E402
@@ -116,6 +117,13 @@ class Api:
         chiave_mod = {"codex": "modello_codex", "agy": "modello_agy"}.get(imp["assistente_chat"], "modello_chat")
         return self._p.apri_chat(tipo, sessione, prompt, cartella, titolo, imp[chiave_mod], imp["assistente_chat"])
     def assistenti(self): return self._p.assistenti()
+    def modelli(self, forza=False):
+        # elenco dei modelli dichiarati dalle CLI (cache); se e' vecchio lo rinnova in background
+        if forza:
+            modelli_cli.aggiorna(True)
+        elif modelli_cli.scaduta():
+            threading.Thread(target=modelli_cli.aggiorna, name="modelli", daemon=True).start()
+        return modelli_cli.catalogo()
     def ia_locale_catalogo(self): return self._p.ia_locale_catalogo()
     def ia_locale_stato(self): return self._p.ia_locale_stato()
     def ia_locale_configura(self, configurazione): return self._p.ia_locale_configura(configurazione)
@@ -808,6 +816,7 @@ class App:
             threading.Thread(target=self._avvisi, name="avvisi", daemon=True).start()
             threading.Thread(target=self._sync_automatica, name="sync-auto", daemon=True).start()
             threading.Thread(target=self._aggiornamenti_periodici, name="aggiornamenti", daemon=True).start()
+            threading.Thread(target=modelli_cli.aggiorna, name="modelli", daemon=True).start()
             self._errore_aggiornamento()
             threading.Thread(target=self._ciclo_altri_pc, name="altri-pc", daemon=True).start()
             self.aggiorna_scorciatoia()

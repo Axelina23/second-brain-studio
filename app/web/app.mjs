@@ -12,7 +12,7 @@ import { PaginaMappa, ordinaGruppi } from "./mappa.mjs";
 import { linguaAttiva } from "./lingua.mjs";
 import { DialogoProgetto } from "./progetto.mjs";
 import { PrimoAvvio } from "./primo-avvio.mjs";
-import { Impostazioni, applicaAspetto, SceltaModello, CHIAVE_MODELLO } from "./impostazioni.mjs";
+import { Impostazioni, applicaAspetto, SceltaModello, CHIAVE_MODELLO, caricaCatalogo } from "./impostazioni.mjs";
 import { SceltaLocale, LOCALE } from "./ia-locali.mjs";
 
 // ---------- ponte ----------
@@ -290,9 +290,12 @@ function App({ primaChat, impIniziali, primoAvvio }) {
       if (r && r.assistenti) setAssistenti((vecchi) => JSON.stringify(vecchi) === JSON.stringify(r.assistenti) ? vecchi : r.assistenti);
     });
     leggi();
+    // elenco dei modelli dalle CLI: il primo caricamento puo' essere ancora vuoto, poi si rilegge
+    caricaCatalogo(api);
+    const modelli = setInterval(() => caricaCatalogo(api), 60000);
     const timer = setInterval(leggi, 15000);
     window.addEventListener("focus", leggi);
-    return () => { clearInterval(timer); window.removeEventListener("focus", leggi); };
+    return () => { clearInterval(timer); clearInterval(modelli); window.removeEventListener("focus", leggi); };
   }, []);
   const mettiImp = useCallback(async (k, v) => {
     setImp((x) => ({ ...x, [k]: v }));

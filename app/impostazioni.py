@@ -82,6 +82,8 @@ SCELTE = {
                             "gemini-4-argon-medium", "gemini-4-argon-high"),
     "terminale_carattere": ("JetBrains Mono", "Cascadia Mono", "Consolas"),
 }
+MODELLI_CLI = {"modello_codex": "codex", "modello_appunti_codex": "codex",
+              "modello_agy": "agy", "modello_appunti_agy": "agy"}
 LIMITI = {"testo": (85, 130), "terminale_testo": (10, 20), "terminale_interlinea": (1, 1.8),
           "terminale_righe": (1000, 50000), "soglia_kb": (5, 500), "sync_minuti": (0, 240)}
 _ORA = __import__("re").compile(r"^([01]\d|2[0-3]):[0-5]\d$")
@@ -111,6 +113,10 @@ def _valido(k: str, v) -> bool:
             return False
         lo, hi = LIMITI.get(k, (float("-inf"), float("inf")))
         return lo <= v <= hi
+    if k in MODELLI_CLI:
+        # elenco fisso di ripiego oppure modello dichiarato dalla CLI (motore/modelli_cli.py)
+        import modelli_cli
+        return v in SCELTE[k] or modelli_cli.conosce(MODELLI_CLI[k], v)
     if k in SCELTE:
         return v in SCELTE[k]
     if k in ("silenzio_da", "silenzio_a"):

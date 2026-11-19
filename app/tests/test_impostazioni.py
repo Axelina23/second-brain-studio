@@ -76,3 +76,14 @@ def test_esporta(tmp_path, monkeypatch):
     monkeypatch.setattr(imp.Path, "home", lambda: tmp_path)
     r = imp.esporta(b)
     assert r["conto"] == 1 and Path(r["file"]).is_file()
+
+
+def test_modelli_nuovi_dalla_cli_si_possono_salvare(monkeypatch):
+    import modelli_cli
+    assert "modello_agy" in imp.salva({"modello_agy": "gemini-4-neon-high"})["scartate"]
+    monkeypatch.setattr(modelli_cli, "scarica", lambda n: [{"id": "gemini-4-neon-high", "nome": "Neon"}] if n == "agy" else None)
+    modelli_cli.aggiorna(forza=True)
+    r = imp.salva({"modello_agy": "gemini-4-neon-high", "modello_appunti_agy": "gemini-4-neon-high"})
+    assert r["ok"] and "scartate" not in r
+    assert imp.leggi()["modello_agy"] == "gemini-4-neon-high"
+    assert "modello_agy" in imp.salva({"modello_agy": "x; rm"})["scartate"]

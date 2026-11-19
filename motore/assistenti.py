@@ -321,7 +321,21 @@ def passa_da_cmd(argv: list[str]) -> bool:
     return len(argv) > 1 and argv[1] == "/c"
 
 
+def modello_valido(nome: str, modello: str | None) -> bool:
+    # vale l'elenco fisso di ripiego oppure quello che la CLI ha dichiarato (modelli_cli)
+    if not modello or modello == "predefinito":
+        return False
+    import modelli_cli
+    return modello in MODELLI.get(nome, ()) or modelli_cli.conosce(nome, modello)
+
+
 def ultimo_modello_codex(modello: str) -> str:
+    # con l'elenco di Codex a disposizione, la versione piu' nuova della famiglia;
+    # senza, la tabella fissa di ripiego
+    import modelli_cli
+    dinamico = modelli_cli.ultimo_codex(modello)
+    if dinamico != modello:
+        return dinamico
     return {"gpt-5.6-luna": "gpt-6-luna", "gpt-5.6-terra": "gpt-6.1-terra",
             "gpt-5.6-sol": "gpt-6.1-sol", "gpt-6-sol": "gpt-6.1-sol"}.get(modello, modello)
 
@@ -349,7 +363,7 @@ def argomenti(nome: str, sessione: str | None = None, prompt: str | None = None,
               modello: str | None = None, senza_conferme: bool = False,
               modalita: str | None = None, impegno: str = "predefinito") -> list[str]:
     # nuova chat, ripresa di una chat, modello e primo messaggio, per ciascun assistente
-    valido = modello if not sessione and modello in MODELLI.get(nome, ()) and modello != "predefinito" else None
+    valido = modello if not sessione and modello_valido(nome, modello) else None
     if nome == "codex":
         valido = ultimo_modello_codex(valido) if valido else None
         permessi = opzioni_chat(nome, modalita or ("completa" if senza_conferme else "predefinito"), impegno)

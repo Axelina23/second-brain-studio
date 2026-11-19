@@ -73,16 +73,90 @@ function Segmenti({ valore, cambia, opzioni }) {
     class=${valore === v ? "scelto" : ""} disabled=${off} title=${off ? "In arrivo" : ""} onClick=${() => cambia(v)}>${n}</button>`)}</span>`;
 }
 
-// Ogni famiglia usa l'ultima versione verificata, senza un secondo selettore.
+// Modelli dichiarati dalle CLI (main.py > modelli_cli.py): riempiono i selettori di Codex e
+// Antigravity. Se l'elenco manca restano gli elenchi fissi qui sotto.
+export const CATALOGO = { codex: [], agy: [] };
+const ascoltatori = new Set();
+let ultimoCatalogo = "";
+export async function caricaCatalogo(api, forza = false) {
+  const r = await api("modelli", forza);
+  const a = r && r.assistenti;
+  if (!a || JSON.stringify(a) === ultimoCatalogo) return;
+  ultimoCatalogo = JSON.stringify(a);
+  CATALOGO.codex = a.codex || []; CATALOGO.agy = a.agy || [];
+  ascoltatori.forEach((f) => f());
+}
+function useCatalogo() {
+  const [, rifai] = useState(0);
+  useEffect(() => { const f = () => rifai((n) => n + 1); ascoltatori.add(f); return () => ascoltatori.delete(f); }, []);
+}
+
+// Codex: una voce per famiglia (Luna, Terra, Sol, Astra) con l'ultima versione dell'elenco.
 export const FAMIGLIE_CODEX = [
   ["predefinito", "Predefinito"], ["gpt-6-luna", "Luna"], ["gpt-6.1-terra", "Terra"],
   ["gpt-6.1-sol", "Sol"], ["gpt-6-astra", "Astra"],
 ];
+const ORDINE_CODEX = ["luna", "terra", "sol", "astra"];
+const versione = (v) => v.split(".").map(Number);
+const piuNuova = (a, b) => { for (let i = 0; i < Math.max(a.length, b.length); i++) { const d = (a[i] || 0) - (b[i] || 0); if (d) return d; } return 0; };
+export function famiglieCodex() {
+  const per = new Map();
+  for (const { id } of CATALOGO.codex) {
+    const m = /^gpt-(\d+(?:\.\d+)*)-([a-z]+)$/.exec(id);
+    if (!m) continue;
+    const vecchio = per.get(m[2]);
+    if (!vecchio || piuNuova(versione(m[1]), versione(vecchio.v)) > 0) per.set(m[2], { id, v: m[1] });
+  }
+  if (!per.size) return FAMIGLIE_CODEX;
+  const rango = (f) => { const i = ORDINE_CODEX.indexOf(f); return i < 0 ? 99 : i; };
+  return [["predefinito", "Predefinito"], ...[...per.entries()].sort((a, b) => rango(a[0]) - rango(b[0]) || a[0].localeCompare(b[0]))
+    .map(([f, { id }]) => [id, f[0].toUpperCase() + f.slice(1)])];
+}
 
 export function SceltaCodex({ valore, cambia }) {
-  const scelto = FAMIGLIE_CODEX.find(([id]) => id === valore || (id !== "predefinito" && String(valore || "").endsWith("-" + id.split("-").at(-1))))?.[0] || "predefinito";
-  return html`<span class="imp-seg" role="radiogroup" aria-label="Modello">${FAMIGLIE_CODEX.map(([id, nome]) => html`<button role="radio"
+  useCatalogo();
+  const famiglie = famiglieCodex();
+  const scelto = famiglie.find(([id]) => id === valore || (id !== "predefinito" && String(valore || "").endsWith("-" + id.split("-").at(-1))))?.[0] || "predefinito";
+  return html`<span class="imp-seg" role="radiogroup" aria-label="Modello">${famiglie.map(([id, nome]) => html`<button role="radio" title=${id === "predefinito" ? "" : id}
       aria-checked=${id === scelto} class=${id === scelto ? "scelto" : ""} onClick=${() => cambia(id)}>${nome}</button>`)}</span>`;
+}
+
+// Antigravity: famiglia (Neon, Argon, Hydrogen, Flash, Claude...) e, sotto, il livello (Low...XHigh).
+const LIVELLI_AGY = ["low", "medium", "high", "xhigh"];
+const NOMI_LIVELLO = { low: "Low", medium: "Med", high: "High", xhigh: "XHigh" };
+export function famiglieAgy() {
+  const per = new Map();
+  for (const { id, nome } of CATALOGO.agy) {
+    const m = /^(.*)-(low|medium|high|xhigh)$/.exec(id);
+    const fam = m ? m[1] : id;
+    if (!per.has(fam)) per.set(fam, { id: fam, nome: String(nome).replace(/\s*\([^)]*\)\s*$/, "").replace(/^Gemini /, ""), livelli: [] });
+    per.get(fam).livelli.push([id, m ? m[2] : ""]);
+  }
+  for (const f of per.values()) f.livelli.sort((a, b) => LIVELLI_AGY.indexOf(a[1]) - LIVELLI_AGY.indexOf(b[1]));
+  return [...per.values()];
+}
+const LIVELLO_DI_PARTENZA = ["medium", "high", "low", "xhigh"];
+
+export function SceltaAgy({ valore, cambia, predefinito = true }) {
+  useCatalogo();
+  const famiglie = famiglieAgy();
+  if (!famiglie.length) {
+    const fisso = predefinito ? MODELLI.agy : MODELLI.agy.filter(([v]) => v !== "predefinito");
+    return html`<span class="imp-seg" role="radiogroup" aria-label="Modello">${fisso.map(([v, n]) => html`<button role="radio"
+      aria-checked=${(valore || "predefinito") === v} class=${(valore || "predefinito") === v ? "scelto" : ""} onClick=${() => cambia(v)}>${n}</button>`)}</span>`;
+  }
+  const corrente = famiglie.find((f) => f.livelli.some(([id]) => id === valore));
+  const scegliFamiglia = (f) => {
+    const pref = LIVELLO_DI_PARTENZA.map((l) => f.livelli.find(([, x]) => x === l)).find(Boolean) || f.livelli[0];
+    cambia(pref[0]);
+  };
+  const senzaScelta = !corrente && (valore || "predefinito") === "predefinito";
+  return html`<span class="imp-modello-doppio">
+    <span class="imp-seg" role="radiogroup" aria-label="Modello">
+      ${predefinito && html`<button role="radio" aria-checked=${senzaScelta} class=${senzaScelta ? "scelto" : ""} onClick=${() => cambia("predefinito")}>Predefinito</button>`}
+      ${famiglie.map((f) => html`<button role="radio" aria-checked=${corrente === f} class=${corrente === f ? "scelto" : ""} title=${f.id} onClick=${() => scegliFamiglia(f)}>${f.nome}</button>`)}</span>
+    ${corrente && corrente.livelli.length > 1 && html`<span class="imp-seg" role="radiogroup" aria-label="Livello">${corrente.livelli.map(([id, l]) => html`<button role="radio"
+      aria-checked=${valore === id} class=${valore === id ? "scelto" : ""} onClick=${() => cambia(id)}>${NOMI_LIVELLO[l] || l}</button>`)}</span>`}</span>`;
 }
 
 // Il modello si sceglie sempre con lo stesso selettore, per ogni assistente
@@ -95,6 +169,7 @@ export const CHIAVE_MODELLO = { claude: "modello_chat", codex: "modello_codex", 
 
 export function SceltaModello({ agente, valore, cambia }) {
   if (agente === "codex") return html`<${SceltaCodex} valore=${valore || "predefinito"} cambia=${cambia} />`;
+  if (agente === "agy") return html`<${SceltaAgy} valore=${valore || "predefinito"} cambia=${cambia} />`;
   const mod = valore || "predefinito";
   return html`<span class="imp-seg" role="radiogroup" aria-label="Modello">${(MODELLI[agente] || MODELLI.claude).map(([v, n]) => html`<button role="radio"
     aria-checked=${mod === v} class=${mod === v ? "scelto" : ""} onClick=${() => cambia(v)}>${n}</button>`)}</span>`;
@@ -245,8 +320,8 @@ export function Impostazioni({ api, chiudi, avvisa, gh, accediGh, sincronizzaGh,
         <${Segmenti} valore=${imp.modello_appunti} cambia=${(v) => metti("modello_appunti", v)} opzioni=${[["sonnet", "Sonnet"], ["haiku", "Haiku"], ["opus", "Opus"]]} /></${Voce}>
       <${Voce} titolo="Modello appunti di Codex" testo="Predefinito = quello configurato in Codex.">
         <${SceltaCodex} valore=${imp.modello_appunti_codex} cambia=${(v) => metti("modello_appunti_codex", v)} /></${Voce}>
-      <${Voce} titolo="Modello appunti di Antigravity" testo="Flash è veloce e leggero; Argon è più approfondito.">
-        <${Segmenti} valore=${imp.modello_appunti_agy} cambia=${(v) => metti("modello_appunti_agy", v)} opzioni=${[["gemini-3.8-flash-high", "Flash High"], ["gemini-3.8-flash-low", "Flash Low"], ["gemini-4-argon-low", "Argon Low"], ["gemini-4-argon-medium", "Argon Med"], ["gemini-4-argon-high", "Argon High"]]} /></${Voce}>
+      <${Voce} titolo="Modello appunti di Antigravity" testo="Flash e Hydrogen sono veloci e leggeri; Neon e Argon più approfonditi. L'elenco si aggiorna da solo.">
+        <${SceltaAgy} valore=${imp.modello_appunti_agy} cambia=${(v) => metti("modello_appunti_agy", v)} predefinito=${false} /></${Voce}>
       <${Voce} titolo="Chat troppo corte" testo=${`Sotto ${imp.soglia_kb} KB di trascrizione non si aggiornano gli appunti.`}>
         <input type="range" min="5" max="200" step="5" value=${imp.soglia_kb} onChange=${(e) => metti("soglia_kb", +e.target.value)} /></${Voce}>
       <p class="imp-nota">Valgono per gli hook installati dall'app (primo avvio). Se usi hook tuoi, restano i tuoi.</p>`,
