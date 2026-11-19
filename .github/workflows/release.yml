@@ -1,0 +1,59 @@
+# Costruisce l'installer su un computer Windows pulito di GitHub e, se richiesto, pubblica la release.
+# Si avvia a mano: Actions > Release > Run workflow. Le note di una release stabile sono la prima
+# sezione di CHANGELOG.md (come con app\build.ps1 -Stabile). Il menu di Windows 11 (-MenuWindows11)
+# resta fuori: serve un certificato che esiste solo sul PC di sviluppo.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      pubblica:
+        description: "What to do with the installer"
+        type: choice
+        default: solo-installer
+        options:
+          - solo-installer   # build only: the installer is attached to this run
+          - bozza-stabile    # draft stable release, visible only to maintainers
+          - prerelease       # public pre-release (test build)
+          - stabile          # public stable release
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: app/requirements.txt
+      - name: Install dependencies and Inno Setup
+        run: |
+          python -m pip install -r app/requirements.txt
+          choco install innosetup --no-progress -y
+      - name: Run tests
+        run: python -m pytest -q
+      - name: Build installer (and publish if asked)
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUBBLICA: ${{ inputs.pubblica }}
+        run: |
+          $opzioni = switch ($env:PUBBLICA) {
+            "bozza-stabile" { @("-Stabile", "-Bozza") }
+            "prerelease"    { @("-Pubblica") }
+            "stabile"       { @("-Stabile") }
+            default         { @() }
+          }
+          & .\app\build.ps1 -Ci @opzioni
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Keep the installer with this run
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer
+          path: app/dist/Second Brain Studio Setup *.exe
+          if-no-files-found: error

@@ -9,7 +9,9 @@
 #  -Pubblica: pre-release di prova (la ricevono solo le app con "Anche le versioni di prova")
 #  -Stabile:  release vera per tutti, con le note della prima sezione di CHANGELOG.md
 # Nota: niente lettere accentate in questo file (PowerShell 5.1 legge male l'UTF-8).
-param([switch]$SoloInstaller, [switch]$Pubblica, [switch]$Stabile, [switch]$MenuWindows11, [switch]$FirmaLocaleDiProva)
+#  -Ci:       per GitHub Actions (Python gia' sul PATH, ora italiana, niente aggiornamento di questo PC)
+#  -Bozza:    con -Pubblica/-Stabile crea la release come bozza, visibile solo a te
+param([switch]$SoloInstaller, [switch]$Pubblica, [switch]$Stabile, [switch]$MenuWindows11, [switch]$FirmaLocaleDiProva, [switch]$Ci, [switch]$Bozza)
 $ErrorActionPreference = "Stop"
 
 $qui = $PSScriptRoot
@@ -30,16 +32,20 @@ $avvio = Join-Path (Split-Path $qui) "motore"
 # Python: il piu' recente tra le installazioni classiche e quelle del nuovo gestore (pythoncore-3.x)
 $py = @(Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe", "$env:LOCALAPPDATA\Python\pythoncore-3.*\python.exe" -ErrorAction SilentlyContinue) |
   Sort-Object { [version]($_.VersionInfo.ProductVersion -replace '[^0-9.].*$', '') } -Descending | Select-Object -First 1
+if ($Ci) { $py = [pscustomobject]@{ FullName = (Get-Command python).Source } }
 if (-not $py) { throw "Python non trovato in $env:LOCALAPPDATA\Programs\Python o $env:LOCALAPPDATA\Python" }
 $iscc = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe", "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe") |
   Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $iscc) { throw "Inno Setup non trovato: winget install JRSoftware.InnoSetup" }
 $lavoro = Join-Path $env:TEMP "second-brain-build"
 $versione = Get-Date -Format "yyyy.M.d.HHmm"
+# sul computer di GitHub l'ora e' UTC: la versione usa l'ora italiana, come le build locali
+if ($Ci) { $versione = [TimeZoneInfo]::ConvertTimeBySystemTimeZoneId([DateTime]::UtcNow, 'W. Europe Standard Time').ToString('yyyy.M.d.HHmm') }
 Set-Content -Path (Join-Path $qui "versione.txt") -Value $versione -NoNewline -Encoding ASCII
 
 Write-Host "Dipendenze..."
-& $py.FullName -m pip install --user -q -r (Join-Path $qui "requirements.txt")
+$pipUtente = if ($Ci) { @() } else { @("--user") }
+& $py.FullName -m pip install @pipUtente -q -r (Join-Path $qui "requirements.txt")
 if ($LASTEXITCODE -ne 0) { throw "pip non riuscito" }
 
 Write-Host "PyInstaller (versione $versione)..."
@@ -106,6 +112,7 @@ if ($Pubblica -or $Stabile) {
       "Certificate SHA-1 thumbprint: ``$($firma.SignerCertificate.Thumbprint)``. [Instructions](https://github.com/Axelina23/second-brain-studio/blob/main/docs/INBOX.md)."
     $corpo = $avvisoFirma + "`n`n" + $corpo
   }
+  if ($Bozza) { $tipo += "--draft" }
   $notefile = Join-Path $lavoro "note.md"
   [IO.File]::WriteAllText($notefile, $corpo, (New-Object Text.UTF8Encoding($false)))
   $asset = @($setup)
@@ -116,7 +123,7 @@ if ($Pubblica -or $Stabile) {
   if ($LASTEXITCODE -ne 0) { throw "Pubblicazione su GitHub non riuscita" }
   Write-Host "Pubblicata: v$versione"
 }
-if ($SoloInstaller) { return }
+if ($SoloInstaller -or $Ci) { return }
 
 $cache = Join-Path $env:USERPROFILE ".claude\second-brain"
 New-Item -ItemType Directory -Force -Path $cache | Out-Null

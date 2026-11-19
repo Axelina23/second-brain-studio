@@ -264,6 +264,7 @@ use it, study it, change it and share it. If you share a modified version, it mu
 Versions up to 2026.11.15 were released under [PolyForm Noncommercial 1.0.0](docs/PREVIOUS-LICENSE-PolyForm-Noncommercial-1.0.0.md) and keep that license.
 The name "Second Brain Studio" and its icon are not covered by the license: please pick another name for a fork.
 Third-party components (xterm.js, Preact, Fluent Emoji, Figtree...): see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Privacy and code signing: see the [code signing policy](CODE_SIGNING_POLICY.md) (installers are not signed yet).
 
 Second Brain Studio is an independent project, not affiliated with or endorsed by Anthropic, OpenAI or Google.
 Claude, Codex and Antigravity are trademarks of their owners.
