@@ -43,11 +43,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PUBBLICA: ${{ inputs.pubblica }}
         run: |
+          # tabella (non elenco): cosi' gli interruttori arrivano a build.ps1 come interruttori
           $opzioni = switch ($env:PUBBLICA) {
-            "bozza-stabile" { @("-Stabile", "-Bozza") }
-            "prerelease"    { @("-Pubblica") }
-            "stabile"       { @("-Stabile") }
-            default         { @() }
+            "bozza-stabile" { @{ Stabile = $true; Bozza = $true } }
+            "prerelease"    { @{ Pubblica = $true } }
+            "stabile"       { @{ Stabile = $true } }
+            default         { @{} }
           }
           & .\app\build.ps1 -Ci @opzioni
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
