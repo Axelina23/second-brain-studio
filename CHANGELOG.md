@@ -6,6 +6,7 @@ Versions are dates: `2026.11.8.1444` means 8 November 2026, 14:44.
 
 ## Next version
 
+- Links in the terminal open directly in the default browser: xterm's default handler opened a blank window first and Windows offered the Microsoft Store.
 - Tests and releases now run on GitHub Actions (`.github/workflows`): the installer can be built and published from a clean Windows machine with `Actions > Release > Run workflow`. Added a code signing policy and privacy statement.
 - English translations for the new Antigravity settings, shorter model names (Neon, Argon, Hydrogen, Flash) and refreshed README screenshots and tour GIF.
 

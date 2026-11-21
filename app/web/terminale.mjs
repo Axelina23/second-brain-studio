@@ -15,6 +15,9 @@ const TEMA = {
 // carattere e dimensione scelti in Impostazioni > Terminale (window.sbTerminale)
 const FAMIGLIE = { "JetBrains Mono": '"JetBrainsMono Nerd Font", "JetBrains Mono"', "Cascadia Mono": '"Cascadia Mono"', "Consolas": "Consolas" };
 const famiglia = () => `${FAMIGLIE[(window.sbTerminale || {}).carattere] || FAMIGLIE["JetBrains Mono"]}, "Cascadia Mono", Consolas, monospace`;
+// i link si aprono nel browser tramite l'app: il gestore predefinito di xterm apre
+// prima una finestra vuota (about:blank) e Windows propone il Microsoft Store
+const apriLink = (_e, uri) => { if (/^https:\/\//i.test(uri)) window.pywebview?.api?.apri_link(uri); };
 const tutte = new Set();
 const opzioni = () => {
   const p = window.sbTerminale || {};
@@ -35,13 +38,13 @@ export class Console {
     this.chiusa = false;
     tutte.add(this);
     this.term = new window.Terminal({
-      ...opzioni(), allowProposedApi: true, macOptionIsMeta: true,
+      ...opzioni(), allowProposedApi: true, macOptionIsMeta: true, linkHandler: { activate: apriLink },
     });
     this.fit = new window.FitAddon.FitAddon();
     this.term.loadAddon(this.fit);
     this.term.loadAddon(new window.Unicode11Addon.Unicode11Addon());
     this.term.unicode.activeVersion = "11";
-    this.term.loadAddon(new window.WebLinksAddon.WebLinksAddon());
+    this.term.loadAddon(new window.WebLinksAddon.WebLinksAddon(apriLink));
     this.term.open(contenitore);
     try {
       this.gl = new window.WebglAddon.WebglAddon();
